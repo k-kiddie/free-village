@@ -14,6 +14,7 @@ async function main(){
   let saved=0,stopped=0;
   const opts={sessions,env:{VILLAGE_EC2_STOP:'1'},verify:async()=>{},log:()=>{},save:async()=>{saved++},poweroff:async()=>{assert.equal(saved,1);stopped++}};
   const lifecycle=createLifecycle(opts);await lifecycle.tick();assert.equal(stopped,1);assert(lifecycle.stopReady);
+  sessions.update(a,true);assert(!lifecycle.stopReady,'중지 API의 최종 확인 전 재접속도 반영');sessions.update(a,false);time+=31;
   const cancel=createLifecycle({...opts,save:async()=>sessions.update(a,true)});await cancel.tick();assert.equal(stopped,1);assert(!cancel.stopping);
   sessions.update(a,false);time+=31;
   const failure=createLifecycle({...opts,save:async()=>{throw Error('disk full')}});await failure.tick();assert.equal(stopped,1);assert(!failure.stopping);assert(!failure.stopReady);

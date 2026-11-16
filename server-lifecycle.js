@@ -54,6 +54,6 @@ function createLifecycle({save,log=console.error,env=process.env,sessions=new Se
     }catch(e){stopping=false;stopReady=false;retryAt=Date.now()+60000;log('EC2 중지 보류: '+e.message)}
     finally{busy=false}
   }
-  return {sessions,enabled,tick,get stopping(){return stopping},get stopReady(){return stopReady}};
+  return {sessions,enabled,tick,get stopping(){return stopping},get stopReady(){return stopReady&&sessions.due()}};
 }
 module.exports={Sessions,verifyEc2,createLifecycle,stopViaGate};
