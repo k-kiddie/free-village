@@ -166,6 +166,7 @@ async function handleMessage(msg) {
       else if(c.action==='advance') { if(!Number.isFinite(c.days)||c.days<1||c.days>3650)throw Error('건너뛸 날짜가 올바르지 않습니다');running=false;pendingDays=Math.floor(c.days);jumpTotal=pendingDays;stopped=null; }
       else if(c.action==='new') { running=false;pendingDays=0;dayFraction=0;seed=Number(c.seed)||((seed*7919+13)%99991+1);population=Math.max(1,Math.min(10000,Math.floor(Number(c.population)||5000)));world=createWorld(seed,population);lastViewDay=-1;lastSavedDay=-1;panelDay=-1;panelCache.clear();await save();sendView(true); }
       else if(c.action==='save') await save();
+      else if(c.action==='suspend') {running=false;pendingDays=0;dayFraction=0;jumpTotal=0;await save()}
       else throw new Error('알 수 없는 명령');
       lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day});
     } catch(e) { answer(msg.id,'error',e.message); }

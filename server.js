@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const zlib = require('node:zlib');
 const crypto = require('node:crypto');
 const { Worker } = require('node:worker_threads');
+const {createLifecycle}=require('./server-lifecycle');
 
 const PORT = Math.max(1, Number(process.env.PORT) || 80);
 const worker = new Worker(path.join(__dirname, 'sim-worker.js'), {
@@ -45,6 +46,7 @@ function sendJson(res, status, value) {
   const body=Buffer.from(JSON.stringify(value));
   res.writeHead(status,{'content-type':'application/json; charset=utf-8','content-length':body.length,'cache-control':'no-store'});res.end(body);
 }
+const lifecycle=createLifecycle({save:()=>request('command',{command:{action:'suspend'}})});
 async function readBody(req,limit=16384,parse=true) {
   const chunks=[];let size=0;
   for await(const chunk of req){size+=chunk.length;if(size>limit)throw new Error('요청 본문이 너무 큽니다');chunks.push(chunk)}
@@ -53,7 +55,14 @@ async function readBody(req,limit=16384,parse=true) {
 const server=http.createServer(async(req,res)=>{
   try {
     const url=new URL(req.url,'http://localhost');
-    if(req.method==='GET'&&url.pathname==='/health')return sendJson(res,ready?200:503,{ok:ready,ready,day:latestView?.day??null,rssBytes:process.memoryUsage().rss});
+    if(req.method==='GET'&&url.pathname==='/health')return sendJson(res,ready&&!lifecycle.stopping?200:503,{ok:ready&&!lifecycle.stopping,ready:ready&&!lifecycle.stopping,stopReady:lifecycle.stopReady,day:latestView?.day??null,rssBytes:process.memoryUsage().rss});
+    if(req.method==='POST'&&url.pathname==='/api/session'){
+      const input=await readBody(req,512);
+      lifecycle.sessions.update(input.id,input.active===true);
+      if(input.active===true)worker.postMessage({type:'heartbeat'});
+      return sendJson(res,lifecycle.stopping?503:200,{ok:!lifecycle.stopping});
+    }
+    if(lifecycle.stopping)return sendJson(res,503,{error:'저장 후 서버를 중지하고 있습니다. 진입 주소에서 다시 접속해주세요.'});
     if(req.method==='GET'&&url.pathname==='/api/view'){
       worker.postMessage({type:'heartbeat'});
       if(!latestView)return sendJson(res,503,{error:'마을 초기화 중'});
@@ -81,6 +90,7 @@ const server=http.createServer(async(req,res)=>{
 });
 
 server.listen(PORT,'0.0.0.0',()=>console.log(`free-village 서버가 ${PORT} 포트에서 실행 중`));
+const lifecycleTimer=setInterval(()=>lifecycle.tick(),5000);lifecycleTimer.unref();
 let closing=false;
-async function shutdown(){if(closing)return;closing=true;server.close();try{await request('command',{command:{action:'pause'}});await request('command',{command:{action:'save'}})}catch(e){console.error('종료 저장 실패',e);process.exitCode=1}finally{await worker.terminate()}}
+async function shutdown(){if(closing)return;closing=true;clearInterval(lifecycleTimer);server.close();try{await request('command',{command:{action:'suspend'}})}catch(e){console.error('종료 저장 실패',e);process.exitCode=1}finally{await worker.terminate()}}
 process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);

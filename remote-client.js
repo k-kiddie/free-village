@@ -1,5 +1,18 @@
 // 서버 모드: 폰에서는 step/createWorld/importState를 호출하지 않는다.
 function initRemote(){
+  const sessionId=Array.from({length:4},()=>Math.random().toString(36).slice(2)).join('');
+  const isVisible=()=>document.visibilityState!=='hidden';
+  function session(active){
+    const body=JSON.stringify({id:sessionId,active});
+    if(!active&&typeof navigator!=='undefined'&&navigator.sendBeacon){
+      navigator.sendBeacon('/api/session',new Blob([body],{type:'application/json'}));return;
+    }
+    fetch('/api/session',{method:'POST',headers:{'content-type':'application/json'},body,keepalive:true}).catch(()=>{});
+  }
+  document.addEventListener('visibilitychange',()=>{session(isVisible());if(isVisible())poll()});
+  window.addEventListener('pagehide',()=>session(false));
+  window.addEventListener('pageshow',()=>{if(isVisible()){session(true);poll()}});
+  session(isVisible());setInterval(()=>{if(isVisible())session(true)},15000);
   let view=null,etag='',panelToken=0,cardToken=0,lastPanel='',lastCard='',pollBusy=false,commandBusy=false,migrationTried=false,lastStop='';
   running=false;
   S={agents:[],houses:[],byId:new Map(),fx:[]};
@@ -47,7 +60,7 @@ function initRemote(){
     setSave('ok',h.savedDay>=0?'서버에 저장됨 · '+(Math.floor(h.savedDay/YEAR)+1)+'년차':'서버에서 실행 중');
     renderPanel();if(sel)renderCard();
   };
-  async function poll(){if(pollBusy)return;pollBusy=true;
+  async function poll(){if(pollBusy||!isVisible())return;pollBusy=true;
     try{const r=await fetch('/api/view',{headers:etag?{'if-none-match':etag}:{},cache:'no-store'});if(r.status===304)return;if(!r.ok)throw Error('서버에서 마을을 준비 중입니다');
       const o=await r.json();etag=r.headers.get('etag')||'';const changed=seed!==o.seed;seed=o.seed;view=o;S=o.map;
       S.byId=new Map(S.agents.map(a=>[a.id,a]));S.miles=o.hud.miles;S.events=[];
