@@ -50,7 +50,7 @@ function makeView() {
   const agents = S.agents;
   const adultN = agents.reduce((n,a)=>n+(a.alive && world.isAdult(a) ? 1 : 0),0);
   const homeless = agents.reduce((n,a)=>n+(a.alive && world.isAdult(a) && !a.home ? 1 : 0),0);
-  const mapState={};for(const k of mapKeys)mapState[k]=S[k];
+  const mapState={currency:S.currency};for(const k of mapKeys)mapState[k]=S[k];
   // 지도에는 주민 이름/집 소유자 표식만 필요하다. 학습 및 유전체는 상세 요청에서만 제공한다.
   const mapIds=new Set([S.leader,S.gov?.chief]);
   for(const h of S.houses){mapIds.add(h.owner);mapIds.add(h.occ)}

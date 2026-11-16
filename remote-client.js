@@ -51,8 +51,8 @@ function initRemote(){
   };
   renderUI=()=>{if(!view)return;
     const h=view.hud;$('#yr').textContent=view.year+'년차';$('#sea').textContent=SEASON[view.season]+' '+((S.day%15)+1)+'일';
-    $('#sPop').textContent=view.population+'명';$('#sTop').textContent=won(h.top);$('#sMeal').textContent=won(dayFood(h.price)/3);
-    $('#sHouse').textContent=h.houses+' / '+h.homeless;$('#sHungry').textContent=h.wageAvg!=null?won(h.wageAvg):'-';
+    $('#sPop').textContent=view.population+'명';$('#sTop').textContent=money(h.top);$('#sMeal').textContent=money(dayFood(h.price)/3);
+    $('#sHouse').textContent=h.houses+' / '+h.homeless;$('#sHungry').textContent=h.wageAvg!=null?money(h.wageAvg):'-';
     const m=h.miles.at(-1);$('#capText').textContent=m?m.text:'주민들이 막 정착했다. 아직 아무 규칙도 없다';$('#capWhen').textContent=m?fmtD(m.d)+' · 문명 기록 '+h.miles.length+'번째':'';
     $('#play').textContent=running?'일시정지':'재생';$('#play').classList.toggle('on',running);
     document.querySelectorAll('[data-sp]').forEach(b=>b.classList.toggle('on',+b.dataset.sp===speed));

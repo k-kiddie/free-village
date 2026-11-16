@@ -1,0 +1,25 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {createWorld,shareCount,marketCap}=require('../engine');
+const w=createWorld(73,300),S=w.S;
+const [a,b]=S.agents.filter(w.isAdult);a.cash=100000;b.cash=100000;
+const f={id:1,name:'증자공업',ceo:a.id,sh:{[a.id]:6000,[b.id]:3000,X:1000},totalShares:10000,shareVersion:74,price:2,p30:2,peak:3,ipoP:1,hist:[1,2],cash:10000,bld:[],divE:0,born:0};S.firms.push(f);S.foreignEquity={cash:10000,net:0,in:0,out:0};
+const invariant=()=>w.moneySupply()-S.foreignEquity.net;
+const close=(x,y,label)=>assert(Math.abs(x-y)<1e-7*Math.max(1,Math.abs(x)),label);
+const total=()=>{assert.equal(Object.values(f.sh).reduce((n,q)=>n+q,0),shareCount(f));assert(Object.values(f.sh).every(q=>Number.isSafeInteger(q)&&q>0))};
+const before=invariant(),cash=f.cash,oldValue=marketCap(f);
+assert.equal(w.rightsIssue(f,2000,1.5),2000);total();close(invariant(),before,'유상증자 현금 보존');close(f.cash,cash+3000);close(marketCap(f),oldValue+3000);assert.equal(S.foreignEquity.in,300);
+const holdings={...f.sh},value=marketCap(f),price=f.price,p30=f.p30;
+assert.equal(w.bonusIssue(f,1),12000);total();for(const [id,n]of Object.entries(holdings))assert.equal(f.sh[id],n*2);close(f.price,price/2);close(f.p30,p30/2);close(marketCap(f),value);close(invariant(),before);
+assert.equal(w.bonusIssue(f,1,'stockSplit'),24000);total();close(marketCap(f),value);close(invariant(),before);
+const companyCash=f.cash,ownerCash=a.cash;assert.equal(w.buybackShares(f,100),100);total();close(f.cash,companyCash-100*f.price);close(a.cash,ownerCash+100*f.price);close(invariant(),before);assert.equal(f.sh.T,100);
+const n=shareCount(f),capital=marketCap(f);assert.equal(w.cancelTreasury(f),100);total();assert.equal(shareCount(f),n-100);close(marketCap(f),capital);close(invariant(),before);
+const saved=JSON.parse(JSON.stringify(w.exportState())),restored=createWorld(73,300);restored.importState(saved);assert.equal(restored.S.firms[0].totalShares,f.totalShares);assert.deepEqual(restored.S.firms[0].sh,f.sh);
+assert.equal(w.rightsIssue(f,NaN),0);assert.equal(w.bonusIssue(f,Infinity),0);assert.equal(w.buybackShares(f,-1),0);
+const Module=require('node:module'),fs=require('node:fs');const file=require.resolve('../engine');const moduleCopy=new Module(file,module);moduleCopy.filename=file;moduleCopy.paths=module.paths;
+moduleCopy._compile(fs.readFileSync(file,'utf8').replace('moneySupply,currencyUnit,','_stockActionsTick:stockActionsTick,moneySupply,currencyUnit,'),file);
+const autonomous=moduleCopy.exports.createWorld(42,200),owner=autonomous.S.agents.find(autonomous.isAdult);
+const listed={id:1,name:'자율공업',ceo:owner.id,sh:{[owner.id]:10000},totalShares:10000,shareVersion:74,price:10000,cash:1000,bld:[],born:0,listed:1};autonomous.S.firms.push(listed);autonomous.S.exch={d:1};
+for(let i=0;i<60&&!listed.actions?.length;i++){autonomous.S.day=180+i*180+11;autonomous._stockActionsTick()}
+assert(listed.actions?.some(a=>a.kind==='stockSplit'),'회사 스스로 주식분할 결정');
+console.log(JSON.stringify({initialShares:10000,finalShares:f.totalShares,rightsIssue:true,bonusIssue:true,stockSplit:true,buyback:true,cancellation:true,adjustedPrices:true,moneyAndForeignLedger:true,restore:true}));

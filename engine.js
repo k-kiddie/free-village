@@ -10,6 +10,9 @@ const ACT=['농사','요리','벌목','건축','고용살이','도둑질','휴�
 const PROD=[FARM,COOK,CHOP,BUILD,CRAFT,MINE];
 const YEAR=60,ADULT=14*YEAR;
 const SHARE_COUNT=10000;
+const shareCount=f=>Math.max(1,f.totalShares||SHARE_COUNT);
+const votingShares=f=>Math.max(1,shareCount(f)-(f.sh?.T||0));
+const marketCap=f=>f.price*votingShares(f);
 const GAME_VERSION=74;
 const SEASON=['봄','여름','가을','겨울'];
 const SEAS_YIELD=[.8,1.25,1,0];
@@ -87,10 +90,12 @@ const GK=[['econ',.2,2.5,1,.3],['explore',0,1.5,.55,.25],['eat',20,80,45,10],['k
 const GNAME={fid:'정절',jeal:'질투',roma:'낭만',lib:'욕구',addict:'중독 성향',equal:'평등',lend:'돈 빌려주기',borrow:'빚 내기',cheat:'속임수',join:'무리 짓기',boss:'야망',civic:'공익심',vain:'외모 중시',comply:'순응',lux:'사치',econ:'돈 욕심',explore:'호기심',hoard:'사재기',hire:'사람 부리기',landlord:'임대 선호',care:'자식 돌봄',fert:'다산',vigil:'경계심',imitate:'따라하기',picky:'까다로움'};
 const fmt=n=>Math.round(n).toLocaleString('ko-KR');
 // 돈 표시: 1냥 = 100전. 작은 돈은 전으로, 10냥 아래는 냥과 전을 함께
-const won=n=>{n=+n||0;const s=n<0?'-':'';n=Math.abs(n);if(n<1)return s+Math.round(n*100)+'전';if(n<10){const y=Math.floor(n),j=Math.round((n-y)*100);return s+(j>=100?(y+1)+'냥':y+'냥'+(j?' '+j+'전':''))}return s+fmt(n)+'냥'};
+const formatMoney=(n,unit=1)=>{n=(+n||0)/unit;const s=n<0?'-':'';n=Math.abs(n);if(n>0&&n<.01)return s+Number((n*100).toPrecision(3))+'전';if(n<1)return s+Math.round(n*100)+'전';if(n<10){const y=Math.floor(n),j=Math.round((n-y)*100);return s+(j>=100?(y+1)+'냥':y+'냥'+(j?' '+j+'전':''))}return s+fmt(n)+'냥'};
+const won=n=>formatMoney(n);
 function josa(w,a,b){w=String(w);const c=w.charCodeAt(w.length-1);if(c<0xAC00||c>0xD7A3)return w+b;const j=(c-0xAC00)%28;if(a==='으로'&&j===8)return w+b;return w+(j?a:b)}
 
 function createWorld(seed,N){setMap(N>=4000);
+  const won=n=>formatMoney(n,currencyUnit());
   PLOTS.length=0;const bigLand=N>=1500;EXPL.length=0;
   const st={a:seed>>>0};
   const rnd=()=>{st.a|=0;st.a=st.a+0x6D2B79F5|0;let t=Math.imul(st.a^st.a>>>15,1|st.a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
@@ -404,7 +409,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const rows=[...merged].map(([id,n])=>{const exact=total*n/sum;return{id,n:Math.floor(exact),rest:exact-Math.floor(exact)}});let left=total-rows.reduce((n,r)=>n+r.n,0);
     rows.sort((a,b)=>b.rest-a.rest||a.id.localeCompare(b.id));for(let i=0;i<left;i++)rows[i%rows.length].n++;return rows.filter(r=>r.n>0).map(r=>[r.id,r.n]);
   }
-  function migrateShares(f){if(f.shareVersion===74)return;const entries=Object.entries(f.sh||{}).filter(([,n])=>Number.isFinite(n)&&n>0);f.sh=Object.fromEntries(allocateShares(SHARE_COUNT,entries.length?entries:[[f.ceo||'T',1]]));
+  function migrateShares(f){if(f.shareVersion>=74){if(!f.totalShares)f.totalShares=Object.values(f.sh||{}).reduce((n,q)=>n+q,0)||SHARE_COUNT;return}const entries=Object.entries(f.sh||{}).filter(([,n])=>Number.isFinite(n)&&n>0);f.sh=Object.fromEntries(allocateShares(SHARE_COUNT,entries.length?entries:[[f.ceo||'T',1]]));
     for(const k of['price','p30','peak','ipoP'])if(Number.isFinite(f[k]))f[k]/=100;f.price=Math.max(.0001,f.price||.0001);f.p30=f.p30||f.price;f.peak=f.peak||f.price;f.hist=(f.hist||[]).map(n=>n/100);f.shareVersion=74;f.totalShares=SHARE_COUNT;
   }
   function holderPersonId(id){id=String(id);if(/^\d+$/.test(id))return +id;if(id[0]==='I')return +id.slice(1);if(id[0]==='B')return (S.banks||[]).find(b=>b.id===+id.slice(1))?.own||null;return null}
@@ -430,13 +435,66 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(buyer.agent)SP(buyer.agent,'stock',payment);if(seller.agent)seller.agent.src.stock=(seller.agent.src.stock||0)+payment;
     if(String(buyerId)==='X')recordForeignCapital(payment);if(String(sellerId)==='X')recordForeignCapital(-payment);S._waD=-1;return n;
   }
-  function stockOwnership(f){let people=0,institution=0,foreign=0;for(const id of shareKeys(f).keys){if(/^\d+$/.test(id))people++;else if(id==='X')foreign+=f.sh[id];else if(id!=='T')institution+=f.sh[id]}return{people,institution:institution/100,foreign:foreign/100}}
+  function stockOwnership(f){let people=0,institution=0,foreign=0;for(const id of shareKeys(f).keys){if(/^\d+$/.test(id))people++;else if(id==='X')foreign+=f.sh[id];else if(id!=='T')institution+=f.sh[id]}return{people,institution:institution/votingShares(f)*100,foreign:foreign/votingShares(f)*100}}
   function stockValue(a){const ids=[String(a.id),'I'+a.id,...(S.banks||[]).filter(b=>b.own===a.id).map(b=>'B'+b.id)];let value=0;for(const f of S.firms)for(const id of ids)value+=(f.sh[id]||0)*f.price;return value}
   function institutions(){const ids=[];if(S.gov?.policy?.pension&&(S.gov.pen||0)>0)ids.push('P');for(const b of S.banks||[])if(b.alive!==false&&S.byId.get(b.own)?.alive)ids.push('B'+b.id);for(const a of S.agents)if(a.alive&&a.insurer)ids.push('I'+a.id);return ids}
   function cleanupShares(f){for(const id of shareKeys(f).keys.slice()){if(id==='T'||holderAccount(id,f))continue;const n=f.sh[id]||0,person=holderPersonId(id),target=person&&S.byId.get(person)?.alive?String(person):'T';setShares(f,id,0);setShares(f,target,(f.sh[target]||0)+n)}}
   function payStockDividend(f,budget){if(!Number.isFinite(budget)||budget<=0)return 0;budget=Math.min(budget,Math.max(0,f.cash||0));let paid=0,foreign=0;
-    for(const id of shareKeys(f).keys){if(id==='T')continue;const account=holderAccount(id,f);if(!account)continue;const d=budget*f.sh[id]/SHARE_COUNT;account.cash+=d;paid+=d;if(account.agent)account.agent.src.div=(account.agent.src.div||0)+d;if(id==='X')foreign+=d}
+    for(const id of shareKeys(f).keys){if(id==='T')continue;const account=holderAccount(id,f);if(!account)continue;const d=budget*f.sh[id]/votingShares(f);account.cash+=d;paid+=d;if(account.agent)account.agent.src.div=(account.agent.src.div||0)+d;if(id==='X')foreign+=d}
     f.cash-=paid;if(foreign)recordForeignCapital(-foreign);return paid;
+  }
+  // 주당 기록을 수정주가로 환산해 분할/권리락을 폭락이나 조작으로 오인하지 않는다.
+  function adjustSharePrice(f,factor){for(const k of ['price','p30','peak','ipoP'])if(Number.isFinite(f[k]))f[k]*=factor;f.hist=(f.hist||[]).map(n=>n*factor)}
+  function stockActionLog(f,kind,text){f.actions=f.actions||[];f.actions.push({d:S.day,kind,text});if(f.actions.length>12)f.actions.shift();f.lastAction=S.day;S._waD=-1;log('econ',text,[f.ceo]);X(kind)}
+  function rightsIssue(f,requested,price=f.price*.85){
+    migrateShares(f);if(!Number.isFinite(price)||price<=0||!Number.isFinite(requested))return 0;
+    const offered=Math.min(100000000-shareCount(f),Math.max(0,Math.floor(requested)));if(!offered)return 0;
+    const oldTotal=shareCount(f),oldMarket=marketCap(f);let issued=0,raised=0;
+    const subscribe=(id,quota)=>{if(String(id)==='T')return;const buyer=holderAccount(id,f);if(!buyer||buyer.wallet===f)return;
+      const n=Math.min(quota,offered-issued,Math.floor(buyer.cash/price));if(n<=0)return;const pay=n*price;
+      buyer.cash-=pay;f.cash=(f.cash||0)+pay;setShares(f,id,(f.sh[id]||0)+n);issued+=n;raised+=pay;if(buyer.agent)SP(buyer.agent,'stock',pay);if(String(id)==='X')recordForeignCapital(pay);
+    };
+    // 기존 주주의 우선청약 뒤 미청약분은 순환하는 일반 투자자에게 공모한다.
+    const allocations=allocateShares(offered,Object.entries(f.sh).filter(([id])=>id!=='T'));
+    for(const [id,n] of allocations)subscribe(id,n);
+    const pool=investors(S.byId.get(f.ceo)),offset=(S.day+f.id*17)%Math.max(1,pool.length);
+    for(let i=0;i<Math.min(128,pool.length)&&issued<offered;i++)subscribe(String(pool[(offset+i)%pool.length].id),Math.max(1,Math.ceil((offered-issued)/8)));
+    if(!issued)return 0;f.totalShares=oldTotal+issued;f.raised=(f.raised||0)+raised;
+    const exPrice=(oldMarket+raised)/votingShares(f);adjustSharePrice(f,exPrice/f.price);
+    stockActionLog(f,'rightsIssue',`${f.name} 유상증자. ${issued}주 발행, ${won(raised)} 조달`);return issued;
+  }
+  function bonusIssue(f,ratio=1,kind='bonusIssue'){
+    migrateShares(f);if(!Number.isFinite(ratio)||ratio<=0)return 0;
+    const old=shareCount(f),extra=Math.min(100000000-old,Math.floor(old*ratio));if(!extra)return 0;
+    for(const [id,n] of allocateShares(extra,Object.entries(f.sh)))setShares(f,id,(f.sh[id]||0)+n);
+    f.totalShares=old+extra;adjustSharePrice(f,old/f.totalShares);
+    stockActionLog(f,kind,`${f.name} ${kind==='stockSplit'?'주식분할':'무상증자'}. ${extra}주 증가, 총 ${f.totalShares}주`);return extra;
+  }
+  function buybackShares(f,requested){
+    migrateShares(f);if(!Number.isFinite(requested))return 0;let left=Math.min(Math.max(0,Math.floor(requested)),Math.max(0,votingShares(f)-1)),bought=0;
+    for(const id of shareKeys(f).keys.slice()){if(id==='T'||!left)continue;const n=tradeStock(f,id,'T',Math.min(left,f.sh[id]),f.price);bought+=n;left-=n}
+    if(bought)stockActionLog(f,'buyback',`${f.name} 자사주 매입. ${bought}주, ${won(bought*f.price)}`);return bought;
+  }
+  function cancelTreasury(f){const n=f.sh.T||0;if(!n||shareCount(f)<=n)return 0;setShares(f,'T',0);f.totalShares=shareCount(f)-n;stockActionLog(f,'shareCancel',`${f.name} 자사주 소각. ${n}주, 총 ${f.totalShares}주`);return n}
+  function currencyState(){
+    if(!S.currency||!Number.isSafeInteger(S.currency.unit)||S.currency.unit<1)S.currency={unit:1,history:[]};
+    if(!Array.isArray(S.currency.history))S.currency.history=[];return S.currency;
+  }
+  function currencyUnit(){return currencyState().unit}
+  function reformCurrency(factor=100){
+    const currency=currencyState();if(!Number.isSafeInteger(factor)||factor<2||factor>1000000||!Number.isSafeInteger(currency.unit*factor)||currency.unit*factor>1e12)return false;
+    currency.unit*=factor;currency.history.push({d:S.day,factor,unit:currency.unit});if(currency.history.length>20)currency.history.shift();
+    log('fin',`화폐 단위 변경. 옛 ${fmt(factor)}냥 = 새 1냥`,[]);return true;
+  }
+  function currencyTick(){if(S.day%YEAR===0&&(S.price.tool||0)/currencyUnit()>=800)reformCurrency(100)}
+  function stockActionsTick(){if(S.day%30!==11||!S.exch||S.exch.closed)return;
+    for(const f of S.firms){if(!f.listed||f.delisted||S.day-f.born<YEAR||S.day-(f.lastAction??-YEAR*2)<YEAR*2)continue;const c=S.byId.get(f.ceo);if(!c?.alive)continue;
+      if((f.sh.T||0)>shareCount(f)*.02&&R()<.2){cancelTreasury(f);continue}
+      if(f.price>5*PL()&&R()<.15){bonusIssue(f,1,'stockSplit');continue}
+      if((f.cash||0)<marketCap(f)*.04&&c.g.boss>.3&&R()<.08){rightsIssue(f,shareCount(f)*.2);continue}
+      if((f.cash||0)>marketCap(f)*.15&&f.divE>0&&R()<.04){buybackShares(f,shareCount(f)*.02);continue}
+      if(f.divE>0&&c.g.econ>1&&R()<.04)bonusIssue(f,.2);
+    }
   }
   function tradeCompanyShares(){
     const ad=S.agents.filter(a=>a.alive&&isAdult(a)&&a.cash>2*PL()),inst=institutions(),sites=new Map(),subs=new Map();
@@ -444,7 +502,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     for(const f of S.firms)if(f.parent)subs.set(f.parent,(subs.get(f.parent)||0)+(f.sh['F'+f.parent]||0)*f.price);
     for(const f of S.firms){migrateShares(f);if(f.delisted)continue;const asset=f.bld.reduce((n,id)=>{const b=buildingById(id);return n+(b?buildingValue(b):0)},0);
       const pending=(sites.get(f.id)||[]).reduce((n,b)=>n+S.houseRef*1.4*Math.min(1,.4+b.prog/(b.need||40)),0);
-      const fund=(f.divE*100+(asset+pending+(f.cash||0))*.6+(subs.get(f.id)||0)*.8)/SHARE_COUNT,mom=f.price/Math.max(.0001,f.p30||f.price)-1;
+      const fund=(f.divE*100+(asset+pending+(f.cash||0))*.6+(subs.get(f.id)||0)*.8)/votingShares(f),mom=f.price/Math.max(.0001,f.p30||f.price)-1;
       const buys=[],sells=[],buyIds=new Set(),sellIds=new Set();
       const bid=(id,cap=20)=>{id=String(id);if(buyIds.has(id))return;buyIds.add(id);const a=holderAccount(id,f);if(!a||a.cash<f.price)return;
         const g=a.agent?.g||{imitate:.2,econ:1.2,vigil:.7},value=fund*(1+g.imitate*mom*2.5+gauss()*.15)*(.8+g.econ*.2)*(f.pump?1.6-g.vigil*.5:1);
@@ -464,7 +522,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(f.listed&&T?.on&&G?.policy?.fdiOpen!==false){const last=T.last||{},balance=((last.exp||0)-(last.imp||0))/Math.max(1,(last.exp||0)+(last.imp||0));
         const confidence=balance*.4+((S.happy??.5)-.5)*.4-((S.inflY||1)-1)*.5-((T.fxr||1)-1)*.2+mom*.1;
         const e=foreignEquity(),held=f.sh.X||0;sellIds.add('X');
-        if(confidence>-.05&&held<5000){const q=Math.min(128,5000-held,Math.floor(e.cash*.02/Math.max(.0001,f.price)));if(q>0)buys.push({id:'X',q,p:f.price*1.08})}
+        if(confidence>-.05&&held<votingShares(f)*.5){const q=Math.min(128,Math.floor(votingShares(f)*.5)-held,Math.floor(e.cash*.02/Math.max(.0001,f.price)));if(q>0)buys.push({id:'X',q,p:f.price*1.08})}
         if(held&&(confidence<.05||R()<.2))sells.push({id:'X',q:Math.min(held,confidence<-.2?400:128),p:f.price*(confidence<-.2?.88:.95)});
       }
       buys.sort((a,b)=>b.p-a.p);sells.sort((a,b)=>a.p-b.p);let i=0,j=0,volume=0,value=0,foreignSold=0;
@@ -475,12 +533,12 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         mile('stockTrade',`첫 주식 거래. ${f.name} 주식 ${amount}주가 거래됐다`,[holderPersonId(b.id),holderPersonId(s.id)].filter(Boolean));
       }
       const p0=f.price;if(volume)f.price=f.price*.5+value/volume*.5;else if(buys.length&&!sells.length)f.price*=1.02;else if(sells.length&&!buys.length)f.price*=.98;
-      if(foreignSold)f.price*=1-Math.min(.08,foreignSold/SHARE_COUNT*.8);
+      if(foreignSold)f.price*=1-Math.min(.08,foreignSold/votingShares(f)*.8);
       f.price=Math.max(.0001,Math.min(p0*1.1,Math.max(p0*.9,f.price)));f.peak=Math.max((f.peak||f.price)*.999,f.price);f.volume=volume;
       if(f.pump){f.pump=Math.max(0,f.pump-5);if(!f.pump&&f.pumpGain>5){const c=S.byId.get(f.ceo);mile('manip',`주가 조작. ${f.name} 사장 ${josa(c?nm(c):'?','이','가')} 주식을 팔아 ${won(f.pumpGain)}을 챙겼다`,[f.ceo]);if(S.gov&&R()<.4)fileC('manip',c,f.pumpGain,.5)}}
       if(f.price>(f.p30||f.price)*1.6&&S.day-f.born>YEAR)mile('bubble',`${f.name} 주가가 한 달 새 60% 넘게 뛰었다`,[f.ceo]);
       if(f.price<f.peak*.4&&S.day-f.born>YEAR)mile('crash',`${f.name} 주가가 고점의 40% 아래로 떨어졌다`,[f.ceo]);
-      const top=persons(f).reduce((best,p)=>!best||p[1]>best[1]?p:best,null);if(top&&!f.parent&&+top[0]!==f.ceo&&top[1]>5000){const old=f.ceo;setCeo(f,+top[0]);log('econ',`${josa(nm(S.byId.get(f.ceo)),'이','가')} ${f.name} 과반을 확보해 사장이 됐다`,[old,f.ceo])}
+      const top=persons(f).reduce((best,p)=>!best||p[1]>best[1]?p:best,null);if(top&&!f.parent&&+top[0]!==f.ceo&&top[1]>votingShares(f)*.5){const old=f.ceo;setCeo(f,+top[0]);log('econ',`${josa(nm(S.byId.get(f.ceo)),'이','가')} ${f.name} 과반을 확보해 사장이 됐다`,[old,f.ceo])}
     }
   }
   function firmName(a,fac){const occ=a&&a.occ||'',era=S.power||0;const T={agri:['농산','영농','임산','자원'],mfg:fac?['공업','산업','제작소','정밀','기계']:['식품','양조','공방','제작소'],build:['건설','토건','건업'],trade:['상사','유통','무역','상점'],know:['테크','연구소','랩스'],edu:['학원','교육']};
@@ -861,7 +919,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function polMarriage(a,b){const elite=x=>{const G=S.gov;const ps=x.parents.map(id=>S.byId.get(id)).filter(Boolean);return ps.find(p=>p&&(G&&(G.chief===p.id||(G.council||[]).includes(p.id))||S.groups.some(g=>g.leader===p.id)||(p.firm&&firmById(p.firm)?.ceo===p.id)))};
     const pa=elite(a),pb=elite(b);if(!pa||!pb)return;mile('polMarr',`정략결혼. ${nm(pa)} 집안과 ${nm(pb)} 집안이 자식들을 혼인시켜 손을 잡았다`,[pa.id,pb.id]);log('love',`${nm(pa)} 집안과 ${nm(pb)} 집안의 정략결혼: ${nm(a)} ♥ ${nm(b)}`,[a.id,b.id]);
     const ga=S.groups.find(g=>g.leader===pa.id&&g.origin==='party'),gb=S.groups.find(g=>g.leader===pb.id&&g.origin==='party');if(ga&&gb&&ga!==gb&&R()<.35){const[big,sm]=ga.members.length>=gb.members.length?[ga,gb]:[gb,ga];for(const id of sm.members.slice()){const m=S.byId.get(id);if(m)joinGroup(m,big)}big.tre+=sm.tre;S.groups=S.groups.filter(x=>x!==sm);mile('marrMerge',`혼맥 합당. 정략결혼으로 이어진 ${josa(sm.name,'이','가')} ${big.name}에 합쳐졌다`,[big.leader])}
-    const fa=pa.firm&&firmById(pa.firm),fb=pb.firm&&firmById(pb.firm);if(fa&&fb&&fa!==fb){const qa=Math.min(300,fa.sh[pa.id]||0),qb=Math.min(300,fb.sh[pb.id]||0);setShares(fa,pa.id,(fa.sh[pa.id]||0)-qa);setShares(fa,'F'+fb.id,(fa.sh['F'+fb.id]||0)+qa);setShares(fb,pb.id,(fb.sh[pb.id]||0)-qb);setShares(fb,'F'+fa.id,(fb.sh['F'+fa.id]||0)+qb);mile('chaebolMarr',`재벌가 혼사. ${josa(fa.name,'과','와')} ${josa(fb.name,'이','가')} 사돈을 맺고 서로 지분을 나눠 가졌다`,[pa.id,pb.id])}}
+    const fa=pa.firm&&firmById(pa.firm),fb=pb.firm&&firmById(pb.firm);if(fa&&fb&&fa!==fb){const qa=Math.min(Math.floor(votingShares(fa)*.03),fa.sh[pa.id]||0),qb=Math.min(Math.floor(votingShares(fb)*.03),fb.sh[pb.id]||0);setShares(fa,pa.id,(fa.sh[pa.id]||0)-qa);setShares(fa,'F'+fb.id,(fa.sh['F'+fb.id]||0)+qa);setShares(fb,pb.id,(fb.sh[pb.id]||0)-qb);setShares(fb,'F'+fa.id,(fb.sh['F'+fa.id]||0)+qb);mile('chaebolMarr',`재벌가 혼사. ${josa(fa.name,'과','와')} ${josa(fb.name,'이','가')} 사돈을 맺고 서로 지분을 나눠 가졌다`,[pa.id,pb.id])}}
   function publicFig(x){const G=S.gov;return G&&(G.chief===x.id||(G.council||[]).includes(x.id))||(x.firm&&firmById(x.firm)?.ceo===x.id)}
   function scandal(x,what,ids){x.rep=Math.max(0,(x.rep??1)-.3);S.yr.sexScandal=(S.yr.sexScandal||0)+1;S.trust=Math.max(0,(S.trust??.5)-.02);const G=S.gov;if(G&&G.chief===x.id&&G.approval!=null)G.approval=Math.max(0,G.approval-.12);
     log('love',`${what} 스캔들: ${josa(nm(x),'이','가')} 구설에 올랐다`,ids,{x:x.x||0,y:x.y||0,t:'스캔들!'});mile('sexScandal',`첫 ${what} 스캔들. ${nm(x)}의 ${josa(what,'이','가')} 세상에 드러나 평판이 바닥에 떨어졌다`,ids);
@@ -2319,17 +2377,17 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(!S.exch){const traded=S.firms.filter(f=>Object.keys(f.sh).length>=4).length;if(pw>=1&&traded>=4&&R()<.03){S.exch={d:S.day,base:0};X('exch');mile('exch',`증권거래소 개장. 주식을 사고팔 거래소가 문을 열었다. 이제 큰 회사는 상장할 수 있다`,[])}return}
     const L=S.firms.filter(f=>f.listed);
     // 상장(IPO): 큰 회사가 공모로 돈을 모은다. 사장 주식 일부를 개미들에게 판다
-    for(const f of S.firms){if(f.listed||f.delisted)continue;const ceo=S.byId.get(f.ceo);if(!ceo||!ceo.alive)continue;if(((f.size||0)>=12||(f.cash||0)>hr*8)&&R()<.02){const q=Math.min(2500,Math.floor((f.sh[ceo.id]||0)*.35));if(q<500)continue;
+    for(const f of S.firms){if(f.listed||f.delisted)continue;const ceo=S.byId.get(f.ceo);if(!ceo||!ceo.alive)continue;if(((f.size||0)>=12||(f.cash||0)>hr*8)&&R()<.02){const q=Math.min(Math.floor(shareCount(f)*.25),Math.floor((f.sh[ceo.id]||0)*.35));if(q<shareCount(f)*.05)continue;
       const inv=investors(ceo),lot=Math.max(1,Math.floor(q/Math.min(1500,inv.length||1)));let sold=0,raised=0;for(const a of inv){if(sold>=q)break;const pr=f.price*1.1,k=Math.min(q-sold,lot,Math.floor(a.cash*.15/pr));if(k<1)continue;a.cash-=k*pr;SP(a,'stock',k*pr);setShares(f,a.id,(f.sh[a.id]||0)+k);setShares(f,ceo.id,f.sh[ceo.id]-k);sold+=k;raised+=k*pr}
-      f.cash+=raised*.7;ceo.cash+=raised*.3;if(sold<300)continue;f.listed=S.day;f.ipoP=f.price;X('ipo');mEv('ipo',`${S.mileSet.has('ipo')?'상장':'첫 상장'}. ${josa(f.name,'이','가')} 거래소에 상장해 주민 ${stockOwnership(f).people}명에게서 ${won(raised)}을 모았다`,[ceo.id])}}
+      f.cash+=raised*.7;ceo.cash+=raised*.3;if(sold<shareCount(f)*.03)continue;f.listed=S.day;f.ipoP=f.price;X('ipo');mEv('ipo',`${S.mileSet.has('ipo')?'상장':'첫 상장'}. ${josa(f.name,'이','가')} 거래소에 상장해 주민 ${stockOwnership(f).people}명에게서 ${won(raised)}을 모았다`,[ceo.id])}}
     // 주가지수
-    if(L.length){const cap=L.reduce((t,f)=>t+f.price*SHARE_COUNT,0);if(!S.exch.base)S.exch.base=cap/Math.max(1,L.length);S.idx=Math.round(cap/L.length/S.exch.base*1000);S.idxH=S.idxH||[];if(S.day%30===1){S.idxH.push(S.idx);if(S.idxH.length>60)S.idxH.shift()}
+    if(L.length){const cap=L.reduce((t,f)=>t+marketCap(f),0);if(!S.exch.base)S.exch.base=cap/Math.max(1,L.length);S.idx=Math.round(cap/L.length/S.exch.base*1000);S.idxH=S.idxH||[];if(S.day%30===1){S.idxH.push(S.idx);if(S.idxH.length>60)S.idxH.shift()}
       const h=S.idxH;const past=h.length>=6?h[h.length-6]:h[0]||S.idx;const ch=S.idx/Math.max(1,past)-1;
       // 개미 열풍과 빚투, 그리고 폭락
       const was=S.fever||0;S.fever=cl(ch>.25?was+.15:ch<-.15?0:was*.9,0,1);if(S.fever>.5&&was<=.5){X('fever');mEv('fever',`개미 열풍. 주가지수가 ${S.idx}까지 오르자 너도나도 주식을 사들였다. 빚을 내 주식을 사는 사람도 생겼다`,[]);for(const a of S.agents)if(a.alive&&isAdult(a)&&a.g.imitate>.6&&a.cash<hr*.5&&R()<.05){a.margin=S.day;X('margin')}}
       if(ch<-.25&&was>.2){X('stockCrash');const vic=S.agents.filter(a=>a.alive&&a.margin&&S.day-a.margin<YEAR*2);for(const a of vic){a.debtStock=1;a.margin=0}mEv('stockCrash',`증시 폭락. 주가지수가 ${S.idx}로 곤두박질쳤다${vic.length?`. 빚내서 주식을 산 ${vic.length}명이 손실을 입었다`:''}`,[])}}
     // 내부자 거래: 나쁜 소식(구조조정·적자)을 먼저 아는 사장·임원이 미리 판다
-    for(const f of L){const ceo=S.byId.get(f.ceo);if(!ceo||!ceo.alive)continue;const bad=(f.rsD&&S.day-f.rsD<10)||(f.cash<hr*.2);if(bad&&ceo.g.cheat>.45&&(f.sh[ceo.id]||0)>1000&&!(f.insD&&S.day-f.insD<YEAR*2)&&R()<.4){const buyer=pick(S.agents.filter(a=>a.alive&&isAdult(a)&&a!==ceo&&a.cash>=f.price));if(!buyer)continue;const q=Math.min(Math.floor(f.sh[ceo.id]*.3),Math.floor(buyer.cash/f.price));if(q<1)continue;const gain=q*f.price;buyer.cash-=gain;ceo.cash+=gain;setShares(f,ceo.id,f.sh[ceo.id]-q);setShares(f,buyer.id,(f.sh[buyer.id]||0)+q);f.insD=S.day;f.price*=.85;X('insider');mEv('insider',`내부자 거래. ${f.name} 사장 ${josa(nm(ceo),'이','가')} 나쁜 소식이 나기 전에 주식을 팔아 치웠다`,[ceo.id]);if(R()<(sec?.6:.15))fileC('insider',ceo,gain*2,sec?.75:.5)}}
+    for(const f of L){const ceo=S.byId.get(f.ceo);if(!ceo||!ceo.alive)continue;const bad=(f.rsD&&S.day-f.rsD<10)||(f.cash<hr*.2);if(bad&&ceo.g.cheat>.45&&(f.sh[ceo.id]||0)>votingShares(f)*.1&&!(f.insD&&S.day-f.insD<YEAR*2)&&R()<.4){const buyer=pick(S.agents.filter(a=>a.alive&&isAdult(a)&&a!==ceo&&a.cash>=f.price));if(!buyer)continue;const q=Math.min(Math.floor(f.sh[ceo.id]*.3),Math.floor(buyer.cash/f.price));if(q<1)continue;const gain=q*f.price;buyer.cash-=gain;ceo.cash+=gain;setShares(f,ceo.id,f.sh[ceo.id]-q);setShares(f,buyer.id,(f.sh[buyer.id]||0)+q);f.insD=S.day;f.price*=.85;X('insider');mEv('insider',`내부자 거래. ${f.name} 사장 ${josa(nm(ceo),'이','가')} 나쁜 소식이 나기 전에 주식을 팔아 치웠다`,[ceo.id]);if(R()<(sec?.6:.15))fileC('insider',ceo,gain*2,sec?.75:.5)}}
     // 작전 세력: 회사 바깥 큰손·조폭이 작은 상장사 주가를 띄우고 턴다
     if(L.length>=2&&R()<(sec?.01:.03)){const f=L.slice().sort((x,y)=>x.price-y.price)[0];const op=S.agents.filter(a=>a.alive&&isAdult(a)&&a.g.cheat>.55&&a.cash>hr*2&&a.id!==f.ceo&&(f.sh[a.id]||0)>=1).sort((x,y)=>y.cash-x.cash)[0];if(op&&!f.pump){const buyer=pick(S.agents.filter(a=>a.alive&&isAdult(a)&&a!==op&&a.cash>=f.price*1.1));if(buyer){const q=Math.min(500,Math.floor(f.sh[op.id]),Math.floor(buyer.cash/(f.price*1.1))),gain=q*f.price*1.1;if(q){buyer.cash-=gain;op.cash+=gain;setShares(f,op.id,f.sh[op.id]-q);setShares(f,buyer.id,(f.sh[buyer.id]||0)+q);f.pump=10;f.op=op.id;X('opPump');mEv('opPump',`작전 세력. ${josa(nm(op),'이','가')} 헛소문을 퍼뜨려 ${f.name} 주가를 띄운 뒤 팔고 빠졌다`,[op.id,buyer.id]);if(R()<(sec?.5:.1))fileC('manip',op,gain*2,sec?.7:.5)}}}}
     // 상장 폐지
@@ -2475,9 +2533,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 인수합병: 돈 많은 회사가 싼 회사 주식을 과반까지 사들여 계열사로 만든다
     if(S.day%30===15)for(const A of S.firms.slice()){const c=S.byId.get(A.ceo);if(!c||c.g.boss<.45||!(A.cash>50*PL())||A.parent)continue;
       const ancestors=new Set();let parent=A;while(parent&&parent.parent&&!ancestors.has(parent.parent)){ancestors.add(parent.parent);parent=firmById(parent.parent)}
-      const tg=S.firms.filter(B=>B!==A&&!ancestors.has(B.id)&&!B.parent&&B.ceo!==A.ceo&&B.price*SHARE_COUNT<A.cash*1.6&&!(B.sh['F'+A.id]>5000)).sort((x,y)=>x.price-y.price)[0];if(!tg||R()>.4)continue;
-      const pr=tg.price*1.25;let stake=tg.sh['F'+A.id]||0;for(const[id,n]of persons(tg).sort((x,y)=>x[1]-y[1])){if(stake>5000)break;if(+id===tg.ceo&&R()<.6)continue;const x=S.byId.get(+id);if(!x||R()>.7)continue;const q=Math.min(n,5100-stake,Math.floor(A.cash/pr));if(q<1)break;A.cash-=q*pr;x.cash+=q*pr;x.src.stock=(x.src.stock||0)+q*pr;setShares(tg,id,tg.sh[id]-q);stake+=q;setShares(tg,'F'+A.id,stake)}
-      if(stake>5000){tg.parent=A.id;if(A.pre&&tg.suf&&tg.pre!==A.pre){const nn=A.pre+tg.suf;if(!S.firms.some(x=>x.name===nn)){log('econ',`${josa(tg.name,'이','가')} ${josa(A.pre+' 그룹','으로','로')} 들어가며 이름을 ${josa(nn,'으로','로')} 바꿨다`,[A.ceo]);tg.name=nn;tg.pre=A.pre}}const old=S.byId.get(tg.ceo);setCeo(tg,A.ceo);A.subs=(A.subs||0)+1;log('econ',`${josa(A.name,'이','가')} ${tg.name} 주식 ${(stake/100).toFixed(1)}%를 사들여 계열사로 만들었다`,[A.ceo,old&&old.id].filter(Boolean),{x:60,y:60,t:'기업 인수'});
+      const tg=S.firms.filter(B=>B!==A&&!ancestors.has(B.id)&&!B.parent&&B.ceo!==A.ceo&&marketCap(B)<A.cash*1.6&&!(B.sh['F'+A.id]>votingShares(B)*.5)).sort((x,y)=>x.price-y.price)[0];if(!tg||R()>.4)continue;
+      const pr=tg.price*1.25;let stake=tg.sh['F'+A.id]||0;for(const[id,n]of persons(tg).sort((x,y)=>x[1]-y[1])){if(stake>votingShares(tg)*.5)break;if(+id===tg.ceo&&R()<.6)continue;const x=S.byId.get(+id);if(!x||R()>.7)continue;const q=Math.min(n,Math.ceil(votingShares(tg)*.51)-stake,Math.floor(A.cash/pr));if(q<1)break;A.cash-=q*pr;x.cash+=q*pr;x.src.stock=(x.src.stock||0)+q*pr;setShares(tg,id,tg.sh[id]-q);stake+=q;setShares(tg,'F'+A.id,stake)}
+      if(stake>votingShares(tg)*.5){tg.parent=A.id;if(A.pre&&tg.suf&&tg.pre!==A.pre){const nn=A.pre+tg.suf;if(!S.firms.some(x=>x.name===nn)){log('econ',`${josa(tg.name,'이','가')} ${josa(A.pre+' 그룹','으로','로')} 들어가며 이름을 ${josa(nn,'으로','로')} 바꿨다`,[A.ceo]);tg.name=nn;tg.pre=A.pre}}const old=S.byId.get(tg.ceo);setCeo(tg,A.ceo);A.subs=(A.subs||0)+1;log('econ',`${josa(A.name,'이','가')} ${tg.name} 주식 ${(stake/100).toFixed(1)}%를 사들여 계열사로 만들었다`,[A.ceo,old&&old.id].filter(Boolean),{x:60,y:60,t:'기업 인수'});
         A.mergedD=S.day;mile('mna',`첫 기업 인수. ${josa(A.name,'이','가')} ${tg.name} 주식을 과반까지 사들여 계열사로 거느리게 됐다`,[A.ceo]);
         const subs=S.firms.filter(x=>x.parent===A.id).length;if(subs>=3)mile('group',`첫 재벌 그룹. ${A.pre?A.pre+' 그룹(':''}${A.name}${josa(A.pre?')':'','이','가')} 계열사 ${subs}곳을 거느린 그룹이 됐다`,[A.ceo])}}
     if(S.day%30===0&&S._pc<S.plotCap)mile('mechFarm',`농사 기계화. 좋은 농기구와 동력 덕에 밭 하나에 필요한 일손이 ${S.plotCap}명에서 ${S._pc}명으로 줄었다. 남는 일손은 다른 일을 찾아야 한다`,[]);
@@ -2907,8 +2965,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         else if(o.slots<=0&&un>Math.max(3,(S.workDay||0)*.12)){e.wageCur*=.992;e.short=0}else if(o.slots<=0)e.short=0}
       if(un>=10)mile('unemp',`첫 실업 대란. 하루에 ${un}명이 일자리를 못 구하고 돌아섰다`,[]);
       if(S.workDay)S.wageAvg=(S.wageAvg??S.wageDay/S.workDay)*.97+(S.wageDay/S.workDay)*.03;
-      if(S.wageAvg&&S.wagePeak&&S.wageAvg<S.wagePeak*.4&&S.day>YEAR*5)mile('wageCrash',`일당 폭락. 평균 일당이 최고점의 40% 아래로 떨어졌다 (${S.wageAvg.toFixed(1)}냥)`,[]);
-      if(S.wageAvg&&S.wageLow&&S.wageAvg>S.wageLow*2.5&&S.day>YEAR*5)mile('wageBoom',`일당 급등. 일손이 귀해져 평균 일당이 바닥의 2.5배로 뛰었다 (${S.wageAvg.toFixed(1)}냥)`,[]);
+      if(S.wageAvg&&S.wagePeak&&S.wageAvg<S.wagePeak*.4&&S.day>YEAR*5)mile('wageCrash',`일당 폭락. 평균 일당이 최고점의 40% 아래로 떨어졌다 (${won(S.wageAvg)})`,[]);
+      if(S.wageAvg&&S.wageLow&&S.wageAvg>S.wageLow*2.5&&S.day>YEAR*5)mile('wageBoom',`일당 급등. 일손이 귀해져 평균 일당이 바닥의 2.5배로 뛰었다 (${won(S.wageAvg)})`,[]);
       if(S.wageAvg&&S.day>YEAR*2){S.wagePeak=Math.max(S.wagePeak||0,S.wageAvg);S.wageLow=Math.min(S.wageLow??1e9,S.wageAvg)}
       S.unempToday=0;S.wageDay=0;S.workDay=0}
     // 5. 아이 돌보기
@@ -2942,7 +3000,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     society();
     insurance();
     // 6. 시장 (무역 포함)
-    microTick();tradeTick();swTick();drugTick();civicTick();healthTick();partyTick();famTick();adultTick();fzTick();pachiTick();darkTick2();sessionTick();lookTick();profTick();medTick();infraTick();disTick();milTick();tourTick();regTick();concTick();budTick();famineCope();lvTick();civicBldTick();forestTiles();districtTick();guTick();fireTick();instTick();areaTick();slideTick();distGovTick();guGovTick();funTick();divertTick();agitTick();pioneerTick();landTick();schoolTick();minTick();civTick();abroadTick();empTick();bankTick();corpTick();firmIndTick();stockTick();if(S.day%30===19)crisisTick();
+    microTick();tradeTick();swTick();drugTick();civicTick();healthTick();partyTick();famTick();adultTick();fzTick();pachiTick();darkTick2();sessionTick();lookTick();profTick();medTick();infraTick();disTick();milTick();tourTick();regTick();concTick();budTick();famineCope();lvTick();civicBldTick();forestTiles();districtTick();guTick();fireTick();instTick();areaTick();slideTick();distGovTick();guGovTick();funTick();divertTick();agitTick();pioneerTick();landTick();schoolTick();minTick();civTick();abroadTick();empTick();bankTick();corpTick();firmIndTick();stockTick();stockActionsTick();currencyTick();if(S.day%30===19)crisisTick();
     if(S.day%10===7)for(const a of S.agents){if(!a.alive)continue;if(!Number.isFinite(a.cash)){a.cash=0;S._nanFix=(S._nanFix||0)+1}for(const k in a.inv)if(!Number.isFinite(a.inv[k])){a.inv[k]=0;S._nanFix=(S._nanFix||0)+1}}
     payday();market();
     { // 물가 지수: 밥·곡식·월세·목재·도구 값을 첫해 평균과 비교
@@ -4134,7 +4192,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       price:{...S.price},houseRef:S.houseRef,rentRef:S.rentRef,jeonRef:S.jeonRef,forest:S.forest,
       genes:{hoard:avgG('hoard'),hire:avgG('hire'),landlord:avgG('landlord'),care:avgG('care'),vigil:avgG('vigil'),steal:avgSteal,join:avgG('join'),boss:avgG('boss'),cheat:avgG('cheat'),equal:avgG('equal'),civic:avgG('civic'),comply:avgG('comply'),pander:avgG('pander'),keep:avgG('keep'),memory:avgG('memory'),kin:avgG('kin'),faith:avgG('faith'),gossip:avgG('gossip')},
       groups:(S.groups||[]).length,inGroup:ad.filter(a=>a.grp).length,clients:(S.groups||[]).reduce((s,g)=>s+g.clients,0),
-      faiths:S.faiths.length,polar:S.polar||0,ideo:S.ideoMean||0,mlvl:S.mlvl||1,designs:S.designs.length,firms:S.firms.length,mcap:S.firms.reduce((t,f)=>t+f.price*SHARE_COUNT,0),cpi:S.cpi||1,pub:S.houses.filter(h=>h.pub).length,
+      faiths:S.faiths.length,polar:S.polar||0,ideo:S.ideoMean||0,mlvl:S.mlvl||1,designs:S.designs.length,firms:S.firms.length,mcap:S.firms.reduce((t,f)=>t+marketCap(f),0),cpi:S.cpi||1,pub:S.houses.filter(h=>h.pub).length,
       gov:S.gov?{tax:S.gov.policy.tax,tre:S.gov.tre,guards:S.gov.guards}:null,debt:S.loans.reduce((t,l)=>t+l.bal,0),loans:S.loans.length,deps:S.deps.reduce((t,d)=>t+d.amt,0),wage:S.yr.workDays?S.yr.wagePaid/S.yr.workDays:null,unemp:S.yr.tries?S.yr.unemp/S.yr.tries:0,workDays:S.yr.workDays,births:S.yr.births,deaths:S.yr.deaths,crimes:S.yr.crimes,caught:S.yr.caught,starve:S.yr.starve,cold:S.yr.cold,built:S.yr.built,sales:S.yr.sales});
     resetYr()}
 
@@ -4185,7 +4243,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(!S.lotSale)S.lotSale={};if(S.rp===undefined){S.rp=(S.designs||[]).length*3;S.power=0}if(!S.lotRef)S.lotRef=S.houseRef*.5;if(S.trade===undefined)S.trade=null;
     for(const b of S.bldgs){b.fx=normalizeBuildingFx(b.fx,b.mainUse);b.mainUse=b.fx[0];b.units=Math.max(1,b.units||1)}for(const site of S.sites)if(site.fx)site.fx=normalizeBuildingFx(site.fx,site.mainUse);
     S.nextFirm=Math.max(S.nextFirm||1,...S.firms.map(f=>f.id+1));
+    currencyState();
     for(const f of S.firms.slice()){f.bld=f.bld||[];f.hist=f.hist||[];f.cash=f.cash||0;migrateShares(f);cleanupShares(f);splitFirmLines(f);consolidateBuildings(f)}}
-  return{rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
+  currencyState();
+  return{rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
 }
-if(typeof module!=='undefined')module.exports={GAME_VERSION,SHARE_COUNT,REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};
+if(typeof module!=='undefined')module.exports={GAME_VERSION,SHARE_COUNT,shareCount,votingShares,marketCap,formatMoney,REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};
