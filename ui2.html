@@ -1127,11 +1127,13 @@ function tradeHTML(){const T=S.trade;if(!T||!T.on)return`<div class="sec"><h4>�
   <div class="sec"><h4>무역 정치</h4><p class="note ex">관세는 정부 규칙으로 정한다. 수입품에 밀리는 업종(대개 농민이나 공장주)은 관세를 원하고, 장사꾼과 가난한 사람(물건값이 오르니까)은 싫어한다. 관세를 올리면 이웃 마을이 보복 관세로 맞불을 놓기도 하고, 몇 번 주고받으면 무역 전쟁이 된다. 해마다 의회는 수출로 득 보는 쪽과 수입에 밀리는 쪽의 힘겨루기로 이웃 마을과 FTA(서로 관세 없애기)를 맺거나 깬다. 관세가 높으면 속임수 성향 상인이 몰래 들여오는 밀수가 생긴다.</p></div>`}
 function techHTML(mode){
   const D=(S.designs||[]).slice(),F=(S.firms||[]).slice().sort((x,y)=>y.price-x.price);
+  const buildingById=new Map((S.bldgs||[]).map(b=>[b.id,b]));
   const era=(S.power||0)>=1?POWER_L[S.power]+' 시대':D.some(d=>d.mat==='iron')?'철기 시대':S.iron?'쇠를 얻었지만 아직 쇠 도구는 없음':D.some(d=>d.mat==='stone')?'석기 시대':D.length?'나무 도구 시대':'농기구 하나뿐';
   const best={};for(const d of D)if(!best[d.use]||d.power>best[d.use].power)best[d.use]=d;
   const rows=D.sort((x,y)=>x.use-y.use||y.power-x.power).map(d=>`<li><time>${fmtD(d.day)}</time><b style="${best[d.use]===d?'color:#ffd23f':''}">${d.name}</b>${d.era>=2||((S.dp||{})[d.id]||0)>(S.wageAvg||1)*300?' <span class="chip o">공장 생산</span>':''} · ${ACT[d.use]} <b>+${Math.round(d.power*100)}%</b> · ${TRAITN[d.trait]}<br><small class="num">${d.inventorName} 발명 · 시세 ${won((S.dp||{})[d.id]||0)} · ${Math.round(d.made)}개 만듦 · 아는 사람 ${d.knowers||1}명</small></li>`).join('');
   const card=f=>{const c=S.byId.get(f.ceo);const hold=Object.entries(f.sh).filter(([k])=>k[0]!=='F').sort((x,y)=>y[1]-x[1]).slice(0,5).map(([id,n])=>{const x=S.byId.get(+id);return x?`${W0.nm(x)} ${Math.round(n)}%`:''}).filter(Boolean).join(' · ');
-    const blds=f.bld.map(id=>(S.bldgs||[]).find(b=>b.id===id)).filter(Boolean).map(b=>W0.bName(b)).join(', ');
+    const buildingCounts=new Map();for(const id of f.bld){const b=buildingById.get(id);if(b){const name=W0.bName(b);buildingCounts.set(name,(buildingCounts.get(name)||0)+1)}}
+    const blds=[...buildingCounts].map(([name,count])=>name+(count>1?' ×'+count:'')).join(', ');
     const h=f.hist||[];const sp=h.length>1?spark(h.map(v=>({v})),x=>x.v,'#e05a8a'):'';
     const off=c&&S.offers.find(x=>x.e===c);const made=Object.entries(f.made||{}).sort((x,y)=>y[1]-x[1]).slice(0,4).map(([k,v])=>`${k} ${fmt(v)}`).join(' · ');
     const RN={farm:'곡식 판매',cook:'밥 판매',wood:'목재 판매',stone:'돌 판매',tool:'도구·제조품 판매',iron:'쇠 판매',gold:'금·장신구 판매',biz:'건물 이용료',trade:'장사',house:'집·공사',rent:'임대료',it:'전산 서비스'};
@@ -1141,7 +1143,7 @@ function techHTML(mode){
       <div><span>사장</span><b>${c?W0.nm(c):'-'}</b></div><div><span>세운 때</span><b>${fmtD(f.born)}</b></div>
       <div><span>회사 가치</span><b class="fval">${won(f.price*100)} <small>(일당 ${fmt(f.price*100/Math.max(.01,S.wageAvg||1))}일치)</small></b></div><div><span>주가 (1%)</span><b>${won(f.price)}</b></div>
       <div><span>한 달 배당</span><b>${won(f.divE)}</b></div><div><span>주주</span><b>${Object.keys(f.sh).filter(k=>k[0]!=='F').length}명</b></div>
-      <div><span>회사 금고</span><b>${won(f.cash||0)}</b></div><div><span>사업 분야</span><b>${W0.firmLines(f).map(l=>W0.LINE_L[l]||l).join(' · ')} <small>(직원 수로 최대 ${W0.lineCap(f)}개)</small></b></div><div><span>직원</span><b>${c&&c.workers||0}명</b></div>${f.patents?`<div><span>특허</span><b>${f.patents}건</b></div>`:''}${f.lobbyPaid?`<div><span>로비 자금</span><b>${won(f.lobbyPaid)}</b></div>`:''}<div><span>계열사</span><b>${S.firms.filter(x=>x.parent===f.id).map(x=>x.name).join(', ')||'없음'}</b></div>${f.parent?`<div><span>모회사</span><b>${(S.firms.find(x=>x.id===f.parent)||{}).name||'-'} (${Math.round(f.sh['F'+f.parent]||0)}%)</b></div>`:''}${f.crony?`<div><span>정치 자금</span><b style="color:#ff8a80">촌장에게 건넴</b></div>`:''}</div>
+      <div><span>회사 금고</span><b>${won(f.cash||0)}</b></div><div><span>사업 분야</span><b>${[...new Set(W0.firmLines(f))].map(l=>W0.LINE_L[l]||l).join(' · ')} <small>(직원 수로 최대 ${W0.lineCap(f)}개)</small></b></div><div><span>직원</span><b>${c&&c.workers||0}명</b></div>${f.patents?`<div><span>특허</span><b>${f.patents}건</b></div>`:''}${f.lobbyPaid?`<div><span>로비 자금</span><b>${won(f.lobbyPaid)}</b></div>`:''}<div><span>계열사</span><b>${S.firms.filter(x=>x.parent===f.id).map(x=>x.name).join(', ')||'없음'}</b></div>${f.parent?`<div><span>모회사</span><b>${(S.firms.find(x=>x.id===f.parent)||{}).name||'-'} (${Math.round(f.sh['F'+f.parent]||0)}%)</b></div>`:''}${f.crony?`<div><span>정치 자금</span><b style="color:#ff8a80">촌장에게 건넴</b></div>`:''}</div>
       ${sp?`<div style="margin:6px 0">${sp}</div>`:''}<p class="note">건물: ${blds||'짓는 중'}<br>대주주: ${hold}${f.skim?` · 배당 떼먹기 ${f.skim}번`:''}</p></div>`};
   /* 그룹은 묶어서: 모회사 카드 아래에 계열사를 들여 붙인다 */
   const ids=new Set(F.map(f=>f.id));const subsOf=id=>F.filter(x=>x.parent===id);

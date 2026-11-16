@@ -19,9 +19,10 @@ async function main(){
       if(u.pathname.startsWith('/api/resident/'))return new Response(zlib.gunzipSync(await rpc('resident',{id:+u.pathname.split('/').at(-1)})));
       throw Error('unexpected fetch '+url);
     }});
-    vm.runInContext(fs.readFileSync(path.join(root,'engine.js'),'utf8'),ctx);
+    const built=fs.readFileSync(path.join(root,'index.html'),'utf8');const inline=[...built.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
+    vm.runInContext(inline[0],ctx);
     vm.runInContext("createWorld=()=>{throw Error('phone must not create a world')}",ctx);
-    const source=fs.readFileSync(path.join(root,'ui2.html'),'utf8');const script=source.slice(source.indexOf('const $='),source.lastIndexOf('</script>')).replace('/*REMOTE_CLIENT*/',()=>fs.readFileSync(path.join(root,'remote-client.js'),'utf8')).replace('if(window.REMOTE)initRemote();else{start();requestAnimationFrame(frame);initStore();}','globalThis.ready=initRemote();');
+    const script=inline[1].replace('if(window.REMOTE)initRemote();else{start();requestAnimationFrame(frame);initStore();}','globalThis.ready=initRemote();');
     vm.runInContext(script,ctx);await ctx.ready;await new Promise(r=>setTimeout(r,100));
     for(const tab of ['sum','rich','log','evo','mkt','job','firm','fin','trade','land','gov','parl','adm','pol','opn','dist','fam','sex','edu','med','soc','fun','crime','gang','mil','infra']){
       await vm.runInContext(`tab='${tab}';renderPanel()`,ctx);assert(!get('#panel').innerHTML.includes('문제가 생겼다'),tab);
