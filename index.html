@@ -3372,8 +3372,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         S.deps=S.deps.filter(x=>x.bank!==+id);if(bk){bk.rep=0;bk.defaults=(bk.defaults||0)+1}{const bb=(S.banks||[]).find(x=>x.alive&&x.own===+id);if(bb){bb.alive=false;bb.end=S.day;bb.fail=1;X('bankFail');mEv('bankFail',`은행 파산. ${josa(bb.name,'이','가')} 뱅크런을 못 버티고 문을 닫았다`,[+id])}}
         log('fin',`뱅크런! ${bk?nm(bk)+'에게 ':''}돈을 맡긴 사람들이 몰려들었다. ${won(lost)}이 사라졌다${guar?` (관청이 ${won(guar)} 보전)`:''}`,[+id],{x:bk&&bk.x||60,y:bk&&bk.y||60,t:'뱅크런!'});
         mile('bankrun',`첫 뱅크런. ${bk?josa(nm(bk),'이','가'):'돈놀이꾼이'} 맡은 돈을 다 빌려줘서 돌려주지 못했다`,[+id])}}}
-  function finDeath(a,to){{const bb=(S.banks||[]).find(x=>x.alive&&x.own===a.id);if(bb){if(to&&to.alive){bb.own=to.id;log('fin',`${josa(bb.name,'을','를')} ${josa(nm(to),'이','가')} 물려받았다`,[to.id])}else{bb.alive=false;bb.end=S.day}}}
-    const heir=to&&to[0];
+  function finDeath(a,to){const heir=Array.isArray(to)?to[0]:to;{const bb=(S.banks||[]).find(x=>x.alive&&x.own===a.id);if(bb){if(heir&&heir.alive){bb.own=heir.id;log('fin',`${josa(bb.name,'을','를')} ${josa(nm(heir),'이','가')} 물려받았다`,[heir.id])}else{bb.alive=false;bb.end=S.day}}}
     for(const L of S.loans.slice()){
       if(L.l===a.id){if(heir){L.l=heir.id}else closeLoan(L)}
       else if(L.b===a.id){const pay=Math.min(Math.max(0,a.cash),L.bal);a.cash-=pay;const l=S.byId.get(L.l);if(l)l.cash+=pay;L.bal-=pay;
