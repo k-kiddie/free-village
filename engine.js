@@ -2824,8 +2824,13 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   }
 
   function steal(a){
-    const pool=S.agents.filter(x=>x!==a&&x.id!==a.partner&&isAdult(x));if(!pool.length)return 0;
-    let v=null,vs=-1;for(let i=0;i<5;i++){const c=pick(pool);const s=c.cash+c.inv.meal*S.price.meal;if(s>vs){vs=s;v=c}}
+    // 같은 날 도둑마다 전체 주민 배열을 다시 만들지 않는다. 제외한 두 인덱스를
+    // 건너뛰어 기존 filter+pick과 같은 순서/난수로 같은 주민을 고른다.
+    if(S._tpD!==S.day||S._tpArr!==S.agents||S._tpN!==S.agents.length){S._tpD=S.day;S._tpArr=S.agents;S._tpN=S.agents.length;S._tp=S.agents.filter(isAdult);S._tpIndex=new Map(S._tp.map((x,i)=>[x.id,i]))}
+    const pool=S._tp,excluded=[];const own=S._tpIndex.get(a.id),partner=S._tpIndex.get(a.partner);
+    if(own!==undefined)excluded.push(own);if(partner!==undefined&&partner!==own)excluded.push(partner);excluded.sort((x,y)=>x-y);
+    const count=pool.length-excluded.length;if(!count)return 0;
+    let v=null,vs=-1;for(let i=0;i<5;i++){let j=(R()*count)|0;for(const skip of excluded)if(j>=skip)j++;const c=pool[j];const s=c.cash+c.inv.meal*S.price.meal;if(s>vs){vs=s;v=c}}
     if(!v||vs<2)return 0;
     S.tot.crimes++;S.yr.crimes++;a.crimes++;a.actT={victim:v.id};if(R()<.1*v.g.gossip)addRumor(a,.2,true,v.id,2);
     if(S.tot.crimes===1)mile('theft',`첫 도둑질. ${josa(nm(a),'이','가')} ${nm(v)}의 돈을 노렸다`,[a.id,v.id]);
