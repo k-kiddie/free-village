@@ -10,6 +10,7 @@ const ACT=['농사','요리','벌목','건축','고용살이','도둑질','휴�
 const PROD=[FARM,COOK,CHOP,BUILD,CRAFT,MINE];
 const YEAR=60,ADULT=14*YEAR;
 const SHARE_COUNT=10000;
+const GAME_VERSION=74;
 const SEASON=['봄','여름','가을','겨울'];
 const SEAS_YIELD=[.8,1.25,1,0];
 let WW=400,WH=272,LANDW=352;const WH0=160;
@@ -1561,7 +1562,56 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     S.gov={founded:S.day,founder:L.id,chief:L.id,policy:{tax:0,police:0,welfare:false,punish:1,depGuar:false,wageFloor:0,usury:0,inhTax:0,forest:false,progressive:false,basicIncome:0,debtRelief:false,landReform:false,chiefTerm:99,councilTerm:4,termLimit:0},rules:[],debt:[],tre:0,guards:0,term:0,history:[],st:{collected:0,embezzled:0,salary:0,guardsPaid:0,welfare:0,guar:0,caught:0,fraudFined:0}};
     const G=S.gov;ensureGov(G);G.regime='mon';G.dynasty=L.family||L.id;G.elected=S.day;G.nextElection=S.day+YEAR*99;G.regHist=[{d:S.day,r:'mon',why:'영주의 등장'}];const allies=ad.filter(a=>a!==L&&(a.family===L.family||(L.grp&&a.grp===L.grp))).sort((x,y)=>y.g.boss-x.g.boss).slice(0,Math.max(5,Math.round(seats()/3)));G.council=allies.map(a=>a.id);G.nextCouncil=S.day+YEAR*99;
     log('pol',`${josa(nm(L),'이','가')} ${how} 스스로 영주를 자처했다. 자리는 자식에게 물려준다`,[L.id],{x:CAMP.x+20,y:CAMP.y+10,t:'영주 등장'});mile('lord',`군주정. ${josa(nm(L),'이','가')} ${how} 마을의 영주가 됐다. 선거는 없고 자리는 세습된다`,[L.id]);return true}
+  let familyCacheDay=-1,familyCacheSize=-1,familyCacheMap=null,childrenByParent=new Map();
+  function familyIndex(){if(familyCacheDay===S.day&&familyCacheSize===S.byId.size&&familyCacheMap===S.byId)return;familyCacheDay=S.day;familyCacheSize=S.byId.size;familyCacheMap=S.byId;childrenByParent=new Map();
+    for(const a of S.byId.values())for(const id of a.parents||[]){if(!childrenByParent.has(id))childrenByParent.set(id,[]);childrenByParent.get(id).push(a)}
+  }
+  const birthDay=a=>(a.alive?S.day:a.diedAt??S.day)-(a.age||0);
+  const eldestFirst=(a,b)=>birthDay(a)-birthDay(b)||a.id-b.id;
+  function childrenOf(a){familyIndex();return [...new Map([...(a.kids||[]).map(id=>S.byId.get(id)).filter(Boolean),...(childrenByParent.get(a.id)||[])].map(x=>[x.id,x])).values()].sort(eldestFirst)}
+  function familyOf(a){familyIndex();const parents=(a.parents||[]).map(id=>S.byId.get(id)).filter(Boolean),children=childrenOf(a);
+    const unique=list=>[...new Map(list.map(x=>[x.id,x])).values()].sort(eldestFirst);
+    return{partner:a.partner&&S.byId.get(a.partner)||null,parents,children,siblings:unique(parents.flatMap(childrenOf).filter(x=>x.id!==a.id)),grandparents:unique(parents.flatMap(p=>(p.parents||[]).map(id=>S.byId.get(id)).filter(Boolean))),grandchildren:unique(children.flatMap(childrenOf))};
+  }
+  function successionOrder(G,old){if(!G)return [];old=old||S.byId.get(regime()==='cmon'?G.king:G.chief)||S.byId.get(G.lastMonarch);if(!old)return [];
+    const family=familyOf(old),result=[],chosen=new Set([old.id]);const eligible=x=>x&&x.alive&&!x.banned&&!x.exiled;
+    const add=list=>{for(const x of list)if(eligible(x)&&!chosen.has(x.id)){chosen.add(x.id);result.push(x)}};
+    const children=family.children.slice();const designated=children.find(x=>x.id===G.designatedHeir);if(designated)children.splice(children.indexOf(designated),1),children.unshift(designated);
+    add(children);add(family.grandchildren);add(family.siblings);add(family.siblings.flatMap(childrenOf).sort(eldestFirst));
+    const queue=[{a:old,d:0,down:false}],visited=new Set([old.id+':false']);
+    for(let i=0;i<queue.length;i++){const node=queue[i];if(node.d>=6)continue;const neighbors=childrenOf(node.a).map(a=>({a,down:true}));if(!node.down)for(const id of node.a.parents||[]){const a=S.byId.get(id);if(a)neighbors.push({a,down:false})}
+      for(const next of neighbors){const key=next.a.id+':'+next.down;if(visited.has(key))continue;visited.add(key);queue.push({...next,d:node.d+1});add([next.a])}
+    }return result;
+  }
+  function royalMerit(a){return (a.edu||0)*.3+(a.g?.civic||0)+(a.g?.econ||0)*.5+Math.max(0,...(a.skill||[]))+(a.health||0)*.005}
+  function chooseRegent(G,king){const family=familyOf(king),candidates=[...family.parents,...family.siblings,...successionOrder(G,king),...adultsC()];const seen=new Set();
+    const eligible=candidates.filter(a=>a.alive&&a.id!==king.id&&a.age>=18*YEAR&&!a.banned&&!seen.has(a.id)&&seen.add(a.id));
+    eligible.sort((a,b)=>(b.g.care+b.g.civic-b.g.cheat*.4)-(a.g.care+a.g.civic-a.g.cheat*.4));G.regent=eligible[0]?.id||null;
+    if(G.regent)log('pol',`${josa(nm(eligible[0]),'이','가')} 어린 ${nm(king)}의 섭정이 됐다`,[king.id,G.regent]);
+  }
+  function installMonarch(G,heir,old,reason){const constitutional=regime()==='cmon';if(constitutional)G.king=heir.id;else G.chief=heir.id;
+    G.lastMonarch=old?.id||G.lastMonarch||null;if(!constitutional){G.elected=S.day;G.approval=.45}G.interregnum=null;G.designatedHeir=null;G.regent=null;G.royalHistory=G.royalHistory||[];if(old&&!G.royalHistory.some(x=>x.id===old.id))G.royalHistory.push({id:old.id,d:old.reignStart||0,reason:'선왕'});G.royalHistory.push({id:heir.id,d:S.day,reason});if(G.royalHistory.length>200)G.royalHistory.splice(0,G.royalHistory.length-200);
+    G.royalRivals=old?childrenOf(old).filter(a=>a.alive&&a.id!==heir.id&&a.age>=18*YEAR&&a.g.boss>.65).map(a=>a.id):[];G.nextRoyalDispute=S.day+15;
+    if(heir.age<18*YEAR)chooseRegent(G,heir);log('pol',`${josa(nm(heir),'이','가')} ${reason} 왕위를 이었다`,[old?.id,heir.id].filter(Boolean));
+  }
+  function nobleKing(G,old,allowUnrest=true){const nobles=adultsC().filter(a=>a.alive&&a.age>=18*YEAR&&!a.banned).sort((a,b)=>((b.w||W(b))+(b.g.boss+b.g.civic)*S.houseRef)-((a.w||W(a))+(a.g.boss+a.g.civic)*S.houseRef));
+    if(!nobles.length||(allowUnrest&&R()<.25)){G.interregnum={since:S.day,previous:old?.id||null};if(regime()==='cmon')G.king=null;else G.chief=null;G.lastMonarch=old?.id||G.lastMonarch||null;G.regent=null;log('pol','왕통이 끊겨 귀족들이 왕위를 다투기 시작했다',old?[old.id]:[]);return true}
+    installMonarch(G,nobles[0],old,'귀족들의 추대로');G.dynasty=nobles[0].family;return true;
+  }
+  function royalTick(){const G=S.gov,r=regime();if(!G||!['mon','cmon'].includes(r))return;ensureGov(G);const king=S.byId.get(r==='cmon'?G.king:G.chief);
+    if(!king||!king.alive){if(G.interregnum){if(S.day-G.interregnum.since>=YEAR/4&&S.day%15===0)nobleKing(G,S.byId.get(G.lastMonarch),false)}else succeed(G,king||S.byId.get(G.lastMonarch));return}
+    if(king.age>=18*YEAR&&G.regent){const regent=S.byId.get(G.regent);log('pol',`${josa(nm(king),'이','가')} 친정을 시작했다`,[king.id,...(regent?[regent.id]:[])]);G.regent=null}
+    if(king.age<18*YEAR&&(!G.regent||!S.byId.get(G.regent)?.alive))chooseRegent(G,king);
+    if(S.day%15!==0)return;const children=childrenOf(king).filter(a=>a.alive&&!a.banned);if(children.length&&!G.designatedHeir){const best=children.slice().sort((a,b)=>royalMerit(b)-royalMerit(a))[0];if(best!==children[0]&&royalMerit(best)>royalMerit(children[0])*1.15&&R()<.15){G.designatedHeir=best.id;log('pol',`${josa(nm(king),'이','가')} 유능한 ${josa(nm(best),'을','를')} 후계자로 지명했다`,[king.id,best.id])}}
+    const regent=G.regent&&S.byId.get(G.regent);if(regent&&regent.g.boss>.7&&regent.g.cheat>.5&&R()<.025){king.banned=true;installMonarch(G,regent,king,'섭정의 찬탈로');G.dynasty=regent.family;log('pol',`${josa(nm(regent),'이','가')} 어린 ${josa(nm(king),'을','를')} 유폐하고 왕위를 찬탈했다`,[regent.id,king.id]);return}
+    if(S.day<(G.nextRoyalDispute||Infinity))return;G.nextRoyalDispute=S.day+30;
+    const rivals=(G.royalRivals||[]).map(id=>S.byId.get(id)).filter(a=>a&&a.alive&&!a.banned&&a.age>=18*YEAR);const rival=rivals.sort((a,b)=>b.g.boss-a.g.boss)[0];if(!rival||R()>.12*rival.g.boss)return;
+    const power=a=>a.g.boss+a.g.civic*.3+Math.log1p(Math.max(0,a.cash))/10+R();const winner=power(rival)>power(regent||king)?rival:king,loser=winner===king?rival:king;
+    if(winner===rival)installMonarch(G,rival,king,'왕자의 난으로');if(R()<.35)die(loser,'왕자의 난');else{die(loser,'피난');loser.exiled=true;loser.cause='추방'}S.agents=S.agents.filter(a=>a.alive);
+    log('pol',`왕자의 난. ${josa(nm(winner),'이','가')} 승리했고 ${josa(nm(loser),'은','는')} ${loser.exiled?'추방됐다':'목숨을 잃었다'}`,[winner.id,loser.id]);
+  }
   function succeed(G,old){const r=regime();const ad=adultsC();let h=null,why='';
+    if(r==='mon'||r==='cmon'){const heir=successionOrder(G,old)[0];if(heir){installMonarch(G,heir,old,'혈통에 따라');return true}return nobleKing(G,old)}
     if(r==='mon'||(r==='mil'&&G.coup&&G.coup.type==='dict')){h=(old?old.kids:[]).map(id=>S.byId.get(id)).filter(k=>k&&k.alive&&k.age>=18*YEAR).sort((x,y)=>x.born-y.born)[0];why='세습'}
     else if(r==='com'||r==='msoc'){const pg=old&&old.grp;h=ad.filter(a=>pg&&a.grp===pg).sort((x,y)=>y.g.boss-x.g.boss)[0]||ad.slice().sort((x,y)=>(y.g.boss+y.g.equal)-(x.g.boss+x.g.equal))[0];why='당이 후계자를 지명'}
     else if(r==='theo'){const f=(S.faiths||[]).find(f=>f.id===G.stateFaith);const L=f&&S.byId.get(f.leader);h=L&&L.alive?L:ad.filter(a=>a.faith===G.stateFaith).sort((x,y)=>y.g.faith-x.g.faith)[0];why='교단이 새 지도자를 세움'}
@@ -2882,7 +2932,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 5b. 배우자끼리 나눔
     for(const a of L){if(!a.partner||a.hunger<70||a.inv.meal>=1||a.inv.grain>=1)continue;const p=S.byId.get(a.partner);if(!p||R()>p.g.care)continue;
       if(p.inv.meal>=2){p.inv.meal--;a.inv.meal++}else if(p.inv.grain>=3){p.inv.grain-=2;a.inv.grain+=2}else if(p.cash>6*PL()){p.cash-=3*PL();SP(p,'family',3*PL());a.cash+=3*PL()}}
-    politics();
+    royalTick();politics();
     govern();
     if(S.day%30===15)revolt();
     finance();
@@ -3193,7 +3243,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         if(L.bal>.5&&L.coll){defaultLoan(L,'빚진 채 죽음')}else closeLoan(L)}}
     for(const d of S.deps.slice()){if(d.s===a.id){if(heir)d.s=heir.id;else S.deps=S.deps.filter(x=>x!==d)}else if(d.bank===a.id){if(heir)d.bank=heir.id}}}
   // ---- 규칙 조립
-  function ensureGov(G){if(G.policy.goldStd===undefined)G.policy.goldStd=false;if(G.policy.pubSchool===undefined)G.policy.pubSchool=false;if(G.policy.microLoan===undefined)G.policy.microLoan=false;if(G.policy.antitrust===undefined){G.policy.antitrust=false;G.policy.priceCap=false;G.policy.breakup=false;G.policy.laborLaw=false;G.policy.prostLaw=2}if(G.policy.divorceLaw===undefined)Object.assign(G.policy,{divorceLaw:true,womenVote:false,womenProp:false,contraLaw:true,abortLaw:1,sexEd:false,censor:false,sameSex:false});if(G.policy.harassLaw===undefined)Object.assign(G.policy,{harassLaw:false,spycamLaw:false,newlywed:false,surrogacy:1,polyBan:true,platformReg:false,redlightClose:false});if(G.policy.fuzoku===undefined)Object.assign(G.policy,{fuzoku:false,gambleLaw:0});if(G.policy.hireTeach===undefined)Object.assign(G.policy,{hireTeach:false,studyAbroad:false});if(G.policy.bankLic===undefined)Object.assign(G.policy,{bankLic:false,layoffLaw:false,secLaw:false});if(G.policy.tempLaw===undefined)Object.assign(G.policy,{tempLaw:false,unempIns:false});if(G.policy.monPol===undefined)Object.assign(G.policy,{monPol:0,famineAid:false,pubWork:false,dividend:false});if(G.policy.compEdu===undefined)Object.assign(G.policy,{compEdu:false,literacy:false,scholar:false});if(G.policy.greenbelt===undefined)Object.assign(G.policy,{greenbelt:false,farmProtect:false,zoning:false,propTax:0,multiTax:false});if(G.policy.referendum===undefined)Object.assign(G.policy,{referendum:false,concRecover:false,concBan:false});if(G.policy.fdiOpen===undefined)Object.assign(G.policy,{fdiOpen:true,sezTax:false,foreignLoan:false,fdiNat:false,sexTourBan:false});if(G.policy.drugPrice===undefined)G.policy.drugPrice=false;if(G.policy.draftYears===undefined)G.policy.draftYears=2;if(G.policy.army===undefined)Object.assign(G.policy,{draftYears:2,army:false,draft:false,milBudget:1,spyAgency:false,altService:false,neutral:false,alliance:false});if(G.policy.disPension===undefined)Object.assign(G.policy,{disPension:false,disQuota:false,disAccess:false,deinst:false});if(G.policy.elecPrice===undefined)Object.assign(G.policy,{elecPrice:1,elecPriv:false,resNat:false,nukeBan:false,fishQuota:false});if(G.policy.healthIns===undefined)Object.assign(G.policy,{healthIns:false,copay:2,suga:1,medQuota:6,pubMed:false,cosAdBan:false,cosTax:false,malShield:false});if(G.policy.deathPen===undefined)Object.assign(G.policy,{deathPen:true,armsBan:false,sexCrimeLaw:false,consentLaw:0,victimCenter:false,offenderReg:false,amlLaw:false,safetyLaw:false,subconLaw:false,dvLaw:false,envLaw:false,rentCap:false,antiDiscrim:false,migrantLaw:false});if(G.policy.drugLaw===undefined){G.policy.drugLaw=2;G.policy.pension=false;G.pen=0}if(!G.micro)G.micro=[];if(G.policy.jury===undefined){G.policy.jury=false;G.policy.pubDefender=false}if(G.policy.indepPros===undefined)G.policy.indepPros=false;if(!G.cases)G.cases=[];if(!G.caseLog)G.caseLog=[];if(!G.rules)G.rules=[];if(!G.debt)G.debt=[];const P=G.policy;if(P.chiefTerm===undefined){P.chiefTerm=5;P.councilTerm=4;P.termLimit=0}if(!G.nextRule)G.nextRule=1}
+  function ensureGov(G){for(const key of ['regent','designatedHeir','lastMonarch','interregnum'])if(G[key]===undefined)G[key]=null;if(!G.royalHistory)G.royalHistory=[];if(!G.royalRivals)G.royalRivals=[];if(G.policy.goldStd===undefined)G.policy.goldStd=false;if(G.policy.pubSchool===undefined)G.policy.pubSchool=false;if(G.policy.microLoan===undefined)G.policy.microLoan=false;if(G.policy.antitrust===undefined){G.policy.antitrust=false;G.policy.priceCap=false;G.policy.breakup=false;G.policy.laborLaw=false;G.policy.prostLaw=2}if(G.policy.divorceLaw===undefined)Object.assign(G.policy,{divorceLaw:true,womenVote:false,womenProp:false,contraLaw:true,abortLaw:1,sexEd:false,censor:false,sameSex:false});if(G.policy.harassLaw===undefined)Object.assign(G.policy,{harassLaw:false,spycamLaw:false,newlywed:false,surrogacy:1,polyBan:true,platformReg:false,redlightClose:false});if(G.policy.fuzoku===undefined)Object.assign(G.policy,{fuzoku:false,gambleLaw:0});if(G.policy.hireTeach===undefined)Object.assign(G.policy,{hireTeach:false,studyAbroad:false});if(G.policy.bankLic===undefined)Object.assign(G.policy,{bankLic:false,layoffLaw:false,secLaw:false});if(G.policy.tempLaw===undefined)Object.assign(G.policy,{tempLaw:false,unempIns:false});if(G.policy.monPol===undefined)Object.assign(G.policy,{monPol:0,famineAid:false,pubWork:false,dividend:false});if(G.policy.compEdu===undefined)Object.assign(G.policy,{compEdu:false,literacy:false,scholar:false});if(G.policy.greenbelt===undefined)Object.assign(G.policy,{greenbelt:false,farmProtect:false,zoning:false,propTax:0,multiTax:false});if(G.policy.referendum===undefined)Object.assign(G.policy,{referendum:false,concRecover:false,concBan:false});if(G.policy.fdiOpen===undefined)Object.assign(G.policy,{fdiOpen:true,sezTax:false,foreignLoan:false,fdiNat:false,sexTourBan:false});if(G.policy.drugPrice===undefined)G.policy.drugPrice=false;if(G.policy.draftYears===undefined)G.policy.draftYears=2;if(G.policy.army===undefined)Object.assign(G.policy,{draftYears:2,army:false,draft:false,milBudget:1,spyAgency:false,altService:false,neutral:false,alliance:false});if(G.policy.disPension===undefined)Object.assign(G.policy,{disPension:false,disQuota:false,disAccess:false,deinst:false});if(G.policy.elecPrice===undefined)Object.assign(G.policy,{elecPrice:1,elecPriv:false,resNat:false,nukeBan:false,fishQuota:false});if(G.policy.healthIns===undefined)Object.assign(G.policy,{healthIns:false,copay:2,suga:1,medQuota:6,pubMed:false,cosAdBan:false,cosTax:false,malShield:false});if(G.policy.deathPen===undefined)Object.assign(G.policy,{deathPen:true,armsBan:false,sexCrimeLaw:false,consentLaw:0,victimCenter:false,offenderReg:false,amlLaw:false,safetyLaw:false,subconLaw:false,dvLaw:false,envLaw:false,rentCap:false,antiDiscrim:false,migrantLaw:false});if(G.policy.drugLaw===undefined){G.policy.drugLaw=2;G.policy.pension=false;G.pen=0}if(!G.micro)G.micro=[];if(G.policy.jury===undefined){G.policy.jury=false;G.policy.pubDefender=false}if(G.policy.indepPros===undefined)G.policy.indepPros=false;if(!G.cases)G.cases=[];if(!G.caseLog)G.caseLog=[];if(!G.rules)G.rules=[];if(!G.debt)G.debt=[];const P=G.policy;if(P.chiefTerm===undefined){P.chiefTerm=5;P.councilTerm=4;P.termLimit=0}if(!G.nextRule)G.nextRule=1}
   function dayCache(){if(S._dcD===S.day)return S._dc;const hc=new Map(),pc=new Map(),lc=new Map();for(const h of S.houses)if(h.owner)hc.set(h.owner,(hc.get(h.owner)||0)+1);
     for(const pl of S.plots)if(pl.owner)pc.set(pl.owner,(pc.get(pl.owner)||0)+1);for(const l of S.loans)lc.set(l.l,(lc.get(l.l)||0)+1);
     const gl=new Set(S.groups.filter(g=>g.mode!=='party').map(g=>g.leader));const sp=new Map();if(S.lotOwn)S.lotOwn.forEach((o,i)=>{if(o&&S.lotUsed[i]<98&&(S.lotFloors||1)-S.lotUsed[i]>=Math.max(1,(S.lotFloors||1)/2))sp.set(o,(sp.get(o)||0)+1)});const fc=new Map();for(const a of S.agents)if(a.faith)fc.set(a.faith,(fc.get(a.faith)||0)+1);let big=null,bn=0;for(const[k,v]of fc)if(v>bn){bn=v;big=k}S._dcD=S.day;return S._dc={hc,pc,lc,gl,big,sp,med:median()}}
@@ -3676,9 +3726,10 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         st:{collected:0,embezzled:0,salary:0,guardsPaid:0,welfare:0,guar:0,caught:0,fraudFined:0}};
       log('pol',`주민 투표 ${yes}/${ad.length}표로 마을 회의가 생겼다. 이제 촌장을 뽑는다`,[pro.id],{x:CAMP.x+20,y:CAMP.y+10,t:'회의 출범'});
       mile('council',`민주주의의 시작. ${josa(nm(pro),'이','가')} 낸 안건이 통과돼 주민이 촌장을 뽑게 됐다`,[pro.id]);ensureGov(S.gov);S.gov.posBirth=pi;const lit=ad.filter(a=>(a.edu||0)>=1).length/ad.length;/* 처음 정부 형태: 재산이 몰릴수록 귀족정 쪽으로 기울지만, 정해진 건 아니다 */{const pO=cl((pi-.3)*1.6+(lit<.15?.12:0)+((S.firms.length>=2||S.loans.length>20)?.1:0),.05,.7);S.gov.regime=R()<pO?'olig':'rep'}if(S.gov.regime==='olig'){S.gov.suffrage='prop';mile('olig',`귀족정. 장사로 돈을 번 사람들이 의회를 만들었다. 땅이나 재산이 있는 사람만 투표할 수 있다`,[pro.id])}S.gov.regHist=[{d:day,r:S.gov.regime,why:'주민 투표로 탄생'}];constitution(S.gov,pro,false);election();return}
-    const G=S.gov;ensureGov(G);
-    const ch=S.byId.get(G.chief);
+    const G=S.gov;ensureGov(G);if(regime()==='mon'&&G.interregnum)return;
+    let ch=S.byId.get(G.chief);
     if(!ch||!ch.alive){if(G.chief&&succeed(G,ch))return;if(G.chief){log('pol',`촌장이 세상을 떠나 다시 선거를 치른다`,[]);}election();return}
+    if(regime()==='mon'&&G.regent&&S.byId.get(G.regent)?.alive)ch=S.byId.get(G.regent);
     if(day>=G.nextElection&&!elective()&&!G.coup){G.nextElection=day+YEAR*99}
     if(day>=G.nextElection){if(G.coup&&G.coup.type==='trans'){mile('coupReturn',`민정 이양. 과도 정부가 약속대로 선거를 열고 물러났다`,[G.coup.by]);G.policy.chiefTerm=G.coup.old||5;G.coup=null}election();return}
     if(G.nextCouncil&&day>=G.nextCouncil&&day>=G.founded+YEAR*2){if(!elective()){G.nextCouncil=day+YEAR*4}else{councilElection();return}}
@@ -4092,12 +4143,14 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const keep=new Set();const add=i=>{if(i)keep.add(i)};
     for(const a of S.agents){add(a.partner);add(a.emp);add(a.lastModel);a.parents.forEach(add);a.kids.forEach(add)}
     const ev=S.events.slice(-150);ev.forEach(e=>e.ids.forEach(add));S.miles.forEach(m=>m.ids.forEach(add));add(S.leader);
+    if(S.gov){for(const key of['chief','king','regent','designatedHeir','lastMonarch'])add(S.gov[key]);for(const item of S.gov.royalHistory||[])add(item.id)}
+    for(let generation=0;generation<2;generation++)for(const id of [...keep]){const a=S.byId.get(id);if(a){for(const parent of a.parents||[])add(parent);for(const child of a.kids||[])add(child)}}
     const dead=[];for(const id of keep){const a=S.byId.get(id);if(a&&!a.alive)dead.push({id:a.id,sur:a.sur,given:a.given,alive:false,age:a.age,cause:a.cause,estate:a.estate||0,
-      family:a.family,gen:a.gen,parents:a.parents,kids:a.kids,diedAt:a.diedAt,peak:a.peak,crimes:a.crimes,caught:a.caught})}
+      family:a.family,gen:a.gen,parents:a.parents,kids:a.kids,diedAt:a.diedAt,peak:a.peak,crimes:a.crimes,caught:a.caught,exiled:!!a.exiled})}
     const strip=a=>{const o={...a};delete o.x;delete o.y;delete o.tx;delete o.ty;delete o._d;delete o.walk;delete o._w;delete o._o;delete o._u;return o};
     const out={};for(const k in S){if(k[0]==='_'||k==='byId'||k==='mileSet'||k==='offers'||k==='fx')continue;out[k]=S[k]}
     out.agents=S.agents.map(strip);out.events=ev;out.mileSet=[...S.mileSet];
-    return{v:1,rng:st.a,S:out,dead}}
+    return{v:1,gameVersion:GAME_VERSION,rng:st.a,S:out,dead}}
   function importState(o){setMap(!!(o.S&&o.S.mapBig));PLOTS.length=0;
     st.a=o.rng|0;for(const k of Object.keys(S))delete S[k];Object.assign(S,o.S);
     if(S.geo)restoreGeo(S.geo);else legacyGeo();
@@ -4107,7 +4160,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     S.mileSet=new Set(o.S.mileSet);S.offers=[];S.fx=[];if(!S.groups)S.groups=[];if(!S.shops)S.shops=[];if(S.gov===undefined)S.gov=null;if(S.gov&&S.gov.policy.progressive===undefined)Object.assign(S.gov.policy,{progressive:false,basicIncome:0,debtRelief:false,landReform:false});if(!S.loans)S.loans=[];if(!S.deps)S.deps=[];if(!S.nextLoan)S.nextLoan=1;if(!S.jeonRef)S.jeonRef=S.houseRef*.6;if(!S.shopUsed)S.shopUsed=SHOPLOTS.map(()=>false);if(S.price.tool===undefined){S.price.tool=8;S.pAvg.tool=8;S.liq.tool=1;S.trades.tool=0}if(!S.tot.tools){S.tot.tools=0;S.tot.shops=0}
     for(const a of S.agents){if(!a.sex){a.sex=R()<.5?'M':'F';const r=R();a.orient=r<.88?'het':r<.94?'hom':'bi';const p=a.partner&&S.byId.get(a.partner);if(p&&p.sex&&a.orient==='het'&&p.orient!=='hom')a.sex=p.sex==='M'?'F':'M'}}
     for(const a of S.agents){if(a.inv.tool===undefined)a.inv.tool=0;if(a.src.tool===undefined)a.src.tool=0;if(a.inv.stone===undefined)a.inv.stone=0;if(a.src.stone===undefined)a.src.stone=0}
-    if(S.gov){ensureGov(S.gov);if(S.gov.policy.indepPros===undefined)S.gov.policy.indepPros=false;if(S.gov.policy.jury===undefined){S.gov.policy.jury=false;S.gov.policy.pubDefender=false}if(!S.gov.prosList)S.gov.prosList=S.gov.pros?[S.gov.pros]:[];if(!S.gov.judges)S.gov.judges=[]}for(const g of S.groups||[]){if(!g.mode){g.mode='gang';g.name=g.name.replace('씨 무리','씨 패거리')}
+    if(S.gov){ensureGov(S.gov);if(S.gov.regent===undefined)S.gov.regent=null;if(S.gov.designatedHeir===undefined)S.gov.designatedHeir=null;if(!S.gov.royalHistory)S.gov.royalHistory=[];if(!S.gov.royalRivals)S.gov.royalRivals=[];if(S.gov.policy.indepPros===undefined)S.gov.policy.indepPros=false;if(S.gov.policy.jury===undefined){S.gov.policy.jury=false;S.gov.policy.pubDefender=false}if(!S.gov.prosList)S.gov.prosList=S.gov.pros?[S.gov.pros]:[];if(!S.gov.judges)S.gov.judges=[]}for(const g of S.groups||[]){if(!g.mode){g.mode='gang';g.name=g.name.replace('씨 무리','씨 패거리')}
     for(const g of S.groups||[])if(/씨 (패거리|정당|조폭당)$/.test(g.name)){g.gname=g.gname||gangName();if(g.mode!=='gang'){g.pname=partyName(S.byId.get(g.leader),g.mode);g.pmob=g.mode==='mob'}g.name=g.mode==='gang'?g.gname:g.pname}}
     if(!S.bldgs){S.bldgs=[];S.sig={spoil:0,homeless:0,stolen:0,crimes:0,sick:0,kids:0};S.sigD={spoil:0,stolen:0,crimes:0};S.dstat={}}
     for(const k of['fiber','plank','brick','cloth','furn','liquor'])if(S.price[k]===undefined){const ip={fiber:1.5,plank:3,brick:3,cloth:8,furn:25,liquor:3}[k];S.price[k]=ip;S.pAvg[k]=ip;S.liq[k]=1;S.trades[k]=0}for(const a of S.agents)for(const k of['fiber','plank','brick','cloth','furn','liquor'])if(a.inv[k]===undefined)a.inv[k]=0;
@@ -4133,6 +4186,6 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     for(const b of S.bldgs){b.fx=normalizeBuildingFx(b.fx,b.mainUse);b.mainUse=b.fx[0];b.units=Math.max(1,b.units||1)}for(const site of S.sites)if(site.fx)site.fx=normalizeBuildingFx(site.fx,site.mainUse);
     S.nextFirm=Math.max(S.nextFirm||1,...S.firms.map(f=>f.id+1));
     for(const f of S.firms.slice()){f.bld=f.bld||[];f.hist=f.hist||[];f.cash=f.cash||0;migrateShares(f);cleanupShares(f);splitFirmLines(f);consolidateBuildings(f)}}
-  return{rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,tradeStock,stockOwnership,stockValue,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
+  return{rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
 }
-if(typeof module!=='undefined')module.exports={REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};
+if(typeof module!=='undefined')module.exports={GAME_VERSION,SHARE_COUNT,REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};

@@ -32,6 +32,7 @@ function initRemote(){
   renderCard=async()=>{
     if(!view||!sel)return;const key=[seed,S.day,sel].join(':');if(key===lastCard)return;const token=++cardToken,id=sel;
     try{const o=await api('/api/resident/'+id);if(token!==cardToken||sel!==id)return;$('#card').innerHTML=o.html;lastCard=key;
+      $('#card').querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>select(+b.dataset.person));
       $('#cx').onclick=()=>{sel=null;++cardToken;$('#card').hidden=true;lastPanel='';renderPanel()};
     }catch(e){if(token===cardToken)setSave('err',e.message)}
   };
