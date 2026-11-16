@@ -9,6 +9,7 @@ for(let day=0;day<YEAR*years;day++){
   world.step();assert(Number.isFinite(world.moneySupply())&&world.moneySupply()>0,'통화량 오류');
   if((day+1)%YEAR===0){for(const tab of tabs)assert(!presenter.panel(world,tab).includes('문제가 생겼다'),tab+' 렌더 오류');
     for(const a of world.S.agents){assert(Number.isFinite(a.cash),'주민 현금 오류');assert(a.g&&a.q,'주민 데이터 오류')}
+    for(const f of world.S.firms){assert(Number.isFinite(f.price)&&Number.isFinite(f.cash),'회사 수치 오류');if(f.shareVersion===74){assert.equal(Object.values(f.sh).reduce((n,q)=>n+q,0),10000,'총 주식 수');assert(Object.values(f.sh).every(q=>Number.isInteger(q)&&q>=0),'정수 주식 수')}}
     if(performance.now()-last>30000){last=performance.now();console.log(JSON.stringify({stage,year:(day+1)/YEAR,pop:world.S.agents.length,money:world.moneySupply()}))}
   }
 }
