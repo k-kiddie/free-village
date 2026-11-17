@@ -60,6 +60,11 @@ function main(){
   // 6. 법 바꾸기: 시위·청원/발의 → 의회 표결 또는 통치자 결정
   {let passed=0,tried=0;for(const seed of [7,11,17]){const x=fresh(seed);x.dynAct('council');if(!x.S.gov)continue;for(const t of x.dynActions().filter(a=>/^(pet|law):/.test(a.k)&&a.ok)){const r=x.dynAct(t.k);tried++;const key=t.k.split(':')[1];assert.equal(/통과/.test(r.text)&&!/부결|거부|갇혔/.test(r.text),x.S.gov.policy[key]===true,r.text);if(x.S.gov.policy[key]===true)passed++;assert.throws(()=>x.dynAct(t.k))}}
     assert(tried>0);acts.law={tried,passed}}
+  // 7. 경제 행동·지출·일
+  {const x=engine.createWorld(7,150);x.dynStart();x.dynChoose(x.S.dyn.pending[0].id,'go');for(let i=0;i<900;i++){while(x.S.dyn.pending.length){const p=x.S.dyn.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}x.step()}
+    const me=x.S.byId.get(x.S.dyn.pid);me.cash+=3000;const done=[];for(const a of x.dynActions().filter(a=>/^(house|land|stock|firm|loan|dep):/.test(a.k)&&a.ok)){const before=JSON.stringify([me.cash,x.S.houses.filter(h=>h.owner===me.id).length,x.S.loans.length,x.S.firms.length]);const r=x.dynAct(a.k);done.push(a.k.split(':').slice(0,2).join(':'));assert(r.text)}
+    assert(done.some(k=>k==='house:buy'),'집 사기');assert.throws(()=>x.dynSetBudget({life:'x'}));x.dynSetBudget({life:4,edu:2,save:.2,give:3,debt:1,job:0});const v0=x.S.dyn.vault||0;for(let i=0;i<60;i++){while(x.S.dyn.pending.length){const p=x.S.dyn.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}if(x.S.dyn.over)break;x.step()}
+    assert(x.S.dyn.spent,'지출 적용');acts.eco=done}
   console.log(JSON.stringify({dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,acts,ms:Date.now()-t0}));
 
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
