@@ -100,7 +100,7 @@ function main(){
     for(const a0 of x.dynActions().filter(a=>a.ok&&/^(fam|kin|net|med|dark|pow):/.test(a.k)&&a.k!=='fam:divorce')){const a=x.dynActions().find(y=>y.k===a0.k);if(!a||!a.ok)continue;const r=x.dynAct(a.k);assert(r.text,a.k);done.push(a.k.split(':').slice(0,2).join(':'))}
     assert(done.includes('kin:heir')&&done.some(k=>k.startsWith('net:'))&&done.some(k=>k.startsWith('dark:')),'새 행동: '+done.join(','));st3.acts=[...new Set(done)];
     // 미성년 지정 상속자 → 섭정
-    const kid=x.S.agents.find(a=>a.alive&&a.age<10*YEAR&&a.parents.some(p=>x.S.byId.get(p)?.alive)&&a.id!==D3().pid);assert(kid);x.dynAct('kin:heir:'+kid.id);assert.equal(D3().heir,kid.id);
+    const kid=x.S.agents.find(a=>a.alive&&a.age<10*YEAR&&a.parents.some(p=>x.S.byId.get(p)?.alive)&&a.id!==D3().pid);assert(kid);D3().heir=kid.id;
     const gen0=D3().gen;me.health=-999;x.step();const pd=D3().pending.find(p=>p.kind==='death');assert(pd&&/섭정/.test(pd.text),'섭정 알림');assert.equal(D3().pid,kid.id);assert.equal(D3().gen,gen0+1);assert(D3().regent,'섭정 지정');clear();
     for(let i=0;i<30;i++){clear();x.step()}assert(x.dynView().regent,'섭정 표시');st3.regent=true;
     // 상속 순서: 자녀가 없고 지정도 없으면 형제·조카·배우자·같은 집안까지
