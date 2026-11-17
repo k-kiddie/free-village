@@ -175,6 +175,18 @@ function main(){
     for(let i=0;i<400&&!asked;i++){X.gov.nextRoyalDispute=X.day;X.gov.chief=me.id;x.step();const p=X.dyn.pending.find(p=>p.kind==='prince');if(p){asked=true;out.prince=x.dynChoose(p.id,'reconcile').text}while(X.dyn.pending.length)x.dynChoose(X.dyn.pending[0].id,X.dyn.pending[0].opts[0].k)}
     assert(asked,'왕자의 난 선택지');return out})();
   console.log(JSON.stringify({more2}));
+  // 14. 화면 개편 기능: 가게 짓기(완공 → 내 건물), 인물 대상 행동(고용·해고·선물), 법안 전체(숫자·시행 정책 발의 → 의회 표결)
+  const ui3=(()=>{const x=engine.createWorld(7,150),X=x.S;x.dynStart();const st={kinds:{}};const pick=ks=>p=>(p.opts.find(o=>ks.includes(o.k))||p.opts[0]).k;
+    drive(x,700,pick(['no','ok','forgive']),st);const me=X.byId.get(X.dyn.pid);assert(me&&me.alive);me.cash+=1e5;const out={};
+    const b0=X.bldgs.filter(b=>b.owner===me.id).length;X.dyn.cool={};out.build=x.dynAct('biz:build:b1').text;drive(x,90,pick(['no','ok']),st);assert(X.bldgs.some(b=>b.owner===me.id&&b.fx.includes('b1')),'식당 완공');
+    const ok2=a=>a.alive&&a.id!==me.id&&isA(a)&&!a.firm&&!a.civ&&!a.study&&!a.soldier&&!(X.gov&&(X.gov.chief===a.id||X.gov.king===a.id));const t=X.agents.find(a=>ok2(a)&&!a.emp)||X.agents.find(ok2);const ta=x.dynTargetActions(t.id).map(a=>a.k);assert(ta.includes('tgt:hire:'+t.id)&&ta.includes('tgt:gift:'+t.id),'대상 행동');
+    let hired=false;for(let i=0;i<60&&!hired;i++){x.dynAct('tgt:hire:'+t.id);hired=t.emp===me.id}assert(hired&&t.ct&&t.ct.e===me.id,'고용 계약');drive(x,10,pick(['no','ok']),st);assert(t.emp===me.id,'고용 유지');
+    x.dynAct('tgt:fire:'+t.id);assert(!t.emp&&!t.ct,'해고');const tie0=(X.dyn.ties?.[t.family]?.v)||0;x.dynAct('tgt:gift:'+t.id);assert(X.dyn.ties[t.family].v>tie0,'선물 관계');
+    if(!X.gov){me.cash+=1e7;x.dynAct('lord')}else X.gov.chief=me.id;const laws=x.dynActions().filter(a=>a.k.startsWith('law2:'));assert(laws.length>=30,'법안 '+laws.length+'개');
+    const num=laws.find(a=>a.opts.some(o=>o[0]==='up'));const k=num.k.split(':')[1];const v0=X.gov.policy[k];X.dyn.cool={};X.gov.council=[];out.law=x.dynAct(num.k+':up').text;assert(X.gov.policy[k]>v0,'통치자 결정으로 올림');
+    const bl=laws.find(a=>typeof X.gov.policy[a.k.split(':')[1]]==='boolean');const k2=bl.k.split(':')[1];const b2=X.gov.policy[k2];x.dynAct(bl.k+':'+bl.opts[0][0]);assert(X.gov.policy[k2]===!b2,'시행/폐지');
+    out.laws=laws.length;return out})();
+  console.log(JSON.stringify({ui3}));
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dyn-base-'));const baseFile=path.join(tmp,'engine.js');
   fs.writeFileSync(baseFile,execFileSync('git',['show',base+':engine.js'],{cwd:root}));

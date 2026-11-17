@@ -5,8 +5,8 @@ const DYN_FULL_GROUPS=GROUPS.map(g=>[g[0],g[1].slice()]);
 const dynEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const DYN_TABS=[['me','👤','인물'],['fam','🏠','가문'],['asset','💰','영지'],['dip','🌍','외교'],['plot','🗡️','음모'],['law','⚖️','정치'],['news','📰','소식'],['power','📊','통계']];
 // 메뉴별 행동 묶음(서버 행동의 group). 목록에 없는 묶음은 인물 메뉴에 나온다.
-const DYN_TAB_G={me:['건강','인맥'],fam:['가족','상속','자녀 교육'],asset:['집·땅','주식','회사','돈'],dip:['외교'],plot:['첩보','어두운 길','평판 싸움'],law:['정부 세우기','조직','선거','법 바꾸기','권력']};
-const dynTabOfGroup=g=>Object.keys(DYN_TAB_G).find(k=>DYN_TAB_G[k].includes(g))||'me';
+const DYN_TAB_G={me:['건강','인맥'],fam:['가족','상속','자녀 교육'],asset:['가게·일꾼','집·땅','주식','회사','돈'],dip:['외교'],plot:['첩보','어두운 길','평판 싸움'],law:['정부 세우기','조직','선거','법 바꾸기','권력']};
+const dynTabOfGroup=g=>/^법/.test(g)?'law':Object.keys(DYN_TAB_G).find(k=>DYN_TAB_G[k].includes(g))||'me';
 function initDyn(send,api,base){
   dynSend=send;dynApi=api;dynApiBase=base;document.body.classList.add('dyn');
   const css=document.createElement('style');css.textContent=`
@@ -89,6 +89,7 @@ function dynRender(){
   const P=$('#dynPanel');const ae=document.activeElement;if(ae&&P.contains(ae)&&ae.tagName==='SELECT')return;// 고르는 중에는 다시 그리지 않음
   const html=dynPanelHTML(v);if(P._html===html)return;P._html=html;P.innerHTML=html;
   P.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>select(+b.dataset.person));dynBindActions(P);dynBindBudget(P);
+  P.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>{dynTab=b.dataset.goto;dynRender();$('#dynSheet').scrollTop=0});
   P.querySelectorAll('[data-wback]').forEach(b=>b.onclick=()=>{dynWSel=null;dynRender();if(dynMapMode==='world')dynDrawWorld()});
   P.querySelectorAll('[data-realm]').forEach(b=>b.onclick=()=>{dynWSel=b.dataset.realm;dynSetMap('world');dynRender();$('#dynSheet').scrollTop=0});
 }
@@ -121,7 +122,7 @@ function dynPanelHTML(v){
   if(dynTab==='net'){const f=v.family;return `<div class="sec"><h4>인맥</h4>${dynKV([['배우자',f.partner?dynPerson(f.partner):'없음'],['고용주',m.emp?dynPerson(m.emp):'없음'],['고용한 사람',(m.staff||0)+'명'],['소속 조직',m.grp?dynEsc(m.grp.name):'없음'],['신앙',m.faith?'있음':'없음']])}</div>
       <div class="sec"><h4>사돈·가문 관계</h4>${(v.ties||[]).length?dynKV(v.ties.map(t=>[dynEsc(t.name),`${t.v>0?'우호':t.v<0?'적대':'보통'} ${Math.round(t.v*100)} · ${dynEsc(t.why)}`])):'<p class="muted">아직 사돈을 맺은 집안이 없습니다. 혼인으로 다른 집안과 손을 잡을 수 있습니다.</p>'}</div>
       <p class="muted">친구·원수·동업자 관계는 다음 작업에서 보강합니다.</p>`}
-  if(dynTab==='news')return `<div class="sec"><h4>내 주변 소식</h4>${v.news.length?`<ul>${v.news.map(e=>`<li><small class="muted">${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul>`:'<p class="muted">아직 가족 주변에 별일이 없습니다.</p>'}</div>
+  if(dynTab==='news')return `${dynNewActsHTML()}<div class="sec"><h4>내 주변 소식</h4>${v.news.length?`<ul>${v.news.map(e=>`<li><small class="muted">${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul>`:'<p class="muted">아직 가족 주변에 별일이 없습니다.</p>'}</div>
       <div class="sec"><h4>마을 공지</h4><ul>${v.notices.slice().reverse().map(e=>`<li><small class="muted">${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul></div>`;
   return '';
 }
@@ -155,11 +156,11 @@ function dynBindActions(P){
   P.querySelectorAll('details.actgrp').forEach(d=>d.ontoggle=()=>{const g=d.dataset.g;if(d.open)dynOpenG.add(g);else dynOpenG.delete(g);try{localStorage.setItem('v-dynopen',JSON.stringify([...dynOpenG]))}catch(e){}});
   const arm=b=>{b.classList.add('arm');const sm=b.querySelector('small');if(sm)sm.textContent='한 번 더 누르면 실행합니다'};
   P.querySelectorAll('[data-act]').forEach(b=>{if(b.dataset.act===dynActArm&&!b.disabled)arm(b);b.onclick=async()=>{
-  const k=b.dataset.act;if(dynActArm!==k){dynActArm=k;clearTimeout(dynArmTimer);dynArmTimer=setTimeout(()=>{dynActArm=null;dynRender()},5000);dynRender();return}
+  const k=b.dataset.act;if(dynActArm!==k){dynActArm=k;clearTimeout(dynArmTimer);dynArmTimer=setTimeout(()=>{dynActArm=null;dynRender();if(/^tgt:/.test(k))dynCardActions(true)},5000);P.querySelectorAll('.arm').forEach(x=>x.classList.remove('arm'));arm(b);dynRender();return}
   clearTimeout(dynArmTimer);
   dynActArm=null;dynActErrText='';b.disabled=true;
-  try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'act',k})});await dynSend({action:'save'})}
-  catch(e){dynActErrText=e.message;dynRender()}}})}
+  try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'act',k})});await dynSend({action:'save'});if(/^tgt:/.test(k))dynCardActions(true)}
+  catch(e){dynActErrText=e.message;dynRender();if(/^tgt:/.test(k))dynCardActions(true)}}})}
 function dynOpen(p,force){
   const box=$('#dynModal');dynModalId=p.id;box.hidden=false;
   const start=p.kind==='start',m=dynView?.me;
@@ -322,6 +323,7 @@ body.dyn #card:not([hidden]){max-height:78vh}
   // 세계 지도 정보 카드는 메뉴 창(외교)으로 옮긴다
   const wi=$('#dynWInfo');if(wi){wi.classList.add('dynpanel');}
   addEventListener('resize',()=>{if(dynMapMode==='world')dynDrawWorld()});
+  new MutationObserver(()=>{const c=$('#card');if(c.hidden){dynCardFor=null;return}if(!c.querySelector('#dynTgt')||dynCardFor!==sel)dynCardActions()}).observe($('#card'),{childList:true,attributes:true,attributeFilter:['hidden']});
 }
 function dynSettings(){const box=$('#dynModal');box.hidden=false;dynModalId='settings';
   box.innerHTML=`<div class="dynbox dynsetbox"><h3>⚙ 설정</h3><div class="row2"><button data-c="ff1">+1년 건너뛰기</button><button data-c="ff10">+10년 건너뛰기</button></div>
@@ -333,7 +335,7 @@ function dynSettings(){const box=$('#dynModal');box.hidden=false;dynModalId='set
     if(c==='ff1')$('#ff1').click();else if(c==='ff10')$('#ff10').click();else if(c==='save')$('#saveNow').click();
     else if(c==='stats'){dynTab='power';dynRender();buildNav();renderPanel()}else if(c==='new'){if(!b.dataset.arm){b.dataset.arm=1;b.textContent='정말 지울까요? 한 번 더 누르세요';return}$('#reset').click();$('#reset').click()}
     box.hidden=true;dynModalId=null})}
-function dynAppRender(v){if(!$('#dynApp'))return;const m=v.me;
+function dynAppRender(v){if(!$('#dynApp'))return;const m=v.me;dynTrackNew(v);
   $('#dTopWho').innerHTML=m?`<b>👤 ${dynEsc(m.name)}</b><small>${m.age}세 · ${dynEsc(v.title||v.rankName)}</small>`:`<b>${dynEsc(v.house)}</b>`;
   $('#dTopNum').textContent=m?'💰'+money(v.assets?.w||0):'';
   $('#dPlay').textContent=running?'⏸':'▶';$('#dSpeed').textContent=speed>=30?'×3':speed>=6?'×2':'×1';
@@ -354,3 +356,20 @@ function dynFitMap(){const box=$('#dMap');if(!box)return;const inner=dynMapMode=
   const off=dynMapSize===1?Math.round((full-h)/2):0;for(const el of [$('.screen'),$('#dynWorld')])if(el)el.style.top=-off+'px';const zu=$('.screen .zoomui');if(zu)zu.style.marginTop=off+'px';
   const b=$('#dMsz');if(b)b.textContent=dynMapSize===0?'지도 작게 ▴':dynMapSize===1?'지도 접기 ▴':'지도 펴기 ▾';
   box.querySelectorAll('.mapsw,.zoomui').forEach(e=>e.style.display=dynMapSize===2?'none':'')}
+
+// 새로 할 수 있게 된 일: 처음으로 가능해진 행동을 소식 맨 위에 모아 보여 준다(기다림이 풀린 것은 빼고)
+let dynEver=null,dynNewActs=[];
+try{dynEver=new Set(JSON.parse(localStorage.getItem('v-dynever')||'[]'));dynNewActs=JSON.parse(localStorage.getItem('v-dynnew')||'[]')}catch(e){dynEver=new Set()}
+function dynTrackNew(v){const base=k=>k.split(':').slice(0,2).join(':');let ch=false;const first=dynEver.size===0;
+  for(const a of v.actions||[]){if(!a.ok)continue;const b=base(a.k);if(dynEver.has(b))continue;dynEver.add(b);ch=true;if(!first)dynNewActs.unshift({d:S.day,label:a.label,group:a.group,tab:dynTabOfGroup(a.group)})}
+  if(ch){dynNewActs=dynNewActs.slice(0,12);try{localStorage.setItem('v-dynever',JSON.stringify([...dynEver]));localStorage.setItem('v-dynnew',JSON.stringify(dynNewActs))}catch(e){}}}
+function dynNewActsHTML(){if(!dynNewActs.length)return '';const TL=Object.fromEntries(DYN_TABS.map(t=>[t[0],t[1]+' '+t[2]]));
+  return `<div class="sec"><h4>✨ 새로 할 수 있게 된 일</h4>${dynNewActs.map(n=>`<button class="act" data-goto="${n.tab}">${dynEsc(n.label)}<small>${fmtD(n.d)} · ${dynEsc(TL[n.tab]||'')} 메뉴 · ${dynEsc(n.group)}</small></button>`).join('')}</div>`}
+// 인물 카드에 "이 사람에게" 행동 버튼을 붙인다(서버가 대상·지위에 맞게 고른 것만)
+let dynCardFor=null,dynCardActs=null,dynCardBusy=false;
+async function dynCardActions(force){const card=$('#card');if(!card||card.hidden||sel==null)return;if(card.querySelector('#dynTgt')&&!force&&dynCardFor===sel)return;
+  if(dynCardBusy)return;dynCardBusy=true;const id=sel;
+  try{const r=await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'targets',id})});if(sel!==id)return;dynCardFor=id;dynCardActs=r.result||[];}catch(e){dynCardActs=[]}finally{dynCardBusy=false}
+  let box=card.querySelector('#dynTgt');if(!box){box=document.createElement('div');box.id='dynTgt';box.className='dynpanel';const head=card.querySelector('#cx')?.parentElement;if(head&&head.nextSibling)card.insertBefore(box,head.nextSibling);else card.prepend(box)}
+  box.innerHTML=dynCardActs.length?`<div class="sec" style="margin:4px 0"><b class="muted">이 사람에게</b>${dynCardActs.map(a=>`<button class="act${a.ok&&a.k===dynActArm?' arm':''}" data-act="${dynEsc(a.k)}" ${a.ok?'':'disabled'}>${dynEsc(a.label)}<small>${dynEsc(a.ok?(a.k===dynActArm?'한 번 더 누르면 실행합니다':a.hint):a.why)}</small></button>`).join('')}<div class="err">${dynEsc(dynActErrText)}</div></div>`:'';
+  dynBindActions(box)}

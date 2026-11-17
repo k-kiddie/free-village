@@ -3108,7 +3108,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
           log('build',`${josa(nm(owner),'이','가')} 도구 공방을 세웠다`,[owner.id],{...slotPos(site.slot),t:'공방 완공!'});
           mile('shop',`첫 공방. ${josa(nm(owner),'이','가')} 도구를 만드는 작업장을 지었다`,[owner.id])}
         else if(site.prog>=need&&site.kind==='eff'){S.sites=S.sites.filter(s=>s!==site);owner.site=null;
-          site.fx=normalizeBuildingFx(site.fx,site.mainUse);const fm=site.firm&&firmById(site.firm);const big=!!site.big;let pname=null;if(site.fx.includes('press'))pname=paperName(owner);const pk=pname?paperName.k:null;const b={big,pname,pk,faith:site.faith||null,id:site.id,lot:site.lot,owner:site.pub?null:fm?fm.ceo:owner.id,firm:fm?fm.id:null,spec:(S.offers.find(o=>o.e===owner)||{}).spec??null,pub:!!site.pub,weak:!!site.weak,fx:site.fx,fee:site.pub?0:1,cond:site.weak?.6:1,built:S.day,builder:owner.id,rev:0,revE:0,users:0,stud:0};S.bldgs.push(b);if(b.fx.includes('bigfac'))mile('bigfacDone',`첫 대형 공장 완공. 땅 한 필을 통째로 쓰는 대형 공장이 돌기 시작했다${fm?` (${fm.name})`:''}`,[owner.id]);if(b.fx.includes('lab'))mile('labDone',`첫 연구소 완공${fm?` (${fm.name})`:''}. 회사가 연구원을 뽑아 새 기술을 개발한다`,[owner.id]);if(b.fx.includes('arena'))mile('arenaDone',`첫 경기장 완공${fm?` (${fm.name})`:''}`,[owner.id]);if(b.faith){const fa=S.faiths.find(x=>x.id===b.faith);if(fa){fa.temple=b.id;b.owner=fa.leader;mile('temple',`첫 사원. ${josa(fa.name,'이','가')} 헌금으로 사원을 지었다`,[fa.leader])}}if(fm){(fm.bld=fm.bld||[]).push(b.id);fm.everBuilt=true}if(b.fx.includes('fac'))mile('bigFactory',`첫 공장. ${josa(nm(owner),'이','가')} 일꾼이 많을수록 효율이 오르는 공장을 지었다${fm?` (${fm.name})`:''}`,[owner.id]);
+          site.fx=normalizeBuildingFx(site.fx,site.mainUse);const fm=site.firm&&firmById(site.firm);const big=!!site.big;let pname=null;if(site.fx.includes('press'))pname=paperName(owner);const pk=pname?paperName.k:null;const b={big,pname,pk,faith:site.faith||null,id:site.id,lot:site.lot,owner:site.pub?null:fm?fm.ceo:(site.dynOwner&&S.byId.get(site.dynOwner)?.alive?site.dynOwner:owner.id),firm:fm?fm.id:null,spec:(S.offers.find(o=>o.e===owner)||{}).spec??null,pub:!!site.pub,weak:!!site.weak,fx:site.fx,fee:site.pub?0:1,cond:site.weak?.6:1,built:S.day,builder:owner.id,rev:0,revE:0,users:0,stud:0};S.bldgs.push(b);if(b.fx.includes('bigfac'))mile('bigfacDone',`첫 대형 공장 완공. 땅 한 필을 통째로 쓰는 대형 공장이 돌기 시작했다${fm?` (${fm.name})`:''}`,[owner.id]);if(b.fx.includes('lab'))mile('labDone',`첫 연구소 완공${fm?` (${fm.name})`:''}. 회사가 연구원을 뽑아 새 기술을 개발한다`,[owner.id]);if(b.fx.includes('arena'))mile('arenaDone',`첫 경기장 완공${fm?` (${fm.name})`:''}`,[owner.id]);if(b.faith){const fa=S.faiths.find(x=>x.id===b.faith);if(fa){fa.temple=b.id;b.owner=fa.leader;mile('temple',`첫 사원. ${josa(fa.name,'이','가')} 헌금으로 사원을 지었다`,[fa.leader])}}if(fm){(fm.bld=fm.bld||[]).push(b.id);fm.everBuilt=true}if(b.fx.includes('fac'))mile('bigFactory',`첫 공장. ${josa(nm(owner),'이','가')} 일꾼이 많을수록 효율이 오르는 공장을 지었다${fm?` (${fm.name})`:''}`,[owner.id]);
           log('build',`${josa(nm(owner),'이','가')} ${josa(bName(b)+(b.pub?'(공공)':''),'을','를')} 완공`,[owner.id],{...lotPos(b.lot),t:bName(b)+' 완공!'});
           mile('bld_'+b.fx.join('+'),`첫 ${bName(b)}. ${josa(nm(owner),'이','가')} ${b.fx.map(f=>FXD[f]).join(', ')} 기능을 갖춘 건물을 지었다${b.pub?' (마을 예산)':''}`,[owner.id]);
           if(b.weak&&b.pub&&S.gov&&R()<.5)S.gov.cases.push({t:'skim',who:owner.id,amt:owner.skimmed||20,ev:.6,d:S.day});
@@ -4283,7 +4283,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(sh.cond<=0){S.shops=S.shops.filter(x=>x!==sh);if(sh.slot!=null)S.shopUsed[sh.slot]=false;else S.lotUsed[sh.lot]=Math.max(0,S.lotUsed[sh.lot]-1);log('build',`낡은 공방이 무너졌다`,[sh.owner].filter(Boolean),{...(sh.slot!=null?slotPos(sh.slot):lotPos(sh.lot)),t:'붕괴'})}}
     if(S.day%YEAR===0){const wk=S.agents.filter(a=>isAdult(a)&&[FARM,CHOP,BUILD,COOK,WORK].includes(a.act));if(wk.length>10&&wk.filter(a=>(a.inv.tool||0)>=1||(a.emp&&(S.byId.get(a.emp)?.inv.tool||0)>=1)).length>=wk.length*.5)mile('toolAge',`도구의 시대. 일하는 어른 절반 이상이 도구를 쓴다`,[])}
     for(const st of S.sites.slice()){if(st.start==null)st.start=S.day;const last=Math.max(st.start,st.lastDay||0);
-      if(S.day-last>YEAR*(st.big||st.firm||st.pub?2:1)){S.sites=S.sites.filter(x=>x!==st);relSite(st);
+      if(S.day-last>YEAR*(st.big||st.firm||st.pub||st.dynOwner?2:1)){S.sites=S.sites.filter(x=>x!==st);relSite(st);
         const o=S.byId.get(st.owner);if(o&&o.site===st.id)o.site=null;
         if(R()<.15)log('build',`${o?nm(o)+'의 ':''}공사장이 ${Math.round((st.prog/(st.need||12))*100)}%에서 멈춰 버려졌다`,o?[o.id]:[]);
         mile('abandon',`첫 공사 중단. 자재값을 못 대서 짓다 만 건물이 버려졌다`,o?[o.id]:[])}}
@@ -4663,7 +4663,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(op==='out'){let got=0;for(const d of S.deps.filter(x=>x.s===me.id)){const bk=S.byId.get(d.bank);if(!bk)continue;const fr=Math.min(bk.dres||0,d.amt);bk.dres=(bk.dres||0)-fr;const fc=Math.min(Math.max(0,bk.cash),d.amt-fr);bk.cash-=fc;me.cash+=fr+fc;got+=fr+fc;S.deps=S.deps.filter(x=>x!==d)}return `예금 ${won(got)}을 찾았다`}}
     throw Error('알 수 없는 행동입니다')}
   function dynActions(){const D=S.dyn,me=dynMe();if(!me||!me.alive||D.over)return [];const G=S.gov,ad=adultsC(),out=[];const run=D.run||{};
-    const add=(k,group,label,hint,why)=>out.push({k,group,label,hint,ok:!why,why:why||''});const adult=isAdult(me)?'':'어른이 되어야 함';
+    const add=(k,group,label,hint,why)=>{const o={k,group,label,hint,ok:!why,why:why||''};out.push(o);return o};const adult=isAdult(me)?'':'어른이 되어야 함';
     if(!G){
       const med=median(),pi=posIndex();let yes=0;for(const v of ad){const l=v.grp&&grpById(v.grp);const p=(v.g.civic+v.g.comply)/2+.05+((v.w||0)<med?.12:0)+(v.spend&&(v.spend.stolen>5||v.spend.fine)?.08:0)+((v.cheatSold||0)?-.1:0)-(l&&l.leader===v.id?.4:0)-(v.g.boss>.7?.15:0)+pi*.12;if(p>.5)yes++}
       add('council','정부 세우기','마을 회의를 열자고 제안',`주민 투표 과반이면 마을 회의(공화정 또는 귀족정)가 생기고, 첫 촌장 선거에 내가 나감${me.sex==='F'?'(처음엔 여성 참정권이 없어 후보가 못 될 수 있음)':''} · 찬성 예상 약 ${yes}/${ad.length}명`,adult||(ad.length<20?'어른이 20명 이상이어야 함':'')||dynWait('council'));
@@ -4681,10 +4681,10 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       else add('pet:'+key,'법 바꾸기',`${L.n} 시위·청원`,`지지하는 주민을 모아 의회를 압박 · 주민 지지 약 ${sup.y}/${sup.n}명${dynHard()?' · 강압적인 체제라 붙잡혀 갇힐 수 있음':''}`,adult||dynWait('pet'+key))}
     if(G&&(G.council||[]).length&&!(G.council||[]).includes(me.id)&&G.chief!==me.id){const f=dynFee('council');add('runCouncil','선거',run.council?'의원 선거 출마 등록됨':'의원 선거 출마',`다음 의원 선거(${Math.max(0,(G.nextCouncil||S.day)-S.day)}일 뒤)에 후보로 나감 · 선거비 ${won(f)}`,run.council?'이미 등록함':dynEligible('council')||(me.cash<f?'선거비가 모자람':''))}
     if(!((me.jailUntil||0)>S.day))dynMoreActions(me,add);
-    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r);dynMore2Actions(me,add,r)}
+    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r);dynMore2Actions(me,add,r);dynBizActions(me,add);dynLaw2Actions(me,add)}
     if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynEcoActions(me,add,out);
     return out}
-  function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');const base=/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
+  function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');if(/^tgt:/.test(k)){const text=dynTarget(me,k);D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}const base=/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):/^law2:/.test(k)?k.split(':').slice(0,2).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
     const ad=adultsC();let text='';
     if(k==='council'){D.cool.actcouncil=S.day+YEAR;const pi=posIndex();const yes=councilVotes(ad,pi);
       if(yes<ad.length*.5){text=`마을 회의 안건이 ${yes}/${ad.length}표로 부결됐다`;log('pol',`${josa(nm(me),'이','가')} 마을 회의를 만들자고 했지만 ${yes}/${ad.length}표로 부결됐다`,[me.id]);mile('councilFail',`첫 회의 제안. ${josa(nm(me),'이','가')} 촌장을 뽑자고 했지만 부결됐다`,[me.id])}
@@ -4706,6 +4706,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     else if(/^dip:/.test(k))text=dynDip(me,k);
     else if(/^spy:/.test(k))text=dynSpy(me,k);
     else if(/^ext:/.test(k))text=dynMore2(me,k);
+    else if(/^biz:/.test(k))text=dynBiz(me,k);
+    else if(/^law2:/.test(k))text=dynLaw2(me,k);
     else if(k==='runChief'||k==='runCouncil'){const kind=k==='runChief'?'chief':'council',f=dynFee(kind);me.cash-=f;SP(me,'bribe',f);D.run={...(D.run||{}),[kind]:true};text=`${kind==='chief'?chiefTitle():'의원'} 선거에 출마 등록했다(선거비 ${won(f)})`}
     D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}
   // 선거 후보 명단에 출마 등록한 플레이어를 넣는다(당락은 엔진 투표).
@@ -5317,6 +5319,75 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   // 왕자의 난: 내가 왕이고 왕위를 노리는 자식이 있으면 엔진이 다툼을 굴리기 전에 묻는다.
   function dynPrince(G,king,rivals){const D=S.dyn;if(!D||king.id!==D.pid||!rivals.length)return false;const rv=rivals.sort((a,b)=>b.g.boss-a.g.boss)[0];if(wr()>.12*rv.g.boss)return true;
     dynPush('prince',`왕자 ${josa(nm(rv),'이','가')} 왕위를 노리고 사람을 모으고 있습니다.`,[{k:'purge',label:'숙청한다',hint:'왕자를 잡아 없앰 · 평판↓, 피의 군주라는 말'},{k:'reconcile',label:'화해한다',hint:`약 ${won(dynWA()*30)}과 자리를 줘 달램 · 70% 물러섬`},{k:'abdicate',label:'왕위를 넘긴다',hint:'왕자가 왕이 됨(우리 가문 안)'}],{who:rv.id});return true}
+  // ---- 가문 모드 화면 개편: 가게 짓기·사람 고용·인물 대상 행동·법안 전체 ----
+  const DYN_BIZ=['b1','b0','b2','b10','pub','shelter','store'];
+  function dynFreeLots(){return S.lotUsed.map((u,i)=>lotFull(i)?-1:i).filter(i=>i>=0)}
+  function dynBizActions(me,add){if(!isAdult(me))return;const hr=S.houseRef||100,cost=hr*1.5,D=S.dyn;const busy=S.sites.find(x=>x.dynOwner===me.id);const free=dynFreeLots().length;
+    for(const fx of DYN_BIZ)add('biz:build:'+fx,'가게·일꾼',`${FXN[fx]} 짓기`,`약 ${won(cost)} · 목수를 고용해 짓고 다 지으면 내 건물(${FXD[fx]}) · 회사로 키울 수 있음`,busy?'이미 짓고 있는 건물이 있음':me.cash<cost?'돈이 모자람':!free?'빈 집터가 없음':'');
+    const staff=S.agents.filter(x=>x.alive&&x.emp===me.id);if(staff.length)add('biz:none','가게·일꾼',`내 일꾼 ${staff.length}명`,staff.slice(0,6).map(x=>nm(x)).join(', ')+(staff.length>6?' 외':'')+' · 고용·해고는 인물 카드에서','이름을 누르면 인물 카드에서 해고할 수 있음')}
+  // 목수: 남의 일꾼이 아니고 맡은 공사가 없는 어른 중 집짓기를 잘하고 자주 한 사람
+  function dynBuilder(me,not){return S.agents.filter(a=>a.alive&&isAdult(a)&&!a.site&&a!==me&&a!==not&&!a.emp&&!a.ct&&!a.study&&!a.soldier&&!((a.jailUntil||0)>S.day)).sort((x,y)=>(y.skill[BUILD]*2+y.actCount[BUILD]/Math.max(1,S.day)*5)-(x.skill[BUILD]*2+x.actCount[BUILD]/Math.max(1,S.day)*5))[0]}
+  // 내 공사: 목수가 그날 일하지 않으면 공사비로 산 인부들이 하루치(1)를 짓는다. 다 되면 내 건물로 완공.
+  function dynSiteTick(me){for(const st of S.sites.slice()){if(st.dynOwner!==me.id)continue;if(st.lastDay!==S.day){st.prog+=1;st.lastDay=S.day}
+    if(st.prog<st.need)continue;S.sites=S.sites.filter(x=>x!==st);const bd=S.byId.get(st.owner);if(bd&&bd.site===st.id)bd.site=null;
+    const b={big:false,pname:null,pk:null,faith:null,id:st.id,lot:st.lot,owner:me.id,firm:null,spec:null,pub:false,weak:false,fx:normalizeBuildingFx(st.fx),fee:1,cond:1,built:S.day,builder:st.owner,rev:0,revE:0,users:0,stud:0};S.bldgs.push(b);S._fxD=-1;S._foD=-1;S._waD=-1;
+    log('build',`${josa(nm(me),'이','가')} ${josa(bName(b),'을','를')} 완공`,[me.id],{...lotPos(b.lot),t:bName(b)+' 완공!'});dynChron(`${josa(nm(me),'의','의')} ${josa(bName(b),'이','가')} 완공되다`,[me.id]);dynPush('notice',`🏗️ ${josa(bName(b),'이','가')} 완공됐습니다. 영지 메뉴에서 회사로 키울 수 있습니다.`,[{k:'ok',label:'확인'}],{d:S.day,b:b.id})}}
+  function dynBiz(me,k){const [,op,fx]=k.split(':');if(op!=='build'||!DYN_BIZ.includes(fx))throw Error('모르는 행동입니다');const hr=S.houseRef||100,cost=hr*1.5;const free=dynFreeLots();if(!free.length)throw Error('빈 집터가 없습니다');
+    const builder=dynBuilder(me);if(!builder)throw Error('지을 사람이 없습니다');
+    const lot=pickLot(me,free,.5);if(lot<0)throw Error('빈 집터가 없습니다');me.cash-=cost;SP(me,'house',cost);builder.cash+=cost;builder.src.house=(builder.src.house||0)+cost;S.lotUsed[lot]++;
+    const site={id:S.nextHouse++,lot,owner:builder.id,prog:0,kind:'eff',fx:[fx],need:40,start:S.day,dynOwner:me.id};S.sites.push(site);builder.site=site.id;builder.q[0][BUILD]=Math.max(builder.q[0][BUILD],8);builder.q[1][BUILD]=Math.max(builder.q[1][BUILD],8);
+    const t=`${josa(nm(builder),'을','를')} 고용해 ${josa(FXN[fx],'을','를')} 짓기 시작했다`;dynChron(`${josa(nm(me),'이','가')} ${josa(FXN[fx],'을','를')} 짓기 시작하다`,[me.id,builder.id]);return t}
+  // 인물 카드에서 고르는 행동(대상 지정). 키 tgt:동작:id
+  function dynTargetActions(id){const D=S.dyn,me=dynMe(),x=S.byId.get(Number(id));const out=[];if(!D||!me||!me.alive||!x||!x.alive||x.id===me.id||D.over)return out;const add=(k,label,hint,why)=>out.push({k,group:'대상',label,hint,ok:!why,why:why||''});
+    const wA=dynWA(),G=S.gov,r=dynRank(),adult=isAdult(me),kin=dynKin().has(x.id),jail=(me.jailUntil||0)>S.day;if(!adult||jail)return out;
+    if(isAdult(x)&&!x.study&&!x.soldier&&!(x.firm&&firmById(x.firm))&&!x.civ&&!(G&&(G.chief===x.id||G.king===x.id))){if(x.emp===me.id)add(`tgt:fire:${x.id}`,'해고하기','내 일꾼에서 내보냄','');
+      else{const w=dynHireWage(x);add(`tgt:hire:${x.id}`,'일꾼으로 고용하기',`하루 ${won(w)} · 받아들일 가능성 약 ${Math.round(dynHireP(x,w)*100)}% · 내 일(${me.lastSpec!=null?ACT[me.lastSpec]:'농사'})을 함`,me.cash<w*10?'열흘치 일당이 있어야 함':'')}}
+    add(`tgt:gift:${x.id}`,'선물하고 친해지기',`약 ${won(wA*5)} · ${dynFamName(x.family,x)}과 관계 +0.1`,me.cash<wA*5?'돈이 모자람':dynWait('gift'+x.id));
+    {const c=dynWedCands(me).filter(k=>k.sex!==x.sex);if(dynSingle(x)&&x.age>=16*YEAR&&x.age<45*YEAR&&!kin){const t=c[0];add(`tgt:wed:${x.id}`,t===me?'청혼하기':t?`${nm(t)}와 혼담 넣기`:'혼담 넣기',t?`성사 약 ${Math.round(dynAccept(t,x)*100)}% · 얻는 것: ${dynGain(x).text}`:'',!t?'혼인시킬 미혼 가족(16~44세, 성별 맞는)이 없음':dynWait('twed'+x.id))}}
+    if(G&&(G.chief===x.id||G.king===x.id||(G.council||[]).includes(x.id))&&!kin)add(`tgt:bribe:${x.id}`,'뇌물·후원 주기',`약 ${won(wA*15)} · 그 집안과 관계 +0.25 · 들키면 뇌물죄`,me.cash<wA*15?'돈이 모자람':dynWait('tbribe'+x.id));
+    if(!kin){if(r>=3)add(`tgt:dig:${x.id}`,'뒷조사',`약 ${won(wA*20)} · 약점을 찾으면 폭로·협박`,me.cash<wA*20?'돈이 모자람':dynWait('spyRival'));
+      add(`tgt:smear:${x.id}`,'나쁜 소문 퍼뜨리기','상대 평판↓ · 들키면 내 평판↓',dynWait('smear'));
+      add(`tgt:hit:${x.id}`,'청부 살인',`약 ${won(wA*50)} · 성공 60% · 들키면 재판`,me.cash<wA*50?'돈이 모자람':dynWait('hit'))}
+    if(kin&&dynHeirList(me).some(([y])=>y.id===x.id)&&D.heir!==x.id)add(`tgt:heir:${x.id}`,'상속자로 지정','내가 죽으면 이 사람이 가문을 이음','');
+    if(dynOrphans(me).some(o=>o.id===x.id))add(`tgt:adopt:${x.id}`,'입양하기','우리 자녀로 · 상속 순서에 들어감','');
+    return out}
+  function dynHireWage(x){return Math.max(.5,(S.wageAvg||1),(x.wageCur||0))*1.1}
+  function dynHireP(x,w){const cur=x.emp&&S.byId.get(x.emp);if(!cur||!x.emp)return .85;return cl(.25+(w/Math.max(.3,cur.wageCur||S.wageAvg||1)-1)*1.5,.1,.8)}
+  function dynTarget(me,k){const D=S.dyn,wA=dynWA(),[,op,arg]=k.split(':'),x=S.byId.get(Number(arg));const a=dynTargetActions(arg).find(z=>z.k===k);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(!a.ok)throw Error(a.why);const cool=(key,d)=>{D.cool['act'+key]=S.day+d};
+    if(op==='hire'){const w=dynHireWage(x);if(wr()>dynHireP(x,w))return `${josa(nm(x),'이','가')} 고용 제안을 거절했다`;x.emp=me.id;x.ct={t:'reg',e:me.id,w,d:S.day};if(me.lastSpec==null)me.lastSpec=S.plots.some(p=>p.owner===me.id&&!p.gone)?FARM:CRAFT;dynChron(`${josa(nm(me),'이','가')} ${josa(nm(x),'을','를')} 일꾼으로 들이다`,[me.id,x.id]);return `${josa(nm(x),'을','를')} 하루 ${won(w)}에 고용했다`}
+    if(op==='fire'){x.emp=null;x.ct=null;return `${josa(nm(x),'을','를')} 내보냈다`}
+    if(op==='gift'){const c=wA*5;me.cash-=c;x.cash+=c;SP(me,'family',c);cool('gift'+x.id,YEAR/2);D.ties=D.ties||{};const f=x.family,o=D.ties[f]||{v:0,name:dynFamName(f,x),d:S.day,why:''};D.ties[f]={...o,v:Math.min(1,o.v+.1),d:S.day,why:'선물'};return `${nm(x)}에게 선물을 보냈다(그 집안과 관계↑)`}
+    if(op==='wed'){cool('twed'+x.id,YEAR);const t=dynWedCands(me).filter(z=>z.sex!==x.sex)[0];if(!t)throw Error('혼인시킬 가족이 없습니다');if(R()<dynAccept(t,x)){dynArrangedWed(t,x);const s=`${josa(nm(t),'이','가')} ${josa(nm(x),'과','와')} 혼인했다`;dynChron(s,[t.id,x.id]);return s}return `${josa(nm(x),'이','가')} 혼담을 거절했다`}
+    if(op==='bribe'){const c=wA*15;me.cash-=c;x.cash+=c;SP(me,'bribe',c);cool('tbribe'+x.id,YEAR);D.ties=D.ties||{};const f=x.family,o=D.ties[f]||{v:0,name:dynFamName(f,x),d:S.day,why:''};D.ties[f]={...o,v:Math.min(1,o.v+.25),d:S.day,why:'후원'};if(wr()<dynSpyCatch(.15)){fileC('bribe',me,c,.7);return `${nm(x)}에게 돈을 건넸지만 들켜 뇌물죄로 고발당했다`}return `${nm(x)}에게 돈을 건넸다(그 집안과 관계↑)`}
+    if(op==='dig'){const c=wA*20;me.cash-=c;SP(me,'bribe',c);cool('spyRival',YEAR/2);if(wr()<dynSpyCatch(.2))return dynCaught(me,'뒷조사',x);const dirt=dynDirt(x);if(!dirt.length)return `${josa(nm(x),'을','를')} 뒷조사했지만 약점이 없었다`;
+      dynPush('dirt',`${nm(x)}의 약점을 찾았습니다: ${dirt.join(', ')}. 어떻게 할까요?`,[{k:'expose',label:'폭로한다',hint:'상대 평판↓ · 상대 집안 원한'},{k:'black',label:'협박해 돈을 받는다',hint:'상대 현금의 20%'},{k:'keep',label:'묻어 둔다'}],{who:x.id});return `${josa(nm(x),'의','의')} 약점을 찾았다`}
+    if(op==='smear'||op==='hit'){D.cool['act'+op]=0;return dynMore2(me,`ext:${op}:${x.id}`)}
+    if(op==='heir'){D.heir=x.id;return `${josa(nm(x),'을','를')} 상속자로 정했다`}
+    if(op==='adopt')return dynAdopt(me,x);
+    throw Error('모르는 행동입니다')}
+  // 법안 전체: 정책 110여 개 중 지금 생길 수 있는 것(polReady). 주민 지지 = 각자의 엔진 공약(platform)이 제안 쪽에 더 가까운 사람.
+  const DYN_LAWCAT=[['세금·경제','tax progressive inhTax propTax multiTax usury depGuar monPol goldStd priceCap antitrust breakup bankLic microLoan secLaw amlLaw dividend basicIncome debtRelief landReform rentCap foreignLoan fdiOpen fdiNat sezTax elecPrice elecPriv elecSub resNat platformReg concRecover concBan'],
+    ['노동·복지·교육','welfare wageFloor laborLaw unempIns layoffLaw tempLaw pubWork famineAid pension disPension disQuota disAccess deinst healthIns suga copay medQuota pubMed malShield safetyLaw subconLaw newlywed migrantLaw pubSchool compEdu literacy scholar hireTeach studyAbroad'],
+    ['치안·사법','police punish deathPen jury pubDefender indepPros armsBan drugLaw drugPrice gambleLaw prostLaw redlightClose fuzoku sexCrimeLaw consentLaw victimCenter offenderReg spycamLaw harassLaw dvLaw censor referendum antiDiscrim'],
+    ['가족·인권','womenVote womenProp divorceLaw contraLaw sexEd sameSex abortLaw surrogacy polyBan sexTourBan cosAdBan cosTax'],
+    ['군사·외교','army draft draftYears milBudget spyAgency altService neutral alliance nukeBan'],['땅·환경','forest greenbelt farmProtect zoning envLaw fishQuota']].map(([n,k])=>[n,k.split(' ')]);
+  const DYN_FRAC={tax:.05,police:.1,punish:.5,wageFloor:.2,usury:.05,inhTax:.1,basicIncome:.5,propTax:.01};
+  function dynLawStep(k,cur){if(DYN_FRAC[k])return DYN_FRAC[k];return Number.isInteger(cur)?1:Math.max(.05,Math.abs(cur)*.2)}
+  const dynLawFmt=(k,v)=>typeof v==='boolean'?(v?'시행':'없음'):(v<1&&!Number.isInteger(v)&&DYN_FRAC[k]!==.5)?Math.round(v*100)+'%':String(+(+v).toFixed(2));
+  function dynLawSup2(k,val){const ad=adultsC(),cur=S.gov.policy[k];let y=0;for(const d of ad){const p=platform(d)[k];if(p===undefined)continue;if(typeof val==='boolean'?p===val:Math.abs(p-val)<Math.abs(p-cur))y++}return {y,n:ad.length}}
+  function dynLaw2Actions(me,add){const G=S.gov;if(!G||!isAdult(me))return;const ruler=G.chief===me.id||G.king===me.id,mp=(G.council||[]).includes(me.id);const pf=platform(me);
+    for(const [cat,keys] of DYN_LAWCAT)for(const k of keys){if(!(k in POL_LABEL)||DYN_LAWS[k]||!polReady(k))continue;const cur=G.policy[k];if(cur===undefined)continue;const opts=[];
+      if(typeof cur==='boolean')opts.push([cur?'off':'on',cur?'폐지':'시행']);else if(typeof cur==='number'){const st=dynLawStep(k,cur);if(cur-st>=-1e-9)opts.push(['down',`낮추기 → ${dynLawFmt(k,+(cur-st).toFixed(3))}`]);opts.push(['up',`올리기 → ${dynLawFmt(k,+(cur+st).toFixed(3))}`])}else continue;
+      const mine=pf[k];const want=mine===undefined?'':typeof cur==='boolean'?(mine!==cur?' · 내 생각과 맞음':''):(Math.abs(mine-cur)>1e-9?` · 내 생각: ${dynLawFmt(k,mine)}`:'');
+      const a=add('law2:'+k,'법: '+cat,`${POL_LABEL[k]} (지금 ${dynLawFmt(k,cur)})`,`${ruler||mp?(G.council||[]).length?'발의 → 의회 표결':'통치자 결정':'시위·청원 → 의회 압박'}${want}`,dynWait('law'+k));a.opts=opts}}
+  function dynLaw2(me,k){const G=S.gov,[,key,dir]=k.split(':'),cur=G.policy[key];let val;if(typeof cur==='boolean')val=!cur;else{const st=dynLawStep(key,cur);val=+(dir==='up'?cur+st:Math.max(0,cur-st)).toFixed(3)}
+    S.dyn.cool['actlaw'+key]=S.day+YEAR/2;const ruler=G.chief===me.id||G.king===me.id,mp=(G.council||[]).includes(me.id);const sup=dynLawSup2(key,val);let outrage=0;
+    if(!ruler&&!mp){outrage=Math.min(1,sup.y/Math.max(1,sup.n));if(dynHard()&&wr()<.3){me.jailUntil=S.day+YEAR/4;me.caught=(me.caught||0)+1;return `${POL_LABEL[key]} 시위를 이끌다 붙잡혀 ${YEAR/4}일 갇혔다`}}
+    const mem=(G.council||[]).map(id=>S.byId.get(id)).filter(m=>m&&m.alive);let pass,yes=0,no=0,decree=false;
+    if(!mem.length){decree=true;const ch=S.byId.get(G.chief);pass=ruler||(ch&&platform(ch)[key]===val)||(ch&&typeof val==='number'&&Math.abs(platform(ch)[key]-val)<Math.abs(platform(ch)[key]-cur))||wr()<outrage*.5;if(pass)G.policy[key]=val}
+    else{G._outrage=outrage;G._special=true;const pend={...(G.pending||{})};try{passPolicies({[key]:val},'발의 ');const r=G.lastVote&&G.lastVote.d===S.day&&G.lastVote.res[key];pass=r?r.pass:G.policy[key]===val;yes=r?r.yes:0;no=r?r.no:0}finally{G._special=false;G._outrage=0;G.pending={...pend,...(G.pending||{})}}}
+    const what=`${POL_LABEL[key]} ${dynLawFmt(key,cur)} → ${dynLawFmt(key,val)}`;const t=`${!ruler&&!mp?`시위·청원(주민 ${sup.y}/${sup.n}명 지지) → `:''}${what}: ${pass?(decree?'통치자 결정으로 시행':`${yes}대 ${no}로 통과`):(decree?'거부됨':`${yes}대 ${no}로 부결`)}`;
+    if(pass){log('pol',`${josa(nm(me),'이','가')} 앞장선 ${what}이 시행됐다`,[me.id]);dynChron(`${josa(nm(me),'이','가')} ${what}을 이끌어 내다`,[me.id])}return t}
   function dynWorldTick(){const D=S.dyn,T=S.trade;if(!T||!T.towns||!T.towns.length)return;D.realms=D.realms||{};
     for(const t of T.towns){const R0=D.realms[t.name];if(!R0){D.realms[t.name]=realmInit(t);continue}if(R0.prov){t.tension=0;t.fta=true;if(S.day%15===0)dynProvTick(t,R0);continue}if(S.day%15===0)realmTick(t,R0);if(R0.ally&&S.day%15===0)t.tension=Math.max(0,(t.tension||0)-.01)}
     if(T.on)dynWarWatch();
@@ -5332,7 +5403,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         ruler:{name:rName(R0.ruler),age:rAge(R0.ruler),sex:R0.ruler.sex,traits:r>=3?REALM_G.map(([k,l])=>[l,Math.round(R0.ruler.g[k]*100)]):null},
         heir:R0.heir?{name:rName(R0.heir),age:rAge(R0.heir),sex:R0.heir.sex}:null,hist:R0.hist.slice(-6).reverse()}}).filter(Boolean);
     return {known:true,us,realms,fw:S.fw&&S.fw.until>S.day?{a:S.fw.a,b:S.fw.b}:null,news:(D.wnews||[]).slice(-12).reverse()}}
-  function dynTick(){const D=S.dyn;dynWorldTick();if(D.over)return;const me=dynMe();dynTierTick();if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
+  function dynTick(){const D=S.dyn;dynWorldTick();if(D.over)return;const me=dynMe();dynTierTick();if(me&&me.alive)dynSiteTick(me);if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
     if(me&&W(me)>D.peak.w)D.peak.w=W(me);
     if(me&&me.alive){const tt=dynPolTitle(me);if(D.title===undefined)D.title=tt;else if(tt!==D.title){const t=tt?`${josa(nm(me),'이','가')} ${josa(tt,'이','가')} 됐습니다`:`${josa(nm(me),'이','가')} ${D.title} 자리에서 물러났습니다`;D.title=tt;dynChron(t,[me.id]);dynPush('notice',t,[{k:'ok',label:'확인'}],{d:S.day})}
       if(S.day%5===0&&!((me.jailUntil||0)>S.day))dynBudgetTick(me);
@@ -5384,7 +5455,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const circle=dynCircle();out.news=S.events.filter(e=>e.type!=='mile'&&e.ids.some(i=>circle.has(i))).slice(-25).reverse();
     return out}
   currencyState();
-  return{dynStart,dynRename,dynChoose,dynAct,dynActions,dynSetBudget,dynVault,dynView,dynRank,dynCanSee,dynCanTab,dynTabs,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
+  return{dynTargetActions,dynStart,dynRename,dynChoose,dynAct,dynActions,dynSetBudget,dynVault,dynView,dynRank,dynCanSee,dynCanTab,dynTabs,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
 }
 if(typeof module!=='undefined')module.exports={GAME_VERSION,SHARE_COUNT,shareCount,votingShares,marketCap,formatMoney,REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};
 
