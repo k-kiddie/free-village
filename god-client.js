@@ -43,6 +43,7 @@ body.dyn .stats,body.dyn .foot{display:none!important}
   const modal=document.createElement('div');modal.id='dynModal';modal.className='dynmodal';modal.hidden=true;document.body.appendChild(modal);
   // 권력+ 탭이 아닐 때는 기존 탭 내용을 서버에 요청하지 않는다.
   const rp=renderPanel;renderPanel=(...a)=>{if(dynTab==='power')return rp(...a)};
+  dynInitWorld();
 }
 // 지위에 맞는 기존 탭만 남긴다(서버도 같은 규칙으로 막는다).
 function dynFilterTabs(allowed){
@@ -53,7 +54,7 @@ function dynFilterTabs(allowed){
 function dynHook(o){
   const prev=dynView;dynView=o.dyn||null;if(!dynView)return;
   const allowedKey=JSON.stringify(dynView.tabs);if(!prev||JSON.stringify(prev.tabs)!==allowedKey){dynFilterTabs(dynView.tabs);buildNav()}
-  dynRender();
+  dynRender();if(dynMapMode==='world')dynDrawWorld();
   if(dynView.pending.length){const p=dynView.pending[0];if(dynModalId!==p.id)dynOpen(p)}
   else if(dynModalId!=null){dynModalId=null;$('#dynModal').hidden=true}
 }
@@ -155,3 +156,80 @@ function dynOpen(p,force){
     }catch(e){box.hidden=false;$('#dynErr').textContent=e.message;box.querySelectorAll('.opt').forEach(x=>x.disabled=false)}
   });
 }
+// ===== 2차 4단계: 세계 지도 =====
+// 서버가 보내는 view.dyn.world(이웃 나라 요약)만 그린다. 우리 마을을 누르면 원래 상세 지도로 돌아간다.
+let dynMapMode='town',dynWSel=null;
+const DYN_WCOL={us:'#d8b04a',너른들:'#5f9a4a',쇠뫼:'#8a6a52',비단나루:'#6a64a8'};
+const DYN_WALT=['#4a8a8a','#a0584f','#7a8a3a'];
+function dynInitWorld(){
+  const css=document.createElement('style');css.textContent=`
+.dynmapbar{display:flex;gap:4px;margin:6px 3px 0}.dynmapbar button{flex:1;padding:6px;font-size:14px}.dynmapbar button.on{background:var(--gold);color:#000}
+.dynwmap{border:4px solid #000;outline:3px solid var(--line);margin:3px;background:#1b2c44}.dynwmap canvas{display:block;width:100%;touch-action:manipulation}
+.dynwinfo{background:var(--panel);border:2px solid #000;padding:8px 10px;margin:6px 3px;font-size:14px}.dynwinfo h4{margin:2px 0 6px;font-family:var(--f-head);font-weight:400;color:var(--gold);font-size:16px}
+.dynwinfo .kv>div{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid var(--line)}.dynwinfo .kv span{color:var(--muted)}.dynwinfo ul{margin:4px 0 0;padding-left:18px}.dynwinfo li{margin:2px 0}.dynwinfo small{color:var(--muted)}`;
+  document.head.appendChild(css);
+  const bar=document.createElement('div');bar.className='dynmapbar';bar.id='dynMapBar';bar.innerHTML='<button data-mm="town">🏘 우리 마을</button><button data-mm="world">🌍 세계 지도</button>';
+  const box=document.createElement('div');box.id='dynWorld';box.hidden=true;box.innerHTML='<div class="dynwmap"><canvas id="dynWC" aria-label="세계 지도. 나라를 누르면 정보가 보인다"></canvas></div><div class="dynwinfo" id="dynWInfo"></div>';
+  $('.screen').before(bar);$('.screen').after(box);
+  bar.querySelectorAll('button').forEach(b=>b.onclick=()=>dynSetMap(b.dataset.mm));
+  try{if(localStorage.getItem('v-dynmap')==='world')dynMapMode='world'}catch(e){}
+  $('#dynWC').onclick=ev=>{const c=ev.currentTarget,r=c.getBoundingClientRect();const o=dynWOwner((ev.clientX-r.left)/r.width,(ev.clientY-r.top)/r.height);
+    if(o==='us'){dynWSel=null;dynSetMap('town');return}if(o&&o!=='sea'&&o!=='fog'){dynWSel=o;dynDrawWorld()}};
+  new ResizeObserver(()=>{if(dynMapMode==='world')dynDrawWorld()}).observe(box);
+  dynSetMap(dynMapMode);
+}
+function dynSetMap(m){dynMapMode=m;try{localStorage.setItem('v-dynmap',m)}catch(e){}
+  document.querySelectorAll('#dynMapBar button').forEach(b=>b.classList.toggle('on',b.dataset.mm===m));
+  $('.screen').hidden=m==='world';$('#dynWorld').hidden=m!=='world';if(m==='world')dynDrawWorld()}
+// 나라 영역: 각 나라 중심에서 인구에 따른 가중 거리로 가장 가까운 나라. 남동쪽은 바다, 멀리는 미지의 땅.
+function dynWSeeds(){const W=dynView?.world;if(!W)return [];const us=W.us;const s=[{id:'us',x:0,y:0,w:.34+.22*Math.log10(us.pop/100+1)}];
+  for(const r of W.realms)s.push({id:r.name,x:r.x,y:r.y,w:.5+.28*Math.log10(r.pop/1000+1)});return s}
+function dynWHash(x,y){let h=Math.imul(x*374761393+y*668265263,1274126177);h^=h>>>13;h=Math.imul(h,1103515245);return((h^h>>>16)>>>0)/4294967296}
+function dynWOwnerXY(x,y,seeds,known){
+  if(x*.7+y>1.15&&x>.15)return 'sea';
+  const n=(dynWHash(Math.floor((x+2)*14),Math.floor((y+2)*14))-.5)*.08;
+  let best=null,bd=9;for(const s of seeds){if(!known&&s.id!=='us')continue;const d=Math.hypot(x-s.x,y-s.y)/s.w+n;if(d<bd){bd=d;best=s.id}}
+  if(!known&&bd>1)return 'fog';if(bd>1.45)return 'fog';return best}
+const dynWXY=(fx,fy)=>[(fx-.5)*2.4,(fy-.5)*2.4*.75];
+function dynWOwner(fx,fy){const W=dynView?.world;if(!W)return null;const [x,y]=dynWXY(fx,fy);return dynWOwnerXY(x,y,dynWSeeds(),W.known)}
+function dynDrawWorld(){
+  const W=dynView?.world,c=$('#dynWC');if(!c||$('#dynWorld').hidden)return;
+  const cw=c.clientWidth||360,ch=Math.round(cw*.75),d=window.devicePixelRatio||1;
+  if(c.width!==Math.round(cw*d)){c.width=Math.round(cw*d);c.height=Math.round(ch*d)}c.style.height=ch+'px';
+  const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);
+  if(!W){g.fillStyle='#1b2c44';g.fillRect(0,0,cw,ch);return}
+  const seeds=dynWSeeds(),cell=Math.max(4,Math.round(cw/90)),cols=Math.ceil(cw/cell),rows=Math.ceil(ch/cell),own=[];
+  const col=id=>DYN_WCOL[id]||DYN_WALT[[...String(id)].reduce((t,ch2)=>t+ch2.charCodeAt(0),0)%DYN_WALT.length];
+  for(let j=0;j<rows;j++){own[j]=[];for(let i=0;i<cols;i++){const [x,y]=dynWXY((i+.5)/cols,(j+.5)/rows);own[j][i]=dynWOwnerXY(x,y,seeds,W.known)}}
+  const warN=new Set(W.realms.filter(r=>r.war).map(r=>r.name));
+  for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const o=own[j][i];
+    g.fillStyle=o==='sea'?((i+j)%7===0?'#22385a':'#1b2c44'):o==='fog'?'#2a2a30':col(o);
+    g.fillRect(i*cell,j*cell,cell,cell);
+    if(o!=='sea'&&o!=='fog'&&dynWSel===o){g.fillStyle='#ffffff44';g.fillRect(i*cell,j*cell,cell,cell)}}
+  // 국경: 옆 칸 주인이 다르면 선. 전쟁 중인 우리-상대 국경은 붉게.
+  for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const o=own[j][i];if(o==='sea'||o==='fog')continue;
+    for(const [di,dj] of [[1,0],[0,1]]){const p=own[j+dj]?.[i+di];if(p==null||p===o)continue;
+      const war=(o==='us'&&warN.has(p))||(p==='us'&&warN.has(o));g.fillStyle=war?'#ff3b30':p==='sea'||p==='fog'?'#00000088':'#000';
+      if(di)g.fillRect((i+1)*cell-1,j*cell,2,cell);else g.fillRect(i*cell,(j+1)*cell-1,cell,2)}}
+  const P=(x,y)=>[(x/2.4+.5)*cw,(y/(2.4*.75)+.5)*ch];
+  g.textAlign='center';g.textBaseline='middle';
+  const label=(x,y,t1,t2,mark)=>{const [px,py]=P(x,y);g.font=`bold ${Math.round(cw/24)}px sans-serif`;g.lineWidth=3;g.strokeStyle='#000';g.fillStyle='#fff';
+    g.strokeText(t1,px,py);g.fillText(t1,px,py);if(t2){g.font=`${Math.round(cw/34)}px sans-serif`;g.strokeText(t2,px,py+cw/22);g.fillStyle='#f3e6c4';g.fillText(t2,px,py+cw/22)}
+    if(mark){g.font=`${Math.round(cw/20)}px sans-serif`;g.fillText(mark,px,py-cw/20)}};
+  const us=W.us;label(0,0,'🏠 '+us.name,us.regName,null);
+  for(const r of W.realms)label(r.x,r.y,r.name,`${r.regName} · ${r.title} ${r.ruler.name}`,r.war?'⚔️':r.fta?'🤝':r.tension>=60?'⚠️':null);
+  if(W.fw){const A=W.realms.find(r=>r.name===W.fw.a),B=W.realms.find(r=>r.name===W.fw.b);if(A&&B){const [ax,ay]=P(A.x,A.y),[bx,by]=P(B.x,B.y);g.font=`${Math.round(cw/18)}px sans-serif`;g.fillText('⚔️',(ax+bx)/2,(ay+by)/2)}}
+  if(!W.known){const [px,py]=P(0,.55);g.font=`${Math.round(cw/28)}px sans-serif`;g.fillStyle='#ccc';g.fillText('바깥 세상은 아직 모릅니다. 이웃과 장사가 트이면 열립니다.',px,py)}
+  dynWInfo(W)}
+function dynWRel(r){return r.war?'전쟁 중':r.fta?'자유무역 · 우호':r.tension>=60?'적대':r.tension>=35?'긴장':'보통'}
+function dynWInfo(W){
+  const el=$('#dynWInfo');let h='';const r=W.realms.find(x=>x.name===dynWSel);
+  if(r){const rl=r.ruler;h=`<h4>${dynEsc(r.name)} <small>${dynEsc(r.tag)}</small></h4>${dynKV([['체제',dynEsc(r.regName)],[dynEsc(r.title),`${dynEsc(rl.name)} (${rl.age}세·${rl.sex==='F'?'여':'남'})`],
+      ['통치 가문',`${dynEsc(r.house)} · ${fmtD(r.since)}부터`],r.heir&&['후계자',`${dynEsc(r.heir.name)} (${r.heir.age}세·${r.heir.sex==='F'?'여':'남'})`],['인구',r.pop.toLocaleString()+'명'],
+      ['군대',typeof r.mil==='number'?r.mil.toLocaleString():dynEsc(r.mil)],['기술',typeof POWER_L!=='undefined'?POWER_L[r.era]||r.era:r.era],['우리와의 관계',`${dynWRel(r)} (긴장 ${r.tension})`]])}
+      ${rl.traits?`<p><small>성향(첩보): ${rl.traits.map(([k,v])=>`${k} ${v}`).join(' · ')}</small></p>`:'<p><small>통치자의 속내는 의원·귀족 이상이 되어야 알 수 있습니다.</small></p>'}
+      ${r.hist.length?`<b class="muted">최근 일</b><ul>${r.hist.map(e=>`<li><small>${fmtD(e.d)}</small> ${dynEsc(e.text.replace(r.name+': ',''))}</li>`).join('')}</ul>`:''}`}
+  else{const us=W.us;h=`<h4>🏠 ${dynEsc(us.name)}</h4>${dynKV([['체제',dynEsc(us.regName)],us.ruler&&[dynEsc(us.ruler.title),`${dynEsc(us.ruler.name)} (${us.ruler.age}세)`],['인구',us.pop.toLocaleString()+'명'],['군대',us.mil.toLocaleString()]])}
+    <p><small>${W.known?'다른 나라를 누르면 통치 가문과 관계가 보입니다. 우리 마을을 누르면 마을 지도로 돌아갑니다.':'이웃과 장사가 트이면 이웃 나라가 지도에 나타납니다.'}</small></p>`}
+  if(W.news&&W.news.length)h+=`<b class="muted">세계 소식</b><ul>${W.news.slice(0,8).map(e=>`<li><small>${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul>`;
+  if(el._h!==h){el._h=h;el.innerHTML=h}}

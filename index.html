@@ -5104,7 +5104,58 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const p=D.pending[i];if(!p.opts.some(o=>o.k===k))throw Error('없는 선택입니다');
     D.pending.splice(i,1);const me=dynMe();const text=DYN_H[p.kind](p.ctx,k,me);D.res={d:S.day,kind:p.kind,text};dynResnap();return D.res}
   // 내 캐릭터의 사망은 매일 끝에 확인한다(상속 규칙 전체는 3단계에서 넓힌다).
-  function dynTick(){const D=S.dyn;if(D.over)return;const me=dynMe();
+  // ---- 2차 4단계: 세계 지도. 이웃 나라(S.trade.towns)마다 통치 가문·체제를 가볍게 기록한다.
+  // 마을 난수 R()는 쓰지 않고 S.dyn.wr(가문 모드 전용 난수)만 쓴다. 이웃 나라 주민은 따로 만들지 않는다.
+  const REALM_POS={'너른들':[-.64,.08],'쇠뫼':[.04,-.66],'비단나루':[.6,.44]};
+  const REALM_TITLE={mon:'왕',cmon:'왕',olig:'집정관',theo:'대사제',rep:'대통령',mil:'장군',com:'서기장',msoc:'주석'};
+  const REALM_REG={rep:'공화정',olig:'귀족 과두정',cmon:'입헌군주정',mon:'군주정',theo:'신정',com:'공산 정권',msoc:'사회주의 정권',mil:'군사 정권'};
+  const REALM_G=[['boss','야심'],['cheat','교활함'],['care','자애'],['faith','신앙심'],['war','호전성']];
+  function wr(){const D=S.dyn;if(!D.wr)D.wr=((seed>>>0)^0x9E3779B9)|1;let t=D.wr=(D.wr+0x6D2B79F5)|0;t=Math.imul(t^t>>>15,1|t);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+  const wpick=a=>a[Math.floor(wr()*a.length)];
+  function realmPerson(sur,ageY,sex){const g={};for(const [k] of REALM_G)g[k]=Math.round(wr()*100)/100;
+    return {sur:sur||wpick(SUR),given:wpick(G1)+wpick(G2),sex:sex||(wr()<.5?'M':'F'),born:S.day-Math.round(ageY*YEAR),g}}
+  const rAge=p=>p?Math.floor((S.day-p.born)/YEAR):0;
+  const rName=p=>p?p.sur+p.given:'';
+  function realmLog(R0,text,big){R0.hist.push({d:S.day,text});if(R0.hist.length>12)R0.hist.shift();const D=S.dyn;D.wnews=D.wnews||[];D.wnews.push({d:S.day,t:R0.name,text,big:!!big});if(D.wnews.length>30)D.wnews.shift()}
+  function realmHeir(R0){const r=R0.ruler;if(R0.regime!=='mon'&&R0.regime!=='cmon')return null;if(rAge(r)<18||wr()<.15)return null;return realmPerson(r.sur,Math.max(0,rAge(r)-wr()*10-20),R0.regime==='mon'&&wr()<.75?'M':null)}
+  function realmInit(t){const era=t.era??0;const roll=wr();
+    const regime=era>=3?(roll<.45?'rep':roll<.6?'cmon':roll<.75?'com':roll<.88?'mil':'olig'):era>=2?(roll<.3?'cmon':roll<.5?'rep':roll<.7?'olig':roll<.85?'mon':'mil'):(roll<.5?'mon':roll<.7?'olig':roll<.88?'theo':'rep');
+    const ruler=realmPerson(null,30+wr()*30,regime==='mon'&&wr()<.85?'M':null);
+    const R0={name:t.name,regime,ruler,heir:null,since:S.day-Math.round(wr()*10*YEAR),elect:0,hist:[],dyn:1};R0.heir=realmHeir(R0);
+    if(regime==='rep'||regime==='olig')R0.elect=S.day+Math.round((1+wr()*3)*YEAR);return R0}
+  function realmNewRuler(R0,why,keepHouse){const old=R0.ruler;let nw;
+    if(keepHouse&&R0.heir){nw=R0.heir}else{nw=realmPerson(null,30+wr()*25);R0.dyn=(R0.dyn||1)+(keepHouse?0:1)}
+    nw.born=Math.min(nw.born,S.day-18*YEAR);R0.ruler=nw;R0.since=S.day;R0.heir=realmHeir(R0);
+    const tt=REALM_TITLE[R0.regime];realmLog(R0,`${R0.name}: ${why}. ${nw.sur===old.sur&&keepHouse?'후계자 ':''}${josa(rName(nw),'이','가')} 새 ${josa(tt,'이','가')} 됐다${keepHouse||nw.sur===old.sur?'':` (${nw.sur}씨 집안)`}`,true)}
+  function realmTick(t,R0){const r=R0.ruler,age=rAge(r),atWar=S.war&&S.war.t===t.name,tt=REALM_TITLE[R0.regime];
+    // 15일마다: 죽음(나이·전쟁·체제), 선거, 정변
+    let pd=.002+Math.max(0,(age-45)/35)**3*.12+(atWar?.01:0)+(R0.regime==='mil'?.003:0);
+    if(wr()<pd){const cause=age>70&&wr()<.7?'노환으로 죽었다':atWar&&wr()<.5?'전쟁 중에 죽었다':wpick(['병으로 죽었다','사고로 죽었다','암살당했다']);
+      const hered=R0.regime==='mon'||R0.regime==='cmon';realmNewRuler(R0,`${tt} ${josa(rName(r),'이','가')} ${cause}`,hered&&!!R0.heir);if(hered&&R0.ruler.sur!==r.sur)realmLog(R0,`${R0.name}: 대가 끊겨 왕조가 바뀌었다`,true);return}
+    if(R0.heir&&wr()<.004)R0.heir=null;if(!R0.heir&&(R0.regime==='mon'||R0.regime==='cmon')&&wr()<.05)R0.heir=realmHeir(R0);
+    if(R0.elect&&S.day>=R0.elect){R0.elect=S.day+4*YEAR;if(wr()<.45)realmLog(R0,`${R0.name}: 선거에서 ${tt} ${josa(rName(r),'이','가')} 다시 뽑혔다`);else realmNewRuler(R0,'선거가 치러졌다',false);return}
+    // 정변: 긴장·패전·호전성에 따라 드물게. 공화·과두는 쿠데타, 군주·신정은 혁명이나 왕조 교체
+    const unrest=.0015+(t.shock?.002:0)+(S.war&&S.war.t===t.name&&S.war.score>30?.01:0)+(R0.regime==='mil'?.002:0)+((t.era??0)>=3&&['mon','theo'].includes(R0.regime)?.003:0);
+    if(wr()<unrest){const old=R0.regime,era=t.era??0;let nr;
+      if(old==='mil')nr=era>=2?'rep':'mon';else if(['mon','theo'].includes(old))nr=era>=3?wpick(['rep','com','cmon']):era>=2?wpick(['cmon','rep','olig']):wpick(['mon','olig']);
+      else if(old==='com')nr=wpick(['msoc','mil','rep']);else nr=wpick(['mil','mil','com',era>=2?'rep':'olig']);
+      if(nr===old)return;R0.regime=nr;R0.elect=(nr==='rep'||nr==='olig')?S.day+4*YEAR:0;
+      realmNewRuler(R0,`${old==='mil'?'군정이 무너졌다':nr==='mil'?'쿠데타가 일어났다':nr==='com'?'공산 혁명이 일어났다':'체제가 바뀌었다'} (${REALM_REG[old]} → ${REALM_REG[nr]})`,false)}}
+  function dynWorldTick(){const D=S.dyn,T=S.trade;if(!T||!T.towns||!T.towns.length)return;D.realms=D.realms||{};
+    for(const t of T.towns){if(!D.realms[t.name]){D.realms[t.name]=realmInit(t);continue}if(S.day%15===0)realmTick(t,D.realms[t.name])}
+    if(T.on&&!D.wknown){D.wknown=S.day;dynChron('이웃 나라들을 알게 되다. 세계 지도가 열렸다',[])}}
+  function dynWorldView(r){const D=S.dyn,T=S.trade,G=S.gov,our=S.mil?.str||0;const known=!!(T&&T.on&&D.realms);
+    const approx=m=>r>=3?Math.round(m):m<our*.6?'우리보다 약함':m>our*1.6?'우리보다 강함':'우리와 비슷';
+    const ch=G&&S.byId.get(G.king||G.chief);
+    const us={name:'우리 마을',pop:S.agents.filter(a=>a.alive).length,regime:G?regime():'none',regName:G?(REALM_REG[regime()]||'마을 회의'):'정부 없음',ruler:ch?{name:nm(ch),age:Math.floor(ch.age/YEAR),title:G.king===ch.id?'왕':chiefTitle()}:null,mil:Math.round(our),era:S.power||0,mine:true};
+    if(!known)return {known:false,us,realms:[],news:[]};
+    const realms=T.towns.map(t=>{const R0=D.realms[t.name];if(!R0)return null;const p=REALM_POS[t.name]||[0,0];
+      return {name:t.name,tag:t.tag,x:p[0],y:p[1],pop:t.pop,era:t.era??0,dev:Math.round((t.dev||1)*100)/100,mil:approx(t.mil||0),tension:Math.round((t.tension||0)*100),fta:!!t.fta,war:!!(S.war&&S.war.t===t.name),
+        regime:R0.regime,regName:REALM_REG[R0.regime],title:REALM_TITLE[R0.regime],house:R0.ruler.sur+'씨',dyn:R0.dyn||1,since:R0.since,
+        ruler:{name:rName(R0.ruler),age:rAge(R0.ruler),sex:R0.ruler.sex,traits:r>=3?REALM_G.map(([k,l])=>[l,Math.round(R0.ruler.g[k]*100)]):null},
+        heir:R0.heir?{name:rName(R0.heir),age:rAge(R0.heir),sex:R0.heir.sex}:null,hist:R0.hist.slice(-6).reverse()}}).filter(Boolean);
+    return {known:true,us,realms,fw:S.fw&&S.fw.until>S.day?{a:S.fw.a,b:S.fw.b}:null,news:(D.wnews||[]).slice(-12).reverse()}}
+  function dynTick(){const D=S.dyn;dynWorldTick();if(D.over)return;const me=dynMe();
     if(me&&W(me)>D.peak.w)D.peak.w=W(me);
     if(me&&me.alive){const tt=dynPolTitle(me);if(D.title===undefined)D.title=tt;else if(tt!==D.title){const t=tt?`${josa(nm(me),'이','가')} ${josa(tt,'이','가')} 됐습니다`:`${josa(nm(me),'이','가')} ${D.title} 자리에서 물러났습니다`;D.title=tt;dynChron(t,[me.id]);dynPush('notice',t,[{k:'ok',label:'확인'}],{d:S.day})}
       if(S.day%5===0&&!((me.jailUntil||0)>S.day))dynBudgetTick(me);
@@ -5152,7 +5203,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       grp:g?{id:g.id,name:g.name,leader:g.leader===a.id}:null,emp:dynP(emp),staff:S.agents.filter(x=>x.alive&&x.emp===a.id).length,crimes:a.crimes||0,caught:a.caught||0,jail:!!a.jail};
     out.family={parents:f.parents.map(dynP),siblings:f.siblings.map(dynP),partner:dynP(f.partner),kids:f.kids.map(dynP),grand:f.grand.map(dynP)};
     out.actions=dynActions();out.jobs=DYN_JOBS.map(([k,n,h])=>({k,n,h}));out.act=a.act;out.vault=D.vault||0;out.spent=D.spent||null;out.wageAvg=S.wageAvg||0;out.run=D.run||{};out.title=dynPolTitle(a);out.regime=S.gov?regime():'none';
-    out.heirs=dynHeirs();out.assets=dynAssets(a);out.ties=Object.entries(D.ties||{}).map(([fam,t])=>({fam:+fam,...t})).sort((x,y)=>y.v-x.v);
+    out.world=dynWorldView(r);out.heirs=dynHeirs();out.assets=dynAssets(a);out.ties=Object.entries(D.ties||{}).map(([fam,t])=>({fam:+fam,...t})).sort((x,y)=>y.v-x.v);
     const circle=dynCircle();out.news=S.events.filter(e=>e.type!=='mile'&&e.ids.some(i=>circle.has(i))).slice(-25).reverse();
     return out}
   currencyState();
