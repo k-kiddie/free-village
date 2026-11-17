@@ -5,7 +5,7 @@ const DYN_FULL_GROUPS=GROUPS.map(g=>[g[0],g[1].slice()]);
 const dynEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const DYN_TABS=[['me','👤','인물'],['fam','🏠','가문'],['asset','💰','영지'],['dip','🌍','외교'],['plot','🗡️','음모'],['law','⚖️','정치'],['news','📰','소식'],['power','📊','통계']];
 // 메뉴별 행동 묶음(서버 행동의 group). 목록에 없는 묶음은 인물 메뉴에 나온다.
-const DYN_TAB_G={me:['건강','인맥'],fam:['가족','상속','자녀 교육'],asset:['가게·일꾼','집·땅','주식','회사','돈'],dip:['외교'],plot:['첩보','어두운 길','평판 싸움'],law:['정부 세우기','조직','선거','법 바꾸기','권력']};
+const DYN_TAB_G={me:['건강','인맥'],fam:['가족','상속','자녀 교육','가문 목표'],asset:['가게·일꾼','집·땅','주식','회사','돈'],dip:['외교'],plot:['첩보','어두운 길','평판 싸움'],law:['정부 세우기','조직','선거','법 바꾸기','권력']};
 const dynTabOfGroup=g=>/^법/.test(g)?'law':Object.keys(DYN_TAB_G).find(k=>DYN_TAB_G[k].includes(g))||'me';
 function initDyn(send,api,base){
   dynSend=send;dynApi=api;dynApiBase=base;document.body.classList.add('dyn');
@@ -72,7 +72,7 @@ function dynHook(o){
   else if(dynModalId!=null){dynModalId=null;$('#dynModal').hidden=true}
 }
 const dynAge=x=>x?`${x.age}세`:'';
-const dynPerson=x=>x?`<span class="pp${x.alive?'':' dead'}" data-person="${x.id}">${dynEsc(x.name)}</span>${x.alive?` (${x.age}세${x.sex?x.sex==='F'?'·여':'·남':''})`:` (${x.cause||'사망'})`}`:'-';
+const dynPerson=x=>x?`<span class="pp${x.alive?'':' dead'}" data-person="${x.id}">${dynEsc(x.name)}${x.noble?' · '+dynEsc(x.noble):''}</span>${x.alive?` (${x.age}세${x.sex?x.sex==='F'?'·여':'·남':''})`:` (${x.cause||'사망'})`}`:'-';
 function dynRender(){
   const v=dynView;if(!v)return;const m=v.me;dynAppRender(v);
   $('header.top h1').textContent=v.house;
@@ -81,7 +81,7 @@ function dynRender(){
   $('#dynBar').querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>select(+b.dataset.person));
   const note=$('#dynNote');
   if(v.pending.length){note.hidden=false;note.className='dynnote wait';note.textContent=`🔔 ${v.pending[0].text.slice(0,40)}${v.pending[0].text.length>40?'…':''}${v.pending.length>1?` 외 ${v.pending.length-1}건`:''} · 눌러서 선택`}
-  else if(v.res&&dynShownRes!==JSON.stringify(v.res)){note.hidden=false;note.className='dynnote res';note.textContent='📜 '+v.res.text+'  (눌러서 닫기)';dynShownRes=JSON.stringify(v.res);clearTimeout(dynNoteT);dynNoteT=setTimeout(()=>{if(note.className==='dynnote res')note.hidden=true},8000)}
+  else if(v.res&&dynShownRes!==JSON.stringify(v.res)){note.hidden=false;note.className='dynnote res';note.textContent='📜 '+v.res.text+(v.res.changes?.length?' · '+v.res.changes.map(dynChangeLabel).join(' · '):'')+'  (눌러서 닫기)';dynShownRes=JSON.stringify(v.res);clearTimeout(dynNoteT);dynNoteT=setTimeout(()=>{if(note.className==='dynnote res')note.hidden=true},8000)}
   else if(!v.pending.length&&note.className==='dynnote wait')note.hidden=true;
   document.querySelectorAll('#dynTabs button').forEach(b=>b.classList.toggle('on',b.dataset.dt===dynTab));
   const power=dynTab==='power';['#tabsTop','#tabs','#panel'].forEach(q=>$(q).hidden=!power);$('#dynPanel').hidden=power;
@@ -97,7 +97,7 @@ function dynKV(rows){return `<div class="kv">${rows.filter(Boolean).map(([k,val]
 function dynPanelHTML(v){
   const m=v.me;if(!m)return '<p class="muted">캐릭터 정보가 없습니다.</p>';
   if(dynTab==='me')return `<div class="sec"><h4>${dynEsc(m.name)}</h4>${dynKV([['나이·성별',`${m.age}세 · ${m.sex==='F'?'여':'남'}`],['건강',Math.round(m.health)+'점'],['배고픔',Math.round(m.hunger)],
-      m.happy!=null&&['행복',Math.round(m.happy*100)+'점'],['평판',Math.round((m.rep??1)*100)],['학력',EDU_L[m.edu||0]],['업종',m.occ?OCC_L[m.occ]:'없음'],
+      m.happy!=null&&['행복',Math.round(m.happy*100)+'점'],['평판',Math.round((m.rep??1)*100)],['스트레스',(v.stress||0)+'/100'],v.clergy&&['교단 지위',dynEsc(v.clergy)],['학력',EDU_L[m.edu||0]],['업종',m.occ?OCC_L[m.occ]:'없음'],
       ['고용주',m.emp?dynPerson(m.emp):'없음'],m.staff&&['고용한 사람',m.staff+'명'],m.grp&&['소속',dynEsc(m.grp.name)+(m.grp.leader?' (우두머리)':'')],m.caught&&['전과',m.caught+'번'],m.jail&&['처지','수감 중']])}
       <button data-person="${m.id}">자세한 인물 카드</button></div>
       <div class="sec"><h4>일</h4><label class="bud">하고 싶은 일 <select data-bud="job"><option value="-1" ${v.budget.job==null||v.budget.job<0?'selected':''}>성향대로(자동)</option>${(v.jobs||[]).map(j=>`<option value="${j.k}" ${v.budget.job===j.k?'selected':''}>${dynEsc(j.n)}</option>`).join('')}</select>
@@ -108,6 +108,7 @@ function dynPanelHTML(v){
       <div class="sec"><h4>상속 순서</h4>${v.heirs.length?`<ol>${v.heirs.map(x=>`<li>${dynPerson(x)} · ${x.why}</li>`).join('')}</ol>`:'<p class="dynnote">⚠️ 상속자가 없습니다. 이대로 죽으면 가문이 끊깁니다.</p>'}${v.regent?`<p class="dynnote">👤 섭정: ${dynPerson(v.regent)} (16세가 될 때까지 · 재산을 가로챌 수 있음)</p>`:''}</div>
       ${list('부모',f.parents)}${list('배우자',f.partner?[f.partner]:[])}${list('자녀',f.kids)}${f.grand.length?list('손자·손녀',f.grand):''}${list('형제자매',f.siblings)}
       ${(v.past||[]).length?`<div class="sec"><h4>끊어진 가문</h4><ul>${v.past.map(x=>`<li>⚰️ ${dynEsc(x.house)} · ${x.gen}대 ${x.years}년 · 최대 재산 ${money(x.peakW)}${x.title?' · '+dynEsc(x.title):''}</li>`).join('')}</ul></div>`:''}
+      ${v.goals?.length?`<div class="sec"><h4>가문 목표</h4>${dynKV(v.goals.map(g=>[dynEsc(g.label),dynEsc(g.claimed?'보상 수령':g.progress+(g.active?' · 선택한 목표':''))]))}</div>`:''}
       ${dynActionsHTML(v,'fam')}
       <div class="sec"><h4>가문 연대기</h4><ul>${v.chron.slice().reverse().map(c=>`<li><small class="muted">${fmtD(c.d)} · ${c.gen}대</small> ${dynEsc(c.text)}</li>`).join('')}</ul></div>`}
   if(dynTab==='asset'){const a=v.assets;const hv=a.houses.reduce((t,h)=>t+h.v,0),sv=a.stocks.reduce((t,s)=>t+s.v,0),bv=a.bld.reduce((t,b)=>t+b.v,0);
@@ -122,7 +123,7 @@ function dynPanelHTML(v){
   if(dynTab==='net'){const f=v.family;return `<div class="sec"><h4>인맥</h4>${dynKV([['배우자',f.partner?dynPerson(f.partner):'없음'],['고용주',m.emp?dynPerson(m.emp):'없음'],['고용한 사람',(m.staff||0)+'명'],['소속 조직',m.grp?dynEsc(m.grp.name):'없음'],['신앙',m.faith?'있음':'없음']])}</div>
       <div class="sec"><h4>사돈·가문 관계</h4>${(v.ties||[]).length?dynKV(v.ties.map(t=>[dynEsc(t.name),`${t.v>0?'우호':t.v<0?'적대':'보통'} ${Math.round(t.v*100)} · ${dynEsc(t.why)}`])):'<p class="muted">아직 사돈을 맺은 집안이 없습니다. 혼인으로 다른 집안과 손을 잡을 수 있습니다.</p>'}</div>
       <p class="muted">친구·원수·동업자 관계는 다음 작업에서 보강합니다.</p>`}
-  if(dynTab==='news')return `${dynNewActsHTML()}<div class="sec"><h4>내 주변 소식</h4>${v.news.length?`<ul>${v.news.map(e=>`<li><small class="muted">${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul>`:'<p class="muted">아직 가족 주변에 별일이 없습니다.</p>'}</div>
+  if(dynTab==='news')return `${v.res?`<div class="sec"><h4>최근 결과</h4><p>${dynEsc(v.res.text)}</p>${v.res.changes?.length?`<ul>${v.res.changes.map(change=>`<li>${dynEsc(dynChangeLabel(change))}</li>`).join('')}</ul>`:''}</div>`:''}${dynNewActsHTML()}<div class="sec"><h4>내 주변 소식</h4>${v.news.length?`<ul>${v.news.map(e=>`<li><small class="muted">${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul>`:'<p class="muted">아직 가족 주변에 별일이 없습니다.</p>'}</div>
       <div class="sec"><h4>마을 공지</h4><ul>${v.notices.slice().reverse().map(e=>`<li><small class="muted">${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul></div>`;
   return '';
 }
@@ -161,13 +162,17 @@ function dynBindActions(P){
   dynActArm=null;dynActErrText='';b.disabled=true;
   try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'act',k})});await dynSend({action:'save'});if(/^tgt:/.test(k))dynCardActions(true)}
   catch(e){dynActErrText=e.message;dynRender();if(/^tgt:/.test(k))dynCardActions(true)}}})}
+function dynChangeLabel({label,unit,amount}){
+  const value=Math.abs(amount);
+  return label+' '+(amount<0?'−':'+')+(unit==='money'?money(value):value+(unit==='points'?'점':unit==='days'?'일':''))
+}
 function dynOpen(p,force){
   const box=$('#dynModal');dynModalId=p.id;box.hidden=false;
   const start=p.kind==='start',m=dynView?.me;
   box.innerHTML=`<div class="dynbox"><h3>${start?'가문 모드 시작':p.kind==='death'?(dynView&&dynView.over?'⚰️ 가문 단절':'⚰️ 가장의 죽음'):p.title?dynEsc(p.title):'🔔 선택'}</h3><p style="white-space:pre-line">${dynEsc(p.text)}</p>
     ${start&&m?`<label>성 <input id="dynSur" maxlength="2" value="${dynEsc(m.sur)}"></label><label>이름 <input id="dynGiven" maxlength="3" value="${dynEsc(m.given)}"></label>`:''}
     <div class="err" id="dynErr"></div>
-    ${p.opts.map(o=>`<button class="opt" data-k="${dynEsc(o.k)}">${dynEsc(o.label)}${o.hint?`<small>${dynEsc(o.hint)}</small>`:''}</button>`).join('')}
+    ${p.opts.map(o=>`<button class="opt" data-k="${dynEsc(o.k)}">${dynEsc(o.label)}${o.hint?`<small>예상 · ${dynEsc(o.hint)}</small>`:''}${o.stress?.points?`<small>${dynEsc(o.stress.reason)}에 어긋남 · 스트레스 +${o.stress.points}점</small>`:''}</button>`).join('')}
     ${start?'':'<button class="opt" data-later="1">나중에 고르기 (창 닫기)<small>지도·가문 정보를 먼저 볼 수 있습니다. 위의 알림을 누르면 다시 열립니다.</small></button>'}
     <div class="stopnote">⏸ 고를 때까지 시간이 멈춰 있습니다.</div></div>`;
   const later=box.querySelector('[data-later]');if(later)later.onclick=()=>{box.hidden=true};
@@ -344,7 +349,7 @@ function dynAppRender(v){if(!$('#dynApp'))return;const m=v.me;dynTrackNew(v);
   const W=v.world;$('#dStat').innerHTML=`<span>🏠 <b>${dynEsc(v.house)}</b> ${v.gen}대</span><span>⭐ 평판 <b>${Math.round((m?.rep??1)*100)}</b></span><span>🏅 <b>${dynEsc(v.rankName)}</b></span>${W?`<span>🏰 <b>${dynEsc(W.us.name)}</b> ${(W.us.effPop||W.us.pop).toLocaleString()}명</span><span>🏛️ ${dynEsc(W.us.regName)}</span>`:''}<span>📅 ${fmtD(S.day)}</span>`;
   const st=$('#dStrip'),bell=$('#dBell');
   if(v.pending.length){st.className='dstrip wait';st.textContent=`🔔 ${v.pending[0].title?v.pending[0].title+' · ':''}${v.pending[0].text.replace(/\n/g,' ')}${v.pending.length>1?` 외 ${v.pending.length-1}건`:''} · 눌러서 선택`;bell.hidden=false;bell.textContent='🔔 '+v.pending.length}
-  else{bell.hidden=true;st.className='dstrip';const r=v.res&&S.day-v.res.d<30?v.res:null;const n=v.news[0];st.textContent=r?'📜 '+r.text:n?`📰 ${fmtD(n.d)} ${n.text}`:'📰 아직 주변에 별일이 없습니다'}
+  else{bell.hidden=true;st.className='dstrip';const r=v.res&&S.day-v.res.d<30?v.res:null;const n=v.news[0];st.textContent=r?'📜 '+(r.changes?.length?r.changes.slice(0,3).map(dynChangeLabel).join(' · ')+' · ': '')+r.text:n?`📰 ${fmtD(n.d)} ${n.text}`:'📰 아직 주변에 별일이 없습니다'}
   document.querySelectorAll('#dMap [data-mm2]').forEach(b=>b.classList.toggle('on',b.dataset.mm2===dynMapMode));
   // 메뉴별 할 수 있는 행동 개수
   const cnt={};for(const a of v.actions||[])if(a.ok){const t=dynTabOfGroup(a.group);cnt[t]=(cnt[t]||0)+1}
