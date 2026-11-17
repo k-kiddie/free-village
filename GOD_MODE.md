@@ -471,3 +471,38 @@ S.dyn = {
 - 다) 사기: 현금 10%·30%·60%어치, 팔기: 10%·절반·전부. 내 회사 지분이 50% 넘으면 경영권 경고.
 - 회사 세우기는 내 건물(가게·공방 등)이 있을 때만(건물 없는 회사는 엔진 규칙상 30일 안에 파산하는 것을 확인).
 - 검사 방식 수정: 엔진의 지도 확장 목록(`EXPL`·`PLOTS`)이 모듈 전역이라 한 프로세스에서 두 마을을 번갈아 돌리면 섞인다. 복원 후 같은 진행 검사는 차례로 돌린다(서버는 Worker당 마을 하나라 해당 없음).
+
+---
+
+## 13. 다음 세션 시작점 (2026-11-17 작성)
+동현 요청: 2단계 남은 작업은 새 컨텍스트 윈도우(새 세션)에서 시작한다.
+
+### 코드 위치
+- 작업 브랜치: `claude/funny-rubin-1e2ynb` (main 미병합). 새 세션은 이 브랜치를 받아 이어서 작업한다(`git fetch origin claude/funny-rubin-1e2ynb` 후 그 위에서 작업). 동현이 main 병합을 원하면 PR을 만든다(요청 전에는 만들지 않음).
+- 가문 모드 엔진 코드: `engine.js`의 "가문 모드" 구역(`DYN_LIFE` 정의부터 `return{dynStart,...` 직전까지). 원래 엔진 안의 훅은 모두 `S.dyn` 조건:
+  - `mate()`(청혼·자녀 혼인), `step()` 끝 `dynTick()`, 일 고르기 점수(`budget.job`), `voterScore`(사돈 표), `mAppoint`(측근·귀족 후보), `election`/`councilElection`(`dynCandidacy`), 주식 자동 거래 제외(`dynOwnKey`), `exportState`(관련 죽은 인물 보존).
+  - 원래 엔진에서 함수로 분리한 것(동작 동일): `councilVotes`, `foundCouncil`, `crownLord`, `revoltRun`, `makeGang`.
+- 서버: `server.js`(월드 전환), `sim-worker.js`(명령 `choose`·`rename`·`act`·`budget`·`vault`, 선택지 대기 중 정지, 정보 제한). 화면: `god-client.js`(`/god`에만 붙음).
+- `S.dyn` 필드: `v,pid,house,houseAuto,founder,heir,gen,start,prestige,budget{life,edu,save,give,debt,job},pending[],cool{},chron[],peak,adopted[],past[],over,watch,nextP,res,ties{},wed{},title,run{},vault,spent`.
+
+### 선택지·행동 추가하는 방법
+- 사건 선택지: `dynPush(kind,text,opts,ctx)`로 띄우고 `DYN_H[kind](ctx,k,me)`에서 처리(반환 문자열이 결과 알림). 빈도는 `dynCool(key,days)`/`dynCools([[key,days],...])`.
+- 능동 행동: `dynActions()`에 `add(k,group,label,hint,why)`(why가 있으면 비활성), `dynAct(k)`에서 실행. 양 선택이 필요하면 `opts:[[값,'이름'],...]`(주식 참고).
+- 엔진이 주민 대신 결정하는 지점에 끼울 때: `if(S.dyn&&a.id===S.dyn.pid)` 분기를 **R()/gauss() 호출 전에** 두거나, 난수 호출 뒤 결과에만 영향을 주게 한다. 원래 마을에서는 `S.dyn`이 없으므로 결과 불변.
+
+### 남은 2단계: 사건 선택지(7-2 [1] 중 아직 없는 것)
+병(의사·민간요법·버팀), 해고, 사업 위기·파산 위기, 좋은 매물·투자 제안, 동업자 장부 조작 제안, 전세금 미반환, 세입자 월세 체납, 위험한 고수익 일, 흉년·물가 폭등, 사기·도둑 피해(고발·복수·참기), 내가 범죄로 걸림(자백·부인·뇌물·도주), 친구의 범죄 제안, 증인 소환, 전염병(피난·머무름), 화재·재해, 가족 사망(장례 규모), 출산(이름 짓기), 상속자 없음/1명 경고(입양·친척 지정), 혁명·쿠데타 발생 시 가담·정부 편·숨기, 체제 변화(충성·저항·망명), 전쟁(입대·회피·군납), 징병 영장, 새 세금·법(따름·탈세·시위), 권력자의 뇌물·충성 요구, 권력자일 때 법안 부결·지지율 급락·측근 비리.
+- 7-1 중 아직 없는 [1]: 이혼, 입양, 상속자 지정, 자녀 교육 정하기(진학·유학), 이사·이민, 친해지기·동업 제안·조직 가입/탈퇴, 뇌물·후원, 후보 후원, 의사에게 가기, 어두운 길(사기·탈세·밀수·마약·불법 도박장), 측근 임명.
+- 그다음 3단계(죽음·상속 4장 전체: 형제·조카·배우자·먼 친척·양자 순서, 섭정, 단절 화면, 새 가문 시작, 관전).
+
+### 검사
+- `node scripts/check-dynasty.js origin/main` (원래 마을 불변 300명/3,000일·5,000명/50일 포함, 약 5분. `--quick`은 약 1분)
+- `node scripts/check-worlds.js` (서버 월드 전환·가문 모드 API)
+- 기존: `check-server.js`, `check-http.js`, `check-client.js`, `check-migration.js`, `check-lifecycle.js`
+- 한 프로세스에서 두 마을을 번갈아 돌리지 않는다(`EXPL`·`PLOTS` 모듈 전역).
+- 화면 수정 뒤 `node scripts/build.js`로 `index.html` 재생성.
+
+### 동현이 정한 것 / Claude가 정한 것(위임)
+- 동현: 정략결혼 모든 체제(효과는 체제별), 사돈 관계 점수, 정부 없는 단계 권력 행동, 처음부터 공산 혁명 가능, 여성 출마 제한은 엔진 그대로 두고 시위·발의로 바꾸기, 주식 가·나·다.
+- Claude(위임): 약혼은 1차 제외, 청혼 빈도(같은 상대 1년·전체 15일), 지출 설정 수치, 일 고르기 가중치.
+- 아직 미정(2-1): 성향과 반대 선택 시 스트레스, 평민의 틀린 소문, 2차 인구 상한.
