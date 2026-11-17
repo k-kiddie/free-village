@@ -17,6 +17,8 @@ body.dyn .stats,body.dyn .foot{display:none!important}
 .dynpanel .kv>div{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid var(--line)}.dynpanel .kv span{color:var(--muted)}
 .dynpanel .pp{cursor:pointer;text-decoration:underline dotted}.dynpanel .dead{opacity:.55}.dynpanel ul{margin:0;padding-left:18px}.dynpanel li{margin:2px 0}
 .dynpanel .muted{color:var(--muted)}
+.dynpanel .actgrp{margin:8px 0}.dynpanel .act{display:block;width:100%;text-align:left;margin:4px 0;padding:8px 10px;font-size:14px}.dynpanel .act small{display:block;color:var(--muted);font-size:12px;line-height:1.4}
+.dynpanel .act.arm{background:#5a4512}.dynpanel .act:disabled{opacity:.55}.dynpanel .err{color:#ff6b6b;font-size:13px}
 .dynmodal{position:fixed;inset:0;z-index:100;background:#000b;display:flex;align-items:flex-end;justify-content:center;padding:12px}
 .dynbox{background:var(--panel);border:3px solid #000;box-shadow:0 0 0 2px var(--gold);max-width:520px;width:100%;padding:14px;max-height:85vh;overflow:auto}
 .dynbox h3{margin:0 0 8px;font-family:var(--f-head);font-weight:400;color:var(--gold);font-size:18px}.dynbox p{margin:0 0 10px;font-size:15px;line-height:1.55}
@@ -69,7 +71,7 @@ function dynRender(){
   const power=dynTab==='power';['#tabsTop','#tabs','#panel'].forEach(q=>$(q).hidden=!power);$('#dynPanel').hidden=power;
   if(power)return;
   const P=$('#dynPanel');P.innerHTML=dynPanelHTML(v);
-  P.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>select(+b.dataset.person));
+  P.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>select(+b.dataset.person));dynBindActions(P);
 }
 function dynKV(rows){return `<div class="kv">${rows.filter(Boolean).map(([k,val])=>`<div><span>${k}</span><b>${val}</b></div>`).join('')}</div>`}
 function dynPanelHTML(v){
@@ -78,7 +80,7 @@ function dynPanelHTML(v){
       m.happy!=null&&['행복',Math.round(m.happy*100)+'점'],['평판',Math.round((m.rep??1)*100)],['학력',EDU_L[m.edu||0]],['업종',m.occ?OCC_L[m.occ]:'없음'],
       ['고용주',m.emp?dynPerson(m.emp):'없음'],m.staff&&['고용한 사람',m.staff+'명'],m.grp&&['소속',dynEsc(m.grp.name)+(m.grp.leader?' (우두머리)':'')],m.caught&&['전과',m.caught+'번'],m.jail&&['처지','수감 중']])}
       <button data-person="${m.id}">자세한 인물 카드</button></div>
-      <div class="sec"><h4>할 수 있는 일</h4><p class="muted">직업·집·청혼 같은 행동 버튼은 다음 작업에서 들어갑니다. 지금은 평소에 성향대로 생활하고, 중요한 순간에 선택지가 뜹니다.</p></div>`;
+      ${dynActionsHTML(v)}`;
   if(dynTab==='fam'){const f=v.family;const list=(t,a)=>`<div class="sec"><h4>${t}</h4>${a.length?`<ul>${a.map(x=>`<li>${dynPerson(x)}</li>`).join('')}</ul>`:'<p class="muted">없음</p>'}</div>`;
     return `<div class="sec"><h4>${dynEsc(v.house)} · ${v.gen}대째</h4>${dynKV([['가문 시작',fmtD(v.start)],['최고 재산',money(v.peak.w)],['현재 지위',v.rankName]])}</div>
       <div class="sec"><h4>상속 순서</h4>${v.heirs.length?`<ol>${v.heirs.map(x=>`<li>${dynPerson(x)} · ${x.why}</li>`).join('')}</ol>`:'<p class="dynnote">⚠️ 상속자가 없습니다. 이대로 죽으면 가문이 끊깁니다.</p>'}</div>
@@ -97,6 +99,21 @@ function dynPanelHTML(v){
       <div class="sec"><h4>마을 공지</h4><ul>${v.notices.slice().reverse().map(e=>`<li><small class="muted">${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul></div>`;
   return '';
 }
+function dynActionsHTML(v){const acts=v.actions||[];if(!acts.length)return '';const groups=[...new Set(acts.map(a=>a.group))];
+  return `<div class="sec"><h4>할 수 있는 일</h4><p class="muted">평소에는 성향대로 생활합니다. 아래 행동은 직접 고를 수 있습니다. 결과는 마을 사람들의 판단(투표·가담)에 달려 있습니다.</p>
+    ${groups.map(g=>`<div class="actgrp"><b class="muted">${dynEsc(g)}</b>${acts.filter(a=>a.group===g).map(a=>`<button class="act" data-act="${dynEsc(a.k)}" ${a.ok?'':'disabled'}>${dynEsc(a.label)}<small>${dynEsc(a.ok?a.hint:a.why)}</small></button>`).join('')}</div>`).join('')}
+    <div class="err" id="dynActErr">${dynEsc(dynActErrText)}</div></div>`}
+let dynActErrText='';
+let dynActArm=null;
+let dynArmTimer=0;
+function dynBindActions(P){
+  const arm=b=>{b.classList.add('arm');b.querySelector('small').textContent='한 번 더 누르면 실행합니다'};
+  P.querySelectorAll('[data-act]').forEach(b=>{if(b.dataset.act===dynActArm&&!b.disabled)arm(b);b.onclick=async()=>{
+  const k=b.dataset.act;if(dynActArm!==k){dynActArm=k;clearTimeout(dynArmTimer);dynArmTimer=setTimeout(()=>{dynActArm=null;dynRender()},5000);dynRender();return}
+  clearTimeout(dynArmTimer);
+  dynActArm=null;dynActErrText='';b.disabled=true;
+  try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'act',k})});await dynSend({action:'save'})}
+  catch(e){dynActErrText=e.message;dynRender()}}})}
 function dynOpen(p,force){
   const box=$('#dynModal');dynModalId=p.id;box.hidden=false;
   const start=p.kind==='start',m=dynView?.me;

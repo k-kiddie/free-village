@@ -49,7 +49,15 @@ function main(){
       if(p.kind==='proposeIn'){const me=w3.S.byId.get(w3.S.dyn.pid);w3.dynChoose(p.id,'yes');if(me.partner===p.ctx.from){accepted=true;assert.equal(w3.S.byId.get(p.ctx.from).partner,me.id)}}
       else w3.dynChoose(p.id,p.opts.at(-1).k)}
     if(w3.S.dyn.over)break;w3.step()}
-  console.log(JSON.stringify({dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,ms:Date.now()-t0}));
+  // 5. 정부 세우기 행동: 회의 제안·공산 혁명·영주 자처(기존 엔진 계산 재사용)
+  const fresh=(seed)=>{const x=engine.createWorld(seed,100);x.dynStart();x.dynChoose(x.S.dyn.pending[0].id,'go');for(let i=0;i<10;i++)x.step();return x};
+  const acts={};
+  {const x=fresh(7);const r=x.dynAct('council');assert(x.S.gov||/부결/.test(r.text));acts.council=r.text;if(x.S.gov){assert(['rep','olig'].includes(x.S.gov.regime));assert(x.S.gov.history.length>=1,'첫 선거');assert(x.S.gov.history[0].cands.some(c=>c.id===x.S.dyn.pid)||/참정권|자격/.test(r.text),'내가 후보(또는 자격 없음 안내)')}
+    assert.throws(()=>x.dynAct('council'),'정부가 생기면 회의 제안 없음')}
+  {const x=fresh(11);const r=x.dynAct('revolt');acts.revolt=r.text;if(/성공/.test(r.text)){assert.equal(x.S.gov.regime,'com');assert.equal(x.S.gov.chief,x.S.dyn.pid);assert.equal(x.dynView().rank,4)}}
+  {const x=fresh(5);assert.throws(()=>x.dynAct('lord'));x.S.byId.get(x.S.dyn.pid).cash+=1e5;const r=x.dynAct('lord');acts.lord=r.text;assert.equal(x.S.gov.regime,'mon');assert.equal(x.S.gov.chief,x.S.dyn.pid);x.step();assert.equal(x.S.dyn.pending.length,0,'행동 직후 중복 알림 없음')}
+  {const x=fresh(9);const me=x.S.byId.get(x.S.dyn.pid);me.cash+=1e5;if(!me.grp){x.dynAct('gang');assert(me.grp);acts.gang=true}}
+  console.log(JSON.stringify({dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,acts,ms:Date.now()-t0}));
 
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dyn-base-'));const baseFile=path.join(tmp,'engine.js');
