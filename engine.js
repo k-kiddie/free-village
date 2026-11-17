@@ -4354,6 +4354,15 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const loyal=ad.filter(a=>a!==me&&!reb.includes(a)&&((a.w||0)>med*2.5||(a.g.comply>.8&&(a.w||0)>=med)));
     const rp=reb.reduce((t,a)=>t+a.health/100,0)*(1+me.g.boss*.5),dp=loyal.reduce((t,a)=>t+a.health/100,0)*.9+(S.gov?(S.gov.guards||0):0)*3+Math.log10(top.reduce((t,a)=>t+Math.max(0,a.w||0),0)+10)*2;
     return {n:reb.length,p:reb.length<5?0:cl((rp/Math.max(.01,dp)-.8)/.4,0,1)}}
+  // ---- 법 바꾸기: 시위·청원(누구나), 법안 발의(촌장·왕·의원). 표결은 기존 passPolicies(의회) 경로 ----
+  const DYN_LAWS={womenVote:{n:'여성 참정권',f:d=>(d.sex==='F'?.45:0)+d.g.equal-.4-(S.patri??.7)*.55-d.g.faith*.25},womenProp:{n:'여성 재산권',f:d=>(d.sex==='F'?.45:0)+d.g.equal-.35-(S.patri??.7)*.4}};
+  const dynHard=()=>['mon','mil','com','msoc','theo'].includes(regime());
+  function dynLawSupport(key){const ad=adultsC(),f=DYN_LAWS[key].f;let y=0;for(const d of ad)if(f(d)>0)y++;return {y,n:ad.length}}
+  // 표결: 의회가 있으면 passPolicies, 없으면 통치자가 자기 공약(성향)과 여론으로 정한다.
+  function dynVoteLaw(key,outrage){const G=S.gov,mem=(G.council||[]).map(id=>S.byId.get(id)).filter(m=>m&&m.alive),ch=S.byId.get(G.chief),me=dynMe();
+    if(!mem.length){const yes=(ch===me)||!!(ch&&platform(ch)[key])||R()<outrage*.5;if(yes)G.policy[key]=true;return {pass:yes,yes:yes?1:0,no:yes?0:1,decree:true}}
+    G._outrage=outrage;G._special=true;const pend={...(G.pending||{})};let r;try{passPolicies({[key]:true},'발의 ');r=G.lastVote&&G.lastVote.d===S.day&&G.lastVote.res[key]}finally{G._special=false;G._outrage=0;G.pending={...pend,...(G.pending||{})}}
+    return r||{pass:G.policy[key]===true,yes:0,no:0}}
   function dynActions(){const D=S.dyn,me=dynMe();if(!me||!me.alive||D.over)return [];const G=S.gov,ad=adultsC(),out=[];const run=D.run||{};
     const add=(k,group,label,hint,why)=>out.push({k,group,label,hint,ok:!why,why:why||''});const adult=isAdult(me)?'':'어른이 되어야 함';
     if(!G){
@@ -4368,6 +4377,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       add('gang','조직','패거리 만들기','사람을 모아 보호비를 걷거나 힘을 키움(조직원 모집은 엔진이 성향대로)',adult||(me.grp?'이미 조직에 속해 있음':'')||(clout?'':'재산이 평균의 1.5배를 넘거나, 일꾼 2명 이상을 부리거나, 범죄 경력이 있어야 함'));
       if(G&&elective())add('party','조직','정당 만들기','내 이념으로 정당을 세움. 의원 후보 공천과 선거 자금에 쓰임',adult||(me.grp?'이미 조직에 속해 있음':''))}
     if(G&&elective()&&G.chief!==me.id){const f=dynFee('chief');add('runChief','선거',run.chief?`${chiefTitle()} 선거 출마 등록됨`:`${chiefTitle()} 선거 출마`,`다음 선거(${Math.max(0,(G.nextElection||S.day)-S.day)}일 뒤)에 후보로 나감 · 선거비 ${won(f)} · 당락은 주민 투표`,run.chief?'이미 등록함':dynEligible('chief')||(me.cash<f?'선거비가 모자람':''))}
+    if(G)for(const key of Object.keys(DYN_LAWS)){if(G.policy[key]===true||!polReady(key))continue;const L=DYN_LAWS[key],sup=dynLawSupport(key);const ruler=G.chief===me.id||G.king===me.id,mp=(G.council||[]).includes(me.id);
+      if(ruler||mp)add('law:'+key,'법 바꾸기',`${L.n} 법안 발의`,`${(G.council||[]).length?'의회 표결(과반이면 통과)':'통치자 결정'} · 주민 지지 약 ${sup.y}/${sup.n}명`,dynWait('law'+key));
+      else add('pet:'+key,'법 바꾸기',`${L.n} 시위·청원`,`지지하는 주민을 모아 의회를 압박 · 주민 지지 약 ${sup.y}/${sup.n}명${dynHard()?' · 강압적인 체제라 붙잡혀 갇힐 수 있음':''}`,adult||dynWait('pet'+key))}
     if(G&&(G.council||[]).length&&!(G.council||[]).includes(me.id)&&G.chief!==me.id){const f=dynFee('council');add('runCouncil','선거',run.council?'의원 선거 출마 등록됨':'의원 선거 출마',`다음 의원 선거(${Math.max(0,(G.nextCouncil||S.day)-S.day)}일 뒤)에 후보로 나감 · 선거비 ${won(f)}`,run.council?'이미 등록함':dynEligible('council')||(me.cash<f?'선거비가 모자람':''))}
     return out}
   function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');const a=dynActions().find(x=>x.k===k);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(!a.ok)throw Error(a.why);
@@ -4380,6 +4392,13 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(r.few)D.cool.actrevolt=S.day+YEAR/2;text=r.ok?`혁명 성공. ${r.n}명과 함께 부자들을 몰아내고 공산 정부를 세웠다`:r.few?`따르는 사람이 ${r.n}명뿐이라 봉기가 흐지부지됐다`:`봉기가 진압당했다. ${josa(nm(me),'은','는')} 마을에서 쫓겨났다`;dynChron(text,[me.id])}
     else if(k==='gang'){const g=makeGang(me,S.day);text=`${josa(g.name,'을','를')} 만들었다`;dynChron(`${josa(nm(me),'이','가')} ${josa(g.name,'을','를')} 만들다`,[me.id])}
     else if(k==='party'){const g=newParty(me,'idea');text=`${josa(g.name,'을','를')} 세웠다`;log('pol',`${josa(nm(me),'이','가')} ${josa(g.name,'을','를')} 세웠다`,[me.id]);dynChron(`${josa(nm(me),'이','가')} ${josa(g.name,'을','를')} 세우다`,[me.id])}
+    else if(/^(pet|law):/.test(k)){const [kind,key]=k.split(':'),L=DYN_LAWS[key],G=S.gov;D.cool['act'+kind+key]=S.day+YEAR;
+      let outrage=0;if(kind==='pet'){const ad=adultsC();let n=0;for(const d of ad)if(L.f(d)+gauss()*.12>0)n++;outrage=Math.min(1,n/Math.max(1,ad.length)*(S.bldgs.some(b=>b.fx.includes('press')&&b.owner)?1.2:1));
+        log('pol',`${josa(nm(me),'이','가')} 주민 ${n}명과 ${L.n}을 요구하며 시위를 벌였다`,[me.id],{x:me.x||0,y:me.y||0,t:'시위'});
+        if(dynHard()&&R()<.3){me.caught=(me.caught||0)+1;me.jailUntil=S.day+YEAR/4;me.rep=Math.max(0,(me.rep??1)-.1);text=`시위 주동자로 붙잡혀 ${YEAR/4}일 동안 갇혔다. ${L.n} 요구는 묵살됐다`;dynChron(`${josa(nm(me),'이','가')} ${L.n} 시위로 붙잡히다`,[me.id]);D.title=dynPolTitle(me);D.res={d:S.day,kind:'act',text};return D.res}}
+      const r=dynVoteLaw(key,outrage);text=r.pass?`${josa(L.n,'이','가')} ${r.decree?'통치자의 결정으로':`${r.yes}대 ${r.no}로`} 통과됐다`:`${josa(L.n,'이','가')} ${r.decree?'통치자에게 거부당했다':`${r.yes}대 ${r.no}로 부결됐다`}`;
+      if(kind==='pet')text=`시위·청원(주민 ${Math.round(outrage*100)}% 호응) → ${text}`;dynChron(`${L.n} ${kind==='pet'?'시위':'발의'}: ${r.pass?'통과':'부결'}`,[me.id]);
+      if(r.pass)log('pol',`${josa(nm(me),'이','가')} 앞장선 ${josa(L.n,'이','가')} 통과됐다`,[me.id])}
     else if(k==='runChief'||k==='runCouncil'){const kind=k==='runChief'?'chief':'council',f=dynFee(kind);me.cash-=f;SP(me,'bribe',f);D.run={...(D.run||{}),[kind]:true};text=`${kind==='chief'?chiefTitle():'의원'} 선거에 출마 등록했다(선거비 ${won(f)})`}
     D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};return D.res}
   // 선거 후보 명단에 출마 등록한 플레이어를 넣는다(당락은 엔진 투표).

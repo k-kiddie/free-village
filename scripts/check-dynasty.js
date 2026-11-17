@@ -57,6 +57,9 @@ function main(){
   {const x=fresh(11);const r=x.dynAct('revolt');acts.revolt=r.text;if(/성공/.test(r.text)){assert.equal(x.S.gov.regime,'com');assert.equal(x.S.gov.chief,x.S.dyn.pid);assert.equal(x.dynView().rank,4)}}
   {const x=fresh(5);assert.throws(()=>x.dynAct('lord'));x.S.byId.get(x.S.dyn.pid).cash+=1e5;const r=x.dynAct('lord');acts.lord=r.text;assert.equal(x.S.gov.regime,'mon');assert.equal(x.S.gov.chief,x.S.dyn.pid);x.step();assert.equal(x.S.dyn.pending.length,0,'행동 직후 중복 알림 없음')}
   {const x=fresh(9);const me=x.S.byId.get(x.S.dyn.pid);me.cash+=1e5;if(!me.grp){x.dynAct('gang');assert(me.grp);acts.gang=true}}
+  // 6. 법 바꾸기: 시위·청원/발의 → 의회 표결 또는 통치자 결정
+  {let passed=0,tried=0;for(const seed of [7,11,17]){const x=fresh(seed);x.dynAct('council');if(!x.S.gov)continue;for(const t of x.dynActions().filter(a=>/^(pet|law):/.test(a.k)&&a.ok)){const r=x.dynAct(t.k);tried++;const key=t.k.split(':')[1];assert.equal(/통과/.test(r.text)&&!/부결|거부|갇혔/.test(r.text),x.S.gov.policy[key]===true,r.text);if(x.S.gov.policy[key]===true)passed++;assert.throws(()=>x.dynAct(t.k))}}
+    assert(tried>0);acts.law={tried,passed}}
   console.log(JSON.stringify({dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,acts,ms:Date.now()-t0}));
 
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
