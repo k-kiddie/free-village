@@ -159,6 +159,22 @@ function main(){
     const s1=JSON.stringify(x.exportState());const y=engine.createWorld(11,100);y.importState(JSON.parse(s1));assert.deepEqual(y.S.dyn,JSON.parse(JSON.stringify(X.dyn)),'저장 왕복');
     return {tier:X.dyn.tier,intel,acts:acts.length}})();
   console.log(JSON.stringify({spy2}));
+  // 13. [2] 나머지: 평판 공격·청부 살인·사건 덮기·배당·증자·왕위 계승권 주장·왕자의 난
+  const more2=(()=>{const x=engine.createWorld(7,150),X=x.S;x.dynStart();const st={kinds:{}};const pick=ks=>p=>(p.opts.find(o=>ks.includes(o.k))||p.opts[0]).k;
+    drive(x,900,pick(['no','ok','forgive','report']),st);const me=X.byId.get(X.dyn.pid);assert(me&&me.alive,'내 캐릭터 생존');me.cash+=1e6;const out={};
+    const act=pre=>{X.dyn.cool={};const a=x.dynActions().find(a=>a.k.startsWith(pre));assert(a,pre+' 없음');assert(a.ok,pre+': '+a.why);return x.dynAct(a.k).text};
+    const sm=x.dynActions().find(a=>a.k.startsWith('ext:smear:'));const tg=X.byId.get(Number(sm.k.split(':')[2]));const r0=tg.rep??1;out.smear=act('ext:smear:');assert((tg.rep??1)<r0||(me.rep??1)<1,'평판 공격 결과');
+    const hk=x.dynActions().find(a=>a.k.startsWith('ext:hit:'));out.hit=act('ext:hit:');
+    if(X.gov){X.gov.cases.push({t:'tax',who:me.id,amt:1,ev:.5,d:X.day});out.fix=act('ext:fix')}
+    // 대주주 회사: 회사를 하나 만들어 지분 30% 이상 갖게 한다
+    const f=X.firms.find(z=>z.alive!==false);if(f){const tot=engine.votingShares?engine.votingShares(f):Object.values(f.sh).reduce((t,v)=>t+v,0);f.sh[String(me.id)]=(f.sh[String(me.id)]||0)+Math.ceil(tot*.5);f.cash=(f.cash||0)+1e5;const c0=me.cash;out.div=act('ext:div:');assert(/배당/.test(out.div));out.rights=act('ext:rights:')}
+    // 왕위 계승권 주장: 군주정 공위
+    if(!X.gov){x.dynAct('lord')}X.gov.regime='mon';X.gov.interregnum={since:X.day,previous:null};X.gov.chief=null;let crowned=false;for(let i=0;i<20&&!crowned;i++){act('ext:claim');crowned=X.gov.chief===me.id}assert(crowned,'계승권 주장');
+    // 왕자의 난: 왕위를 노리는 자식 → 선택지
+    const kid=X.agents.find(a=>a.alive&&a.id!==me.id&&a.age>=18*YEAR);kid.g.boss=1;kid.parents=[me.id];me.kids.push(kid.id);X.gov.royalRivals=[kid.id];let asked=false;
+    for(let i=0;i<400&&!asked;i++){X.gov.nextRoyalDispute=X.day;X.gov.chief=me.id;x.step();const p=X.dyn.pending.find(p=>p.kind==='prince');if(p){asked=true;out.prince=x.dynChoose(p.id,'reconcile').text}while(X.dyn.pending.length)x.dynChoose(X.dyn.pending[0].id,X.dyn.pending[0].opts[0].k)}
+    assert(asked,'왕자의 난 선택지');return out})();
+  console.log(JSON.stringify({more2}));
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dyn-base-'));const baseFile=path.join(tmp,'engine.js');
   fs.writeFileSync(baseFile,execFileSync('git',['show',base+':engine.js'],{cwd:root}));
