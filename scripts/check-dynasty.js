@@ -14,6 +14,7 @@ function drive(w,days,pickFn,stat){
     w.step();
   }
 }
+const isA=a=>a.age>=14*YEAR;
 function main(){
   const t0=Date.now();
   // 1. 시작 인물 = 성인 중 정치력 최고
@@ -125,7 +126,7 @@ function main(){
     R1.regime='mon';R1.heir=null;R1.ruler.born=X.day-200*YEAR;drive(x,120,pick(['take']),st);assert(R1.prov&&R1.prov.how==='union','계승 합병');
     // 선전포고 → 승리 → 정복 선택지 → 속령(정복), 인재 이주, 수용 한도 증가
     const t=X.trade.towns.find(z=>!X.dyn.realms[z.name].prov);const pop0=X.agents.filter(a=>a.alive).length,cap0=X.cap;
-    X.dyn.cool={};X.mil=X.mil||{lvl:2,str:5,morale:.6};X.mil.str=Math.max(X.mil.str||0,5);x.dynAct('dip:war:'+t.name);assert(X.war&&X.war.t===t.name&&X.war.by==='us','선전포고');
+    X.dyn.cool={};X.war=null;X.gov.chief=me.id;X.mil=X.mil||{lvl:2,str:5,morale:.6};X.mil.str=Math.max(X.mil.str||0,5);x.dynAct('dip:war:'+t.name);assert(X.war&&X.war.t===t.name&&X.war.by==='us','선전포고');
     for(let i=0;i<60&&X.war;i++){X.war.score=100;X.gov.chief=me.id;drive(x,1,pick(['annex']),st)}drive(x,1,pick(['annex']),st);
     const R2=X.dyn.realms[t.name];assert(R2.prov&&R2.prov.how==='war','정복 속령');assert(X.agents.filter(a=>a.from===t.name).length>=10,'인재 이주');assert(X.cap>cap0,'수용 한도 증가');
     // 속령은 세금을 내고 우리와 전쟁하지 않는다
@@ -135,6 +136,29 @@ function main(){
     const s1=JSON.stringify(x.exportState());const y=engine.createWorld(11,100);y.importState(JSON.parse(s1));assert.deepEqual(y.S.dyn.realms,X.dyn.realms,'세계 상태 저장 왕복');assert.equal(y.S.dyn.wr,X.dyn.wr);
     return {wed,union:R1.name,conquered:t.name,migrants:X.agents.filter(a=>a.from===t.name).length,cap:[cap0,X.cap],pop:[pop0,X.agents.filter(a=>a.alive).length],news:(X.dyn.wnews||[]).length}})();
   console.log(JSON.stringify({world2}));
+  // 12. 2차 6·7단계와 [2] 사건: 성장 칭호, 첩보 보고·감시, 정적 뒷조사, 포섭 제안, 이웃의 혼인 동맹 제안, 암살 위협
+  const spy2=(()=>{const x=engine.createWorld(11,100),X=x.S;x.dynStart();const st={kinds:{}};const pick=ks=>p=>(p.opts.find(o=>ks.includes(o.k))||p.opts[0]).k;
+    drive(x,300,pick(['take','annex']),st);const me=X.byId.get(X.dyn.pid);if(!X.gov){me.cash+=1e7;x.dynAct('lord')}else X.gov.chief=me.id;
+    const push=(kind,opts,ctx)=>{const p={id:X.dyn.nextP++,kind,d:X.day,text:kind,opts:opts.map(k=>({k,label:k})),ctx};X.dyn.pending.push(p);return p};const ch=(p,k)=>x.dynChoose(p.id,k).text;
+    // 성장 칭호: 속령 인구가 크면 읍·성으로
+    const t=X.trade.towns[0];X.dyn.realms[t.name].prov={d:X.day,how:'war',old:'mon',unrest:0};t.pop=3000;const tier0=X.dyn.tier??0;drive(x,16,pick(['ok']),st);assert(X.dyn.tier>tier0,'성장 칭호 오름');assert(/우리 (읍|성)/.test(x.dynView().world.us.name),'칭호 표시');
+    // 첩보 보고: 1년마다(권력자) / 감시하면 쿠데타 차단
+    let intel=0;for(let i=0;i<61;i++){X.gov.chief=me.id;while(X.dyn.pending.length){const p=X.dyn.pending[0];if(p.kind==='intel')intel++;x.dynChoose(p.id,p.opts.some(o=>o.k==='watch')?'watch':p.opts[0].k)}x.step()}assert(intel>=1,'첩보 보고');
+    const sus=X.agents.find(a=>a.alive&&a.id!==me.id&&isA(a));const pi=push('intel',['arrest','watch','bribe','ignore'],{who:sus.id,truth:false});const ap=X.gov.approval??.5;assert(/잡아들였/.test(ch(pi,'arrest')));assert(sus.jailUntil>X.day&&(X.gov.approval??.5)<=ap,'무고 구금 → 지지율');
+    const pw=push('intel',['watch'],{who:sus.id,truth:true});ch(pw,'watch');assert(X.dyn.watched[sus.id]>X.day,'감시');
+    // 정적 뒷조사 → 약점 폭로
+    const rv=X.agents.find(a=>a.alive&&a.id!==me.id&&isA(a)&&!x.dynView().family.kids.some(k=>k.id===a.id));rv.crimes=(rv.caught||0)+2;const r0=rv.rep??1;const pd=push('dirt',['expose','black','keep'],{who:rv.id});ch(pd,'expose');assert((rv.rep??1)<r0,'폭로 → 평판↓');
+    // 포섭 제안(외국 간첩 → 이중간첩)
+    const pf=push('fspy',['yes','no','report'],{t:X.trade.towns[1].name});ch(pf,'yes');assert(me.spy===X.trade.towns[1].name,'외국 간첩');const pis=push('ispy',['yes','no'],{});assert(/이중간첩/.test(ch(pis,'yes'))&&!me.spy&&X.dyn.informant,'이중간첩');
+    // 이웃이 먼저 청한 혼인 동맹
+    const sp=me.partner&&X.byId.get(me.partner);if(sp){sp.partner=null;me.partner=null}const t2=X.trade.towns[2];const pw2=push('fwed',['yes','no'],{t:t2.name,who:me.id});ch(pw2,'yes');assert(X.dyn.realms[t2.name].kin&&me.partner,'이웃의 혼인 동맹 제안');
+    // 암살 위협 → 경호
+    const pa=push('assn',['guard','ignore'],{});ch(pa,'guard');assert(X.dyn.guardUntil>X.day&&me.alive,'경호');
+    // 첩보 행동 목록(의원·귀족 이상)
+    const acts=x.dynActions().filter(a=>a.group==='첩보').map(a=>a.k);assert(acts.includes('spy:rival')&&acts.some(k=>k.startsWith('spy:realm:')),'첩보 행동');
+    const s1=JSON.stringify(x.exportState());const y=engine.createWorld(11,100);y.importState(JSON.parse(s1));assert.deepEqual(y.S.dyn,JSON.parse(JSON.stringify(X.dyn)),'저장 왕복');
+    return {tier:X.dyn.tier,intel,acts:acts.length}})();
+  console.log(JSON.stringify({spy2}));
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dyn-base-'));const baseFile=path.join(tmp,'engine.js');
   fs.writeFileSync(baseFile,execFileSync('git',['show',base+':engine.js'],{cwd:root}));

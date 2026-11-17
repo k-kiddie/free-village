@@ -225,7 +225,7 @@ const DEPT={gp:['내과',0],surg:['외과',0],obgyn:['산부인과',0],hanui:['�
 const DOCD={ascetic:'사치를 멀리한다',charity:'가난한 신자를 돕는다',fertile:'자식을 많이 낳는다',usury:'이자 받기를 금한다',work:'놀지 말고 일한다',equal:'모두가 평등하다',obey:'윗사람에게 순종한다',honest:'속이지 않는다',celibate:'혼인과 성을 멀리한다',freelove:'사랑에 울타리를 두지 않는다',poly:'남자는 여러 아내를 둘 수 있다',massWed:'교주가 짝을 정해 한꺼번에 혼인시킨다'};
 const FXN={stage:'공연장',lab:'연구소',arena:'경기장',office:'사무실 빌딩',bigfac:'대형 공장',pub:'주막',press:'신문사',temple:'사원',jail:'감옥',fac:'공장',store:'곡식 창고',shelter:'여관',gather:'회관',vault:'금고',guard:'경비 초소',heal:'의원',b0:'방앗간',b1:'식당',b2:'제재소',b10:'석공소'};
 const FXL=Object.keys(FXN).filter(f=>!['jail','temple','arena','office','bigfac','lab'].includes(f));
-const CASE_L={opRig:'여론 조작',gag:'언론 탄압',insider:'내부자 거래',hireFraud:'채용 비리',insFraud:'보험 사기',embezzle:'횡령',voteBuy:'매표',bribe:'뇌물',skim:'공사비 착복',favor:'특혜',divSkim:'배당 착복',tax:'탈세',manip:'주가 조작',counterfeit:'위조화폐',murder:'살인',frame:'누명',robbery:'강도',assault:'폭행',smuggle:'밀수',patent:'특허 침해',cartel:'담합',wageTheft:'임금 체불',prost:'성매매',prostBuy:'성매수',drug:'마약',drugUse:'마약 투약',blackmail:'협박',defame:'명예훼손',harass:'권력형 성범죄',spycam:'불법촬영',fakeMarr:'위장결혼',fraudSub:'주거 지원 부정 수급',obscene:'음란물 불법 유통',fraudMed:'가짜 약 판매',illegalMed:'불법 시술',surro:'불법 대리모',scam:'로맨스 스캠',bigamy:'중혼',imperson:'사칭 사기',protect:'단속 무마 뇌물',fzIllegal:'무허가 풍속업',gambleDen:'도박장 개설',gambleTheft:'도박 빚 절도',rape:'성폭행',hitman:'살인 교사',launder:'자금 세탁',ponzi:'폰지 사기',safety:'산업안전 위반',rigging:'개표 조작',pollute:'환경 오염',dv:'가정폭력',confine:'감금',abuse:'직장 내 괴롭힘',malpractice:'의료 사고',organ:'장기 매매',draftEvade:'병역 기피',trafficking:'인신매매',rebellion:'내란',draftBribe:'병역 비리',spy:'간첩',defenseGraft:'방산 비리',forcedLabor:'노예 노동',facAbuse:'시설 학대·횡령',beggarRing:'구걸 조직',admBribe:'입시 비리',fakeDegree:'학위 위조',illegalCos:'무면허 시술',rebate:'의약품 리베이트',deposit:'보증금 미반환',perjury:'위증'};const CONSENT_L=['폭행·협박이 있어야 처벌','거부를 무시하면 처벌','동의해야만 합법'];const ABORT_L=['금지','제한 허용','허용'];const DRUG_L=['전면 금지','치료 중심','규제 없음','합법 관리'];const ELECT_L=['지역구 다수제','비례대표제','혼합(지역구 반·비례 반)'];const CHIEF_EL=['주민 직선','결선 투표','선거인단','의회 간선'];
+const CASE_L={extort:'협박',opRig:'여론 조작',gag:'언론 탄압',insider:'내부자 거래',hireFraud:'채용 비리',insFraud:'보험 사기',embezzle:'횡령',voteBuy:'매표',bribe:'뇌물',skim:'공사비 착복',favor:'특혜',divSkim:'배당 착복',tax:'탈세',manip:'주가 조작',counterfeit:'위조화폐',murder:'살인',frame:'누명',robbery:'강도',assault:'폭행',smuggle:'밀수',patent:'특허 침해',cartel:'담합',wageTheft:'임금 체불',prost:'성매매',prostBuy:'성매수',drug:'마약',drugUse:'마약 투약',blackmail:'협박',defame:'명예훼손',harass:'권력형 성범죄',spycam:'불법촬영',fakeMarr:'위장결혼',fraudSub:'주거 지원 부정 수급',obscene:'음란물 불법 유통',fraudMed:'가짜 약 판매',illegalMed:'불법 시술',surro:'불법 대리모',scam:'로맨스 스캠',bigamy:'중혼',imperson:'사칭 사기',protect:'단속 무마 뇌물',fzIllegal:'무허가 풍속업',gambleDen:'도박장 개설',gambleTheft:'도박 빚 절도',rape:'성폭행',hitman:'살인 교사',launder:'자금 세탁',ponzi:'폰지 사기',safety:'산업안전 위반',rigging:'개표 조작',pollute:'환경 오염',dv:'가정폭력',confine:'감금',abuse:'직장 내 괴롭힘',malpractice:'의료 사고',organ:'장기 매매',draftEvade:'병역 기피',trafficking:'인신매매',rebellion:'내란',draftBribe:'병역 비리',spy:'간첩',defenseGraft:'방산 비리',forcedLabor:'노예 노동',facAbuse:'시설 학대·횡령',beggarRing:'구걸 조직',admBribe:'입시 비리',fakeDegree:'학위 위조',illegalCos:'무면허 시술',rebate:'의약품 리베이트',deposit:'보증금 미반환',perjury:'위증'};const CONSENT_L=['폭행·협박이 있어야 처벌','거부를 무시하면 처벌','동의해야만 합법'];const ABORT_L=['금지','제한 허용','허용'];const DRUG_L=['전면 금지','치료 중심','규제 없음','합법 관리'];const ELECT_L=['지역구 다수제','비례대표제','혼합(지역구 반·비례 반)'];const CHIEF_EL=['주민 직선','결선 투표','선거인단','의회 간선'];
 const CARTG=['tool','plank','brick','cloth','furn','liquor'];const PROST_L=['전면 처벌','사는 쪽만 처벌','규제 없음','합법화'];
 // 기술: 도구 설계 = 재료 × 쓰임새 × 방식. 이름은 조합에서 저절로 붙는다
 const MATN={wood:'나무',stone:'돌',iron:'쇠',gold:'금'},MATP={wood:.25,stone:.45,iron:.85,gold:.12};
@@ -1437,7 +1437,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         if(pw>=4&&ch.g.cheat>.28&&R()<.06){G.approval=Math.min(1,(G.approval??.5)+.05);X('troll');mile('troll',`댓글부대. 촌장 ${josa(nm(ch),'이','가')} 돈을 주고 사람을 사서 온라인 여론을 띄웠다`,[ch.id]);if(R()<.15){scandal(ch,'여론 조작',[ch.id]);G.approval=Math.max(0,G.approval-.15)}}
         if(ch.g.boss>.45&&ch.g.civic<.3&&(G.approval??.5)<.5&&R()<.04*(G.assocFree===false?2:1)){const tg=pick([...(G.council||[]).map(id=>S.byId.get(id)).filter(m=>m&&m.alive&&m.grp!==ch.grp),...(S.unions||[]).map(u=>S.byId.get(u.lead)).filter(Boolean),...paperList().map(x=>S.byId.get(x.owner)).filter(Boolean)]);if(tg){tg.jailUntil=S.day+YEAR/2;X('repress');G.approval=Math.max(0,(G.approval??.5)-.04);mile('repress',`정치 탄압. 촌장 ${josa(nm(ch),'이','가')} 자기를 비판하던 ${josa(nm(tg),'을','를')} 트집 잡아 가뒀다`,[ch.id,tg.id])}}}
       const gangs=S.groups.filter(g=>g.mode==='gang');const top=gangs.sort((x,y)=>gStrength(y)-gStrength(x))[0];const L=top&&S.byId.get(top.leader);
-      if(!G.coup&&L&&L.alive&&L.id!==G.chief&&L.g.boss>.45&&gStrength(top)>guards*1.5+6&&((G.approval??.5)<.3||(S.hist.length&&S.hist[S.hist.length-1].starve>10))&&R()<.04){log('pol',`${josa(nm(L),'이','가')} 패거리를 이끌고 관청으로 쳐들어갔다`,[L.id],{x:MARKET.x,y:MARKET.y,t:'쿠데타!'});mile('coup',`쿠데타. 패거리 두목 ${josa(nm(L),'이','가')} 관청을 점령하려 들고일어났다`,[L.id]);coupRun(L,'gang')}
+      if(!G.coup&&L&&L.alive&&L.id!==G.chief&&L.g.boss>.45&&gStrength(top)>guards*1.5+6&&((G.approval??.5)<.3||(S.hist.length&&S.hist[S.hist.length-1].starve>10))&&!(S.dyn&&dynCoupBlock(L))&&R()<.04){log('pol',`${josa(nm(L),'이','가')} 패거리를 이끌고 관청으로 쳐들어갔다`,[L.id],{x:MARKET.x,y:MARKET.y,t:'쿠데타!'});mile('coup',`쿠데타. 패거리 두목 ${josa(nm(L),'이','가')} 관청을 점령하려 들고일어났다`,[L.id]);coupRun(L,'gang')}
       if(G.coup){const ch2=S.byId.get(G.chief);const civ=ad.reduce((t,a)=>t+a.g.civic,0)/ad.length;if(!ch2||!ch2.alive||((G.approval??.5)<.3&&R()<.04+civ*.1)){X('demo');mile('democracy',`민주화 항쟁. 사람들이 광장을 메우자 군사 통치가 무너지고 선거가 돌아왔다`,[]);G.policy.chiefTerm=G.coup.old||4;G.coup=null;G.chief=null;G.nextElection=S.day+1;election()}}}
     {const tab=paperList().filter(x=>x.tabloid);if(tab.length&&R()<.1){const pp=pick(tab);const t=pick(ad.filter(a=>pf(a)));if(t){t.rep=Math.max(0,(t.rep??1)-.15);if(G&&G.chief===t.id)G.approval=Math.max(0,(G.approval??.5)-.05);X('fakeNews');mile('fakeNews',`가짜 뉴스. 소문 신문이 ${nm(t)}에 대해 지어낸 기사를 실었고 사람들은 그대로 믿었다`,[t.id]);if(R()<.3){const o=S.byId.get(pp.owner);if(o&&G)fileC('defame',o,hr*.2,.55)}}}}
     // --- 동네: 공해·젠트리피케이션·고독사·가정폭력·차별 ---
@@ -1709,7 +1709,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       // 기지촌
       if(M.bases.length&&S2.length>15&&S.agents.some(a=>a.alive&&a.sw)){X('campTown');mile('campTown',`기지촌. 부대 앞 골목에 군인을 상대하는 술집과 업소가 들어찼다`,[])}
       // 장군의 쿠데타
-      if(gen&&gen.alive&&!G.coup&&G.chief!==gen.id&&gen.g.boss>.5&&((G.approval??.5)<.25||M.lostWar>S.day-YEAR)&&S2.length>=15&&R()<.05){log('pol',`장군 ${josa(nm(gen),'이','가')} 군대를 몰고 관청에 들어왔다`,[gen.id],{x:MARKET.x,y:MARKET.y,t:'군사 쿠데타!'});mile('milCoup',`군사 쿠데타. 장군 ${josa(nm(gen),'이','가')} 군대를 이끌고 관청으로 향했다`,[gen.id]);coupRun(gen,'mil')}}
+      if(gen&&gen.alive&&!G.coup&&G.chief!==gen.id&&gen.g.boss>.5&&((G.approval??.5)<.25||M.lostWar>S.day-YEAR)&&S2.length>=15&&!(S.dyn&&dynCoupBlock(gen))&&R()<.05){log('pol',`장군 ${josa(nm(gen),'이','가')} 군대를 몰고 관청에 들어왔다`,[gen.id],{x:MARKET.x,y:MARKET.y,t:'군사 쿠데타!'});mile('milCoup',`군사 쿠데타. 장군 ${josa(nm(gen),'이','가')} 군대를 이끌고 관청으로 향했다`,[gen.id]);coupRun(gen,'mil')}}
     // 우리 군사력
     // 무기고: 기술은 '만들 수 있는 무기'만 열어 준다. 실제 무기는 방산 공장이 쇠로 만들거나, 국방비로 이웃에서 사 와야 생긴다. 무기는 낡고, 전쟁 때는 더 빨리 없어진다
     const S3=al.filter(a=>a.soldier&&a.armyUntil>S.day&&!a.deployed);const milN2=al.filter(a=>a.militia).length;const need=Math.ceil(S3.length+milN2*.5);
@@ -4681,7 +4681,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       else add('pet:'+key,'법 바꾸기',`${L.n} 시위·청원`,`지지하는 주민을 모아 의회를 압박 · 주민 지지 약 ${sup.y}/${sup.n}명${dynHard()?' · 강압적인 체제라 붙잡혀 갇힐 수 있음':''}`,adult||dynWait('pet'+key))}
     if(G&&(G.council||[]).length&&!(G.council||[]).includes(me.id)&&G.chief!==me.id){const f=dynFee('council');add('runCouncil','선거',run.council?'의원 선거 출마 등록됨':'의원 선거 출마',`다음 의원 선거(${Math.max(0,(G.nextCouncil||S.day)-S.day)}일 뒤)에 후보로 나감 · 선거비 ${won(f)}`,run.council?'이미 등록함':dynEligible('council')||(me.cash<f?'선거비가 모자람':''))}
     if(!((me.jailUntil||0)>S.day))dynMoreActions(me,add);
-    if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynDipActions(me,add,dynRank());
+    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r)}
     if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynEcoActions(me,add,out);
     return out}
   function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');const base=/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
@@ -4704,6 +4704,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     else if(/^(house|land|stock|firm|loan|dep):/.test(k))text=dynEco(me,k);
     else if(/^(fam|kin|net|med|dark|pow):/.test(k))text=dynMore(me,k);
     else if(/^dip:/.test(k))text=dynDip(me,k);
+    else if(/^spy:/.test(k))text=dynSpy(me,k);
     else if(k==='runChief'||k==='runCouncil'){const kind=k==='runChief'?'chief':'council',f=dynFee(kind);me.cash-=f;SP(me,'bribe',f);D.run={...(D.run||{}),[kind]:true};text=`${kind==='chief'?chiefTitle():'의원'} 선거에 출마 등록했다(선거비 ${won(f)})`}
     D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}
   // 선거 후보 명단에 출마 등록한 플레이어를 넣는다(당락은 엔진 투표).
@@ -4715,6 +4716,23 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(me&&!ad.includes(me)){dynChron(`${josa(nm(me),'은','는')} ${dynEligible(kind)||'자격이 없어'} ${kind==='chief'?chiefTitle():'의원'} 선거에 나가지 못하다`,[me.id]);return}
     if(me&&ad.includes(me)&&!cand.includes(me)){cand.push(me);dynChron(`${josa(nm(me),'이','가')} ${kind==='chief'?chiefTitle():'의원'} 선거에 출마하다`,[me.id])}}
   const DYN_H={
+    dirt(c,k,me){const x=S.byId.get(c.who);if(!x||!x.alive)return '상대가 이미 없다';const D=S.dyn;const grudge=()=>{D.ties=D.ties||{};const f=x.family;const o=D.ties[f]||{v:0,name:dynFamName(f,x),d:S.day,why:''};D.ties[f]={...o,v:Math.max(-1,o.v-.4),d:S.day,why:'약점을 잡힘'}};
+      if(k==='expose'){scandal(x,'비리 폭로',[x.id]);grudge();const t=`${josa(nm(x),'의','의')} 약점을 폭로했다`;dynChron(t,[me.id,x.id]);mile('dynExpose',`폭로. ${josa(nm(me),'이','가')} 정적 ${josa(nm(x),'의','의')} 비리를 터뜨렸다`,[me.id,x.id]);return t}
+      if(k==='black'){const amt=Math.max(0,x.cash*.2);x.cash-=amt;me.cash+=amt;grudge();if(wr()<.15){fileC('extort',me,amt,.6);return `협박으로 ${won(amt)}을 받았지만 고발당했다`}return `협박으로 ${won(amt)}을 받았다`}
+      return '약점을 묻어 두었다'},
+    intel(c,k,me){const D=S.dyn,G=S.gov,x=c.who&&S.byId.get(c.who);if(!x||k==='ok'||k==='ignore')return '보고를 받았다';
+      if(k==='arrest'){x.jailUntil=S.day+YEAR*2;if(!c.truth){if(G)G.approval=Math.max(0,(G.approval??.5)-.1);if(elective())scandal(me,'무고한 사람 구금',[me.id]);return `${josa(nm(x),'을','를')} 잡아들였지만 죄가 없었다는 말이 돈다`}return `${josa(nm(x),'을','를')} 잡아들였다`}
+      if(k==='watch'){D.watched=D.watched||{};D.watched[x.id]=S.day+YEAR*2;return `${josa(nm(x),'을','를')} 감시하게 했다`}
+      if(k==='bribe'){const amt=dynWA()*40,pay=G?Math.min(G.tre,amt):0;if(G)G.tre-=pay;x.cash+=pay;D.bribed=D.bribed||{};D.bribed[x.id]=S.day+YEAR*2;return `${josa(nm(x),'을','를')} ${won(pay)}으로 회유했다`}
+      return '보고를 받았다'},
+    fspy(c,k,me){const t=dynTowns().find(x=>x.name===c.t);if(k==='yes'){me.spy=c.t;me.cash+=dynWA()*15;dynChron(`${josa(nm(me),'이','가')} ${c.t}의 간첩이 되다`,[me.id]);return `${c.t}의 간첩이 됐다`}
+      if(k==='report'){me.rep=Math.min(1,(me.rep??1)+.1);if(t)t.tension=Math.min(1,(t.tension||0)+.03);return '관청에 신고했다'}return '거절했다'},
+    ispy(c,k,me){const D=S.dyn;if(k!=='yes')return '거절했다';D.informant=1;if(me.spy){me.spy=null;return '이중간첩이 됐다. 이제 우리 정보기관을 위해 일한다'}return '정보기관의 끄나풀이 됐다'},
+    fwed(c,k,me){const D=S.dyn,t=dynTowns().find(x=>x.name===c.t),R0=t&&D.realms[c.t],x=S.byId.get(c.who);if(!t||!R0)return '이미 지난 일이다';
+      if(k!=='yes'){t.tension=Math.min(1,(t.tension||0)+.05);return '혼인 동맹을 거절했다'}if(!x||!dynSingle(x))return '혼인할 사람이 이미 처지가 바뀌었다';
+      const b=dynForeignSpouse(R0,x);dynWed(x,b);R0.kin={id:x.id,spouse:b.id,d:S.day};R0.tie=Math.min(1,(R0.tie||0)+.5);t.tension=Math.max(0,(t.tension||0)-.25);const txt=`${josa(nm(x),'이','가')} ${c.t} 통치 가문의 ${josa(nm(b),'과','와')} 혼인했다`;dynChron(txt,[x.id,b.id]);realmLog(R0,`${c.t}: ${txt}`,true);return txt},
+    assn(c,k,me){const D=S.dyn,G=S.gov;if(k==='guard'){const amt=dynWA()*30,pay=G?Math.min(G.tre,amt):0;if(G)G.tre-=pay;D.guardUntil=S.day+YEAR*2;return '경호를 강화했다'}
+      if(wr()<.3){die(me,'살해');return '암살당했다'}return '아무 일도 없었다'},
     invaded(c,k,me){const D=S.dyn,G=S.gov,t=dynTowns().find(x=>x.name===c.t);if(!S.war||S.war.t!==c.t)return '전쟁은 이미 끝났다';
       if(k==='pay'){const W0=S.war,cost=(S.houseRef||100)*10,pay=G?Math.min(G.tre,cost):0;if(G){G.tre-=pay;G.st.war=(G.st.war||0)+pay}if(pay<cost*.5&&wr()<.5)return `금고가 모자라 ${josa(c.t,'이','가')} 물러나지 않았다. 싸울 수밖에 없다`;
         S.warEnd=S.day;S.wars=(S.wars||[]).concat([{t:W0.t,d:W0.d,end:S.day,cas:W0.cas,civ:W0.civ,res:'휴전'}]);D.warDone=W0.d+':'+W0.t;S.war=null;if(t)t.tension=.4;const txt=`${c.t}에 배상금 ${won(pay)}을 주고 물러나게 했다`;dynChron(txt,[me.id]);mile('armistice',`굴욕적 화친. ${txt}`,[me.id]);return txt}
@@ -5214,6 +5232,59 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(last.res==='승'&&t&&R0&&!R0.prov&&me&&r>=4)dynPush('conquest',`${josa(t.name,'이','가')} 항복했습니다. 어떻게 할까요?`,[{k:'annex',label:'속령으로 삼는다',hint:`세금·병력이 우리 몫, 그곳 귀족·인재 일부가 이주해 옴 · 불만이 쌓이면 독립할 수 있음`},{k:'rep',label:'배상금만 받고 돌려준다',hint:'엔진이 정한 배상금은 이미 받음'}],{t:t.name})}}
   function dynClaim(R0){const D=S.dyn,me=dynMe();if(!R0.kin||!me)return false;const c=S.byId.get(R0.kin.id);if(!c)return false;const kin=dynKin();const heirs=[c,...(c.kids||[]).map(id=>S.byId.get(id))].filter(x=>x&&x.alive&&kin.has(x.id));if(!heirs.length)return false;
     dynPush('claim',`${R0.name} 통치 가문의 대가 끊겼습니다. 사돈인 우리 가문의 ${josa(nm(heirs[0]),'이','가')} 계승권을 가집니다.`,[{k:'take',label:'계승해 합친다',hint:'전쟁 없이 속령이 됨'},{k:'drop',label:'포기한다',hint:'그 나라가 새 통치자를 세움'}],{t:R0.name,who:heirs[0].id});return true}
+  // ---- 2차 6단계: 성장 단계 칭호 (우리 인구 + 속령 인구). 왕국은 군주정·입헌군주정일 때, 아니면 "나라"(Claude 결정).
+  const DYN_TIER=[[0,'마을'],[600,'읍'],[2500,'성'],[6000,'왕국']];
+  function dynEffPop(){const D=S.dyn;let n=S.agents.filter(a=>a.alive).length;for(const t of dynTowns())if(D.realms&&D.realms[t.name]?.prov)n+=t.pop||0;return n}
+  function dynTierOf(n){let i=0;for(let k=0;k<DYN_TIER.length;k++)if(n>=DYN_TIER[k][0])i=k;return i}
+  function dynTierName(i){if(i===3&&!(S.gov&&['mon','cmon'].includes(regime())))return '나라';return DYN_TIER[i][1]}
+  function dynTierTick(){const D=S.dyn;if(S.day%15)return;const i=dynTierOf(dynEffPop());if(D.tier==null){D.tier=i;return}
+    if(i>D.tier){D.tier=i;const t=`우리 ${josa(dynTierName(i),'이','가')} 됐다 (인구 ${dynEffPop().toLocaleString()}명, 속령 포함)`;dynChron(t,[]);mile('dynTier'+i,`성장. ${t}`,[]);const me=dynMe();if(me)dynPush('notice',`🏰 ${t}`,[{k:'ok',label:'확인'}],{d:S.day,tier:i})}
+    else if(i<D.tier)D.tier=i}
+  // ---- 2차 7단계: 첩보. 받기(권력자: 1년마다 보고, 거짓 섞임) / 보내기(의원·귀족 이상: 정적 뒷조사·이웃 나라 첩자) / 평민: 포섭 제안.
+  // 체제별: 민주(rep·olig·cmon)는 들키면 스캔들, 군주·군정은 자유롭지만 상대 집안 원한(반란 위험), 신정은 교단 밀고망이라 잘 들킴.
+  const dynHardReg=()=>S.gov&&['mon','mil','com','msoc'].includes(regime());
+  function dynSpyCatch(base){const r=S.gov?regime():'none';return Math.min(.9,base+(r==='theo'?.15:0)+(S.gov&&S.gov.policy.spyAgency&&S.gov.chief!==S.dyn.pid?.1:0))}
+  function dynCaught(me,what,victim){const D=S.dyn;let t;
+    if(S.gov&&elective()){scandal(me,what,[me.id]);t=`${what}이 들통나 스캔들이 터졌다${S.gov.chief===me.id?'. 지지율이 떨어졌다':''}`}
+    else{me.rep=Math.max(0,(me.rep??1)-.1);if(victim){D.ties=D.ties||{};const f=victim.family;const old=D.ties[f]||{v:0,name:dynFamName(f,victim),d:S.day,why:''};D.ties[f]={...old,v:Math.max(-1,old.v-.5),d:S.day,why:'뒷조사가 들킴'}}t=`${what}이 들켰다. ${victim?josa(nm(victim),'의','의')+' 집안이 원한을 품었다':''}`}
+    dynChron(t,[me.id]);return t}
+  function dynRival(me){const G=S.gov;if(!G)return null;const c=[G.chief,G.king,...(G.council||[])].map(id=>S.byId.get(id)).filter(x=>x&&x.alive&&x.id!==me.id&&!dynKin().has(x.id));return c.sort((x,y)=>(W(y)||0)-(W(x)||0))[0]||null}
+  function dynDirt(x){const out=[];if(x.crimes>(x.caught||0))out.push('들키지 않은 범죄');if((x.secretKids||[]).length)out.push('숨겨 둔 자식');if((x.offshore||0)>0)out.push('해외에 숨긴 돈');if(x.spy)out.push('외국 정보기관과의 연결');if((x.src&&x.src.crime||0)>0)out.push('범죄로 번 돈');return out}
+  function dynSpyActions(me,add,r){const D=S.dyn,G=S.gov,wA=dynWA();if(r<3)return;const cost=wA*20;
+    const rv=dynRival(me);add('spy:rival','첩보',rv?`정적 ${nm(rv)} 뒷조사`:'정적 뒷조사',`약 ${won(cost)} · 약점을 찾으면 폭로·협박할 수 있음 · 들킬 확률 약 ${Math.round(dynSpyCatch(.2)*100)}%${S.gov&&elective()?'(들키면 스캔들)':'(들키면 상대 집안 원한)'}`,!rv?'겨룰 만한 정적이 없음':me.cash<cost?'돈이 모자람':dynWait('spyRival'));
+    for(const t of dynTowns()){if(D.realms?.[t.name]?.prov)continue;add('spy:realm:'+t.name,'첩보',`${t.name}에 첩자 보내기`,`약 ${won(cost*1.5)} · 기술을 빼 오거나 군대를 흔듦 · 들키면 긴장↑`,me.cash<cost*1.5?'돈이 모자람':dynWait('spyR'+t.name))}
+    if(G&&(G.chief!==me.id)&&!G.coup){const M=S.mil,gen=M&&M.gen===me.id,gang=me.grp&&grpById(me.grp),glead=gang&&gang.mode==='gang'&&gang.leader===me.id;
+      add('spy:coup','첩보',gen?'군대를 몰고 쿠데타':'패거리를 이끌고 쿠데타',`성공하면 내가 ${chiefTitle()} · 실패하면 3년 감옥 · 시민 공익심이 높을수록 실패`,gen||glead?dynWait('coup'):'장군이거나 패거리 두목이어야 함')}}
+  function dynSpy(me,k){const D=S.dyn,G=S.gov,wA=dynWA(),[,op,name]=k.split(':');const cool=(key,d)=>{D.cool['act'+key]=S.day+d};
+    if(op==='rival'){const rv=dynRival(me);if(!rv)throw Error('정적이 없습니다');const cost=wA*20;me.cash-=cost;SP(me,'bribe',cost);cool('spyRival',YEAR/2);
+      if(wr()<dynSpyCatch(.2))return dynCaught(me,'정적 뒷조사',rv);const dirt=dynDirt(rv);if(!dirt.length)return `${josa(nm(rv),'을','를')} 뒷조사했지만 약점을 찾지 못했다`;
+      dynPush('dirt',`${nm(rv)}의 약점을 찾았습니다: ${dirt.join(', ')}. 어떻게 할까요?`,[{k:'expose',label:'폭로한다',hint:'상대 평판↓, 권력자면 지지율↓ · 상대 집안 원한'},{k:'black',label:'협박해 돈을 받는다',hint:`상대 현금의 20% · 들키면 협박죄`},{k:'keep',label:'묻어 둔다',hint:'나중을 위해'}],{who:rv.id});return `${josa(nm(rv),'의','의')} 약점을 찾았다`}
+    if(op==='realm'){const t=dynTowns().find(x=>x.name===name),R0=D.realms?.[name];if(!t)throw Error('없는 나라입니다');const cost=wA*30;me.cash-=cost;SP(me,'bribe',cost);cool('spyR'+name,YEAR);
+      if(wr()<dynSpyCatch(.25)-(G&&G.policy.spyAgency?.1:0)){t.tension=Math.min(1,(t.tension||0)+.2);if(R0)realmLog(R0,`${name}: 우리 첩자를 붙잡았다`);mile('ourSpyCaught',`첩자 발각. ${name}에 보낸 우리 첩자가 붙잡혔다`,[me.id]);return `${name}에 보낸 첩자가 붙잡혔다. 긴장이 높아졌다`}
+      const roll=wr();if(roll<.45){S.rp=(S.rp||0)+30;return `첩자가 ${name}의 기술을 빼 왔다`}if(roll<.75){t.mil=(t.mil||0)*.9;return `첩자가 ${name} 군대의 무기고에 불을 질렀다(군대 -10%)`}
+      if(R0)R0.known=S.day;return `첩자가 ${name} 통치자의 속내를 알아냈다(호전성 ${Math.round((R0?.ruler.g.war||0)*100)})`}
+    if(op==='coup'){cool('coup',YEAR*2);const was=G.chief;const M=S.mil;coupRun(me,M&&M.gen===me.id?'mil':'gang');const ok=G.chief===me.id&&was!==me.id;const t=ok?`쿠데타 성공. ${josa(nm(me),'이','가')} 권력을 잡았다`:`쿠데타 실패. ${josa(nm(me),'은','는')} 붙잡혀 감옥에 갔다`;dynChron(t,[me.id]);return t}
+    throw Error('모르는 첩보 행동입니다')}
+  // 쿠데타 모의 감시·회유 중이면 엔진 쿠데타를 막는다(가문 모드에서만, 마을 난수 R() 호출 전에 판단).
+  function dynCoupBlock(L){const D=S.dyn;if(!D||!L)return false;if((D.bribed?.[L.id]||0)>S.day)return true;if((D.watched?.[L.id]||0)>S.day)return wr()<.7;return false}
+  // 1년마다 권력자에게 첩보 보고. 정보기관이 있으면 85%, 없으면 60% 정확.
+  function dynIntel(me){const D=S.dyn,G=S.gov;if(!G||dynRank()<4||S.day%YEAR!==20)return;const acc=G.policy.spyAgency?.85:.6;const lines=[];const ad=adultsC();
+    const T=dynTowns().filter(t=>!D.realms?.[t.name]?.prov).sort((x,y)=>(y.tension||0)-(x.tension||0));if(T.length){const t=wr()<acc?T[0]:wpick(T);lines.push(`이웃: ${josa(t.name,'이','가')} ${(t.tension||0)>.45?'국경에 군대를 모으고 있다':'조용하다'} (군대 ${Math.round(t.mil||0)})`)}
+    const gangs=S.groups.filter(g=>g.mode==='gang').sort((x,y)=>gStrength(y)-gStrength(x));const gl=gangs[0]&&S.byId.get(gangs[0].leader),gen=S.mil&&S.byId.get(S.mil.gen);
+    const real=[gl,gen].filter(x=>x&&x.alive&&x.id!==me.id&&x.g.boss>.45).sort((x,y)=>y.g.boss-x.g.boss)[0];let sus=real,truth=!!real;
+    if(wr()>acc){const fake=ad.filter(x=>x.id!==me.id&&!dynKin().has(x.id)&&x.g.boss>.3);if(fake.length){sus=wpick(fake);truth=sus===real}}
+    if(sus){lines.push(`역모: ${josa(nm(sus),'이','가')} ${sus===gen?'군을':'패거리를'} 이끌고 들고일어날 낌새가 있다`);
+      dynPush('intel',`📜 첩보 보고 (정확도 약 ${Math.round(acc*100)}%)\n${lines.join('\n')}\n\n역모 혐의자를 어떻게 할까요?`,[{k:'arrest',label:'잡아들인다',hint:`2년 가둠 · 죄가 없으면 지지율↓${elective()?'·스캔들':''}`},{k:'watch',label:'감시한다',hint:'2년 동안 들고일어날 가능성 70% 줄임'},{k:'bribe',label:'회유한다',hint:`약 ${won(dynWA()*40)} · 2년 동안 들고일어나지 않음`},{k:'ignore',label:'무시한다'}],{who:sus.id,truth});return}
+    lines.push('역모: 낌새 없음');dynPush('intel',`📜 첩보 보고 (정확도 약 ${Math.round(acc*100)}%)\n${lines.join('\n')}`,[{k:'ok',label:'확인'}],{})}
+  // 평민·부자·간부일 때: 외국 간첩 포섭, 정보기관 포섭 제안(2년에 한 번 정도)
+  function dynSpyOffer(me){const D=S.dyn,G=S.gov,r=dynRank();if(r>=3||!isAdult(me)||S.day%15)return;const T=dynTowns().filter(t=>!D.realms?.[t.name]?.prov);
+    if(T.length&&!me.spy&&wr()<.012&&dynCool('fspy',YEAR*2)){const t=wpick(T);dynPush('fspy',`${t.name} 정보기관 사람이 은밀히 찾아와 우리 마을 정보를 넘겨 달라고 합니다. 대가는 약 ${won(dynWA()*15)}입니다.`,[{k:'yes',label:'받아들인다',hint:'돈을 받고 간첩이 됨 · 들키면 재판'},{k:'no',label:'거절한다'},{k:'report',label:'관청에 신고한다',hint:'평판↑, 그 나라와 긴장 약간↑'}],{t:t.name})}
+    if(G&&G.policy.spyAgency&&!D.informant&&wr()<.01&&dynCool('ispy',YEAR*2))dynPush('ispy',`우리 정보기관이 주변 사람들을 몰래 살펴 보고해 달라고 합니다.${me.spy?' (당신은 외국 간첩입니다. 이중간첩이 될 수도 있습니다)':''}`,[{k:'yes',label:me.spy?'이중간첩이 된다':'받아들인다',hint:'15일마다 일당 1일치 · 들키면 평판↓'},{k:'no',label:'거절한다'}],{})}
+  // [2] 이웃 나라가 먼저 혼인 동맹 제안 / 암살 위협
+  function dynForeignEvents(me){const D=S.dyn,G=S.gov,r=dynRank();if(S.day%15)return;
+    if(r>=3&&D.realms){const c=dynWedCands(me)[0];const T=dynTowns().filter(t=>{const R0=D.realms[t.name];return R0&&!R0.prov&&!R0.kin&&!(S.war&&S.war.t===t.name)&&(t.tension||0)<.5});
+      if(c&&T.length&&wr()<.02&&dynCool('fwed',YEAR*2)){const t=wpick(T),R0=D.realms[t.name];dynPush('fwed',`${t.name}의 ${REALM_TITLE[R0.regime]} ${rName(R0.ruler)}가 혼인 동맹을 청해 왔습니다. ${nm(c)}(${Math.floor(c.age/YEAR)}세)와 그 집안 사람을 맺자고 합니다.`,[{k:'yes',label:'받아들인다',hint:'상대가 우리 마을로 옴 · 긴장↓ · 그 집안 대가 끊기면 계승권'},{k:'no',label:'거절한다',hint:'긴장 약간↑'}],{t:t.name,who:c.id})}}
+    if(r>=4&&(D.guardUntil||0)<S.day){const hard=dynHardReg()||(G&&(G.approval??.5)<.3);if(hard&&wr()<.012&&dynCool('assn',YEAR*2))dynPush('assn',`암살 음모가 있다는 소문이 돕니다.`,[{k:'guard',label:'경호를 강화한다',hint:`나라 금고에서 약 ${won(dynWA()*30)} · 2년 동안 안전`},{k:'ignore',label:'무시한다',hint:'정말 노리는 사람이 있으면 위험'}],{})}}
   function dynWorldTick(){const D=S.dyn,T=S.trade;if(!T||!T.towns||!T.towns.length)return;D.realms=D.realms||{};
     for(const t of T.towns){const R0=D.realms[t.name];if(!R0){D.realms[t.name]=realmInit(t);continue}if(R0.prov){t.tension=0;t.fta=true;if(S.day%15===0)dynProvTick(t,R0);continue}if(S.day%15===0)realmTick(t,R0);if(R0.ally&&S.day%15===0)t.tension=Math.max(0,(t.tension||0)-.01)}
     if(T.on)dynWarWatch();
@@ -5221,7 +5292,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function dynWorldView(r){const D=S.dyn,T=S.trade,G=S.gov,our=S.mil?.str||0;const known=!!(T&&T.on&&D.realms);
     const approx=m=>r>=3?Math.round(m):m<our*.6?'우리보다 약함':m>our*1.6?'우리보다 강함':'우리와 비슷';
     const ch=G&&S.byId.get(G.king||G.chief);
-    const us={name:'우리 마을',pop:S.agents.filter(a=>a.alive).length,regime:G?regime():'none',regName:G?(REALM_REG[regime()]||'마을 회의'):'정부 없음',ruler:ch?{name:nm(ch),age:Math.floor(ch.age/YEAR),title:G.king===ch.id?'왕':chiefTitle()}:null,mil:Math.round(our),era:S.power||0,mine:true};
+    const ti=dynTierOf(dynEffPop());const us={name:'우리 '+dynTierName(ti),tier:ti,effPop:dynEffPop(),pop:S.agents.filter(a=>a.alive).length,regime:G?regime():'none',regName:G?(REALM_REG[regime()]||'마을 회의'):'정부 없음',ruler:ch?{name:nm(ch),age:Math.floor(ch.age/YEAR),title:G.king===ch.id?'왕':chiefTitle()}:null,mil:Math.round(our),era:S.power||0,mine:true};
     if(!known)return {known:false,us,realms:[],news:[]};
     const realms=T.towns.map(t=>{const R0=D.realms[t.name];if(!R0)return null;const p=REALM_POS[t.name]||[0,0];
       return {name:t.name,tag:t.tag,x:p[0],y:p[1],pop:t.pop,era:t.era??0,dev:Math.round((t.dev||1)*100)/100,mil:approx(t.mil||0),tension:Math.round((t.tension||0)*100),fta:!!t.fta,war:!!(S.war&&S.war.t===t.name),
@@ -5229,7 +5300,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         ruler:{name:rName(R0.ruler),age:rAge(R0.ruler),sex:R0.ruler.sex,traits:r>=3?REALM_G.map(([k,l])=>[l,Math.round(R0.ruler.g[k]*100)]):null},
         heir:R0.heir?{name:rName(R0.heir),age:rAge(R0.heir),sex:R0.heir.sex}:null,hist:R0.hist.slice(-6).reverse()}}).filter(Boolean);
     return {known:true,us,realms,fw:S.fw&&S.fw.until>S.day?{a:S.fw.a,b:S.fw.b}:null,news:(D.wnews||[]).slice(-12).reverse()}}
-  function dynTick(){const D=S.dyn;dynWorldTick();if(D.over)return;const me=dynMe();
+  function dynTick(){const D=S.dyn;dynWorldTick();if(D.over)return;const me=dynMe();dynTierTick();if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
     if(me&&W(me)>D.peak.w)D.peak.w=W(me);
     if(me&&me.alive){const tt=dynPolTitle(me);if(D.title===undefined)D.title=tt;else if(tt!==D.title){const t=tt?`${josa(nm(me),'이','가')} ${josa(tt,'이','가')} 됐습니다`:`${josa(nm(me),'이','가')} ${D.title} 자리에서 물러났습니다`;D.title=tt;dynChron(t,[me.id]);dynPush('notice',t,[{k:'ok',label:'확인'}],{d:S.day})}
       if(S.day%5===0&&!((me.jailUntil||0)>S.day))dynBudgetTick(me);
