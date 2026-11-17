@@ -49,8 +49,12 @@ async function main(){
       if(v.waiting){const p=v.dyn.pending[0];await cmd('/god',{action:'choose',id:p.id,k:p.opts.at(-1).k});continue}
       if(!v.jump)await cmd('/god',{action:'advance',days:20-v.day});await sleep(100)}
     assert.equal(v.day,20);assert.equal(v.dyn.me.sur==='홍'||v.dyn.gen>1,true);
-    const resident=await(await fetch(base+'/god/api/resident/1')).json();assert(resident.resident.g&&resident.resident.q&&resident.html);
-    const panel=await(await fetch(base+'/god/api/panel?tab=sum')).json();assert(panel.html.length>0);
+    // 정보 제한: 내 캐릭터 카드는 보이고, 모르는 사람·열리지 않은 탭은 막힌다(최고 권력자 전에는).
+    const me=v.dyn.me.id;const resident=await(await fetch(base+'/god/api/resident/'+me)).json();assert(resident.resident.g&&resident.resident.q&&resident.html);
+    if(v.dyn.rank<4){assert.equal((await fetch(base+'/god/api/panel?tab=gov')).status,500);
+      const stranger=v.map.agents.find(a=>a.id!==me&&!v.dyn.family.kids.some(k=>k.id===a.id)&&v.dyn.family.partner?.id!==a.id);
+      if(stranger){const r=await fetch(base+'/god/api/resident/'+stranger.id);assert([200,403].includes(r.status))}}
+    const panel=await(await fetch(base+'/god/api/panel?tab=mkt')).json();assert(panel.html.length>0);
     assert.equal((await fetch(base+'/god/api/import',{method:'POST',body:'{}'})).status,404,'가문 모드에는 기존 저장 가져오기 없음');
     // 반복 전환: 각 마을 날짜 유지, 원래 마을 저장 파일 불변
     for(let k=0;k<3;k++){

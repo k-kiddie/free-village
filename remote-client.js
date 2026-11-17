@@ -71,6 +71,7 @@ function initRemote(){
       fitMap();if(changed){sel=null;$('#card').hidden=true;lastPanel='';lastCard='';markStop()}
       running=o.running;speed=o.speed;bgKey='';
       if(o.stopped){const key=seed+':'+o.day;if(lastStop!==key){lastStop=key;showStop(o.stopped)}}
+      if(window.DYN&&typeof dynHook==='function')dynHook(o);
       renderUI();render();await migrateLocal();
     }catch(e){setSave('err',e.message)}finally{pollBusy=false}
   }
@@ -82,5 +83,6 @@ function initRemote(){
   $('#autoStop').onchange=e=>{autoStop=e.target.value;send({action:'autostop',value:autoStop})};
   $('#reset').onclick=()=>{const b=$('#reset');if(!resetArm){resetArm=setTimeout(()=>{resetArm=0;b.textContent='새 마을';b.classList.remove('warn')},3000);b.textContent='지금 마을 지우기?';b.classList.add('warn');return}clearTimeout(resetArm);resetArm=0;b.textContent='새 마을';b.classList.remove('warn');send({action:'new',population:START_N})};
   function paint(now){requestAnimationFrame(paint);if(view&&now-last>100){last=now;try{render()}catch(e){showErr('지도',e)}}}
+  if(window.DYN&&typeof initDyn==='function')initDyn(send,api,API);
   const initialized=poll();setInterval(poll,2000);requestAnimationFrame(paint);return initialized;
 }

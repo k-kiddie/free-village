@@ -19,15 +19,16 @@ let switching = null;       // 전환 중인 대상 이름
 let chain = Promise.resolve();
 let booted = false, nextId = 1, gen = 0, liveWorkers = 0, activeSince = 0;
 
-function makePage(apiBase){
-  const html=fs.readFileSync(path.join(__dirname,'ui2.html'),'utf8')
-    .replace('/*ENGINE*/',()=>fs.readFileSync(path.join(__dirname,'engine.js'),'utf8'))
-    .replace('/*REMOTE_CLIENT*/',()=>fs.readFileSync(path.join(__dirname,'remote-client.js'),'utf8'))
-    .replace('<script>',`<script>window.REMOTE=true;window.API_BASE=${JSON.stringify(apiBase)};</script><script>`);
+function makePage(apiBase,dynasty){
+  const read=f=>fs.readFileSync(path.join(__dirname,f),'utf8');
+  const html=read('ui2.html')
+    .replace('/*ENGINE*/',()=>read('engine.js'))
+    .replace('/*REMOTE_CLIENT*/',()=>read('remote-client.js')+(dynasty?'\n'+read('god-client.js'):''))
+    .replace('<script>',`<script>window.REMOTE=true;window.API_BASE=${JSON.stringify(apiBase)};${dynasty?'window.DYN=true;':''}</script><script>`);
   return {html,gzip:zlib.gzipSync(Buffer.from(html)),tag:'"'+crypto.createHash('sha256').update(html).digest('hex')+'"'};
 }
-// 1단계 확인용: /god도 원래 화면을 API 접두어만 바꿔 쓴다. 가문 모드 전용 화면은 이후 단계에서 바꾼다.
-const pages={village:makePage(''),dynasty:makePage('/god')};
+// /god는 원래 화면(지도·기존 탭)에 가문 모드 화면(god-client.js)을 얹는다.
+const pages={village:makePage(''),dynasty:makePage('/god',true)};
 
 function spawnWorld(name){
   const w={name,gen:++gen,latestView:null,ready:false,waiting:new Map(),intended:false};
@@ -140,7 +141,7 @@ async function handleWorld(name,sub,req,res,url){
   if(!known)return sendJson(res,404,{error:'요청 경로를 찾을 수 없습니다'});
   const input=req.method==='POST'?await readBody(req,sub==='/api/import'?128*1024*1024:16384,sub!=='/api/import'):null;
   const w=await readyWait(name);if(!w)return preparing(res,name);
-  if(person){const body=await request(w,'resident',{id:Number(person[1])});if(!body)return sendJson(res,404,{error:'주민을 찾을 수 없습니다'});return sendGzip(res,body)}
+  if(person){const body=await request(w,'resident',{id:Number(person[1])});if(body===false)return sendJson(res,403,{error:'지금은 잘 모르는 사람입니다'});if(!body)return sendJson(res,404,{error:'주민을 찾을 수 없습니다'});return sendGzip(res,body)}
   if(sub==='/api/panel')return sendGzip(res,await request(w,'panel',{tab:url.searchParams.get('tab')||'sum',filter:url.searchParams.get('filter')||'all',selected:Number(url.searchParams.get('selected'))||null}));
   if(sub==='/api/cmd')return sendJson(res,200,await request(w,'command',{command:input}));
   return sendJson(res,200,await request(w,'import',{raw:input}));

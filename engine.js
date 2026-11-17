@@ -4312,14 +4312,43 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(a.grp){const g=grpById(a.grp);if(g&&g.leader===a.id)return 2}
     const ws=S.agents.filter(x=>x.alive&&isAdult(x)).map(x=>x.w||0).sort((x,y)=>y-x);if((a.w||0)>=(ws[Math.floor(ws.length*.1)]||0)||S.firms.some(f=>f.ceo===a.id))return 1;
     return 0}
+  // 정보 공개: 지위에 따라 열리는 기존 탭(6-4). 4 이상(최고 권력자·관전)은 전부.
+  const DYN_TABS=[['mkt'],['rich','firm','fin','land','trade'],['pol','gang'],['gov','parl','adm','opn','dist','log']];
+  function dynTabs(r){if(r==null)r=dynRank();if(r>=4)return null;return DYN_TABS.slice(0,r+1).flat()}
+  const dynP=x=>x?{id:x.id,name:nm(x),alive:!!x.alive,age:Math.floor((x.age||0)/YEAR),sex:x.sex||null,cause:x.alive?null:(x.cause||null)}:null;
+  function dynFamily(a){const by=id=>S.byId.get(id);const parents=(a.parents||[]).map(by).filter(Boolean);
+    const sib=new Set();for(const p of parents)for(const k of p.kids||[])if(k!==a.id)sib.add(k);
+    const kids=(a.kids||[]).map(by).filter(Boolean);const grand=[];for(const k of kids)for(const g of k.kids||[]){const x=by(g);if(x)grand.push(x)}
+    return {parents,siblings:[...sib].map(by).filter(Boolean),partner:a.partner?by(a.partner):null,kids,grand}}
+  function dynCircle(){const D=S.dyn,a=dynMe();const ids=new Set();if(!a)return ids;const f=dynFamily(a);ids.add(a.id);
+    for(const x of [...f.parents,...f.siblings,...f.kids,...f.grand,f.partner])if(x)ids.add(x.id);
+    if(a.emp)ids.add(a.emp);for(const x of S.agents)if(x.emp===a.id)ids.add(x.id);
+    if(a.grp){const g=grpById(a.grp);if(g){ids.add(g.leader);if(g.leader===a.id)for(const m of g.members||[])ids.add(m)}}
+    for(const p of D.pending)for(const v of Object.values(p.ctx||{}))if(typeof v==='number')ids.add(v);
+    for(const c of D.chron)for(const i of c.ids)ids.add(i);if(D.heir)ids.add(D.heir);return ids}
+  function dynCanSee(id){if(!S.dyn)return true;if(S.dyn.watch||S.dyn.over||dynRank()>=4)return true;return dynCircle().has(Number(id))}
+  function dynCanTab(key){const t=S.dyn?dynTabs():null;return !t||S.dyn.over||t.includes(key)}
+  function dynHeirs(){const D=S.dyn,a=dynMe();if(!a)return [];const out=[],seen=new Set([a.id]);const put=(x,why)=>{if(x&&x.alive&&!seen.has(x.id)){seen.add(x.id);out.push({...dynP(x),why})}};
+    if(D.heir)put(S.byId.get(D.heir),'지정 상속자');for(const k of a.kids.map(id=>S.byId.get(id)).filter(Boolean).sort((x,y)=>y.age-x.age))put(k,'자녀');return out}
+  function dynAssets(a){const hs=ownedHouses(a).map(h=>({id:h.id,v:S.houseRef*lvOf(h.lot)*(.3+.7*h.cond)-(h.deposit||0),rent:!!(h.occ&&h.occ!==a.id),lives:a.home===h.id}));
+    const plots=S.plots.filter(pl=>pl.owner===a.id&&!pl.gone).length,shops=S.shops.filter(sh=>sh.owner===a.id).length;
+    const bld=S.bldgs.filter(b=>!b.firm&&b.owner===a.id).map(b=>({name:bName(b),v:buildingValue(b)}));
+    const ids=[String(a.id),'I'+a.id];const stocks=[];for(const f of S.firms){let n=0;for(const id of ids)n+=f.sh[id]||0;if(n>0){const tot=shareCount(f);stocks.push({firm:f.id,name:f.name,shares:n,pct:tot?n/tot:0,v:n*f.price})}}
+    const owe=S.loans.filter(l=>l.b===a.id),lent=S.loans.filter(l=>l.l===a.id),deps=S.deps.filter(d=>d.s===a.id);
+    return {cash:a.cash,goods:invAll(a)+gearVal(a),houses:hs,plots,plotV:plots*S.plotRef,shops,shopV:shops*S.houseRef*1.5,bld,stocks,
+      debt:owe.reduce((t,l)=>t+l.bal,0),debtN:owe.length,lent:lent.reduce((t,l)=>t+l.bal,0),lentN:lent.length,dep:deps.reduce((t,d)=>t+d.amt,0),w:W(a),incAvg:a.incAvg||0,home:a.home||null}}
   const DYN_RANK=['평민','부자·사업가','조직 간부','의원·귀족','최고 권력자','관전'];
-  function dynView(){const D=S.dyn;if(!D)return null;const a=S.byId.get(D.pid);const pn=a&&a.partner&&S.byId.get(a.partner);const r=dynRank();
-    return {house:D.house,gen:D.gen,start:D.start,over:D.over,watch:D.watch,rank:r,rankName:DYN_RANK[r],budget:D.budget,heir:D.heir,res:D.res,peak:D.peak,
-      me:a?{id:a.id,name:nm(a),sur:a.sur,given:a.given,alive:a.alive,age:Math.floor(a.age/YEAR),sex:a.sex,health:a.health,hunger:a.hunger,happy:a.happy,rep:a.rep,cash:a.cash,w:W(a),
-        edu:a.edu||0,occ:a.occ||null,grp:a.grp||null,home:a.home||null,partner:pn?{id:pn.id,name:nm(pn),age:Math.floor(pn.age/YEAR)}:null,
-        kids:a.kids.map(id=>S.byId.get(id)).filter(k=>k&&k.alive).map(k=>({id:k.id,name:nm(k),age:Math.floor(k.age/YEAR),sex:k.sex}))}:null,
-      pending:D.pending.map(p=>({id:p.id,kind:p.kind,d:p.d,text:p.text,opts:p.opts})),chron:D.chron.slice(-30)}}
+  function dynView(){const D=S.dyn;if(!D)return null;const a=S.byId.get(D.pid);const r=dynRank();
+    const out={house:D.house,gen:D.gen,start:D.start,over:D.over,watch:D.watch,rank:r,rankName:DYN_RANK[r],tabs:D.over?null:dynTabs(r),budget:D.budget,heir:D.heir,res:D.res,peak:D.peak,
+      pending:D.pending.map(p=>({id:p.id,kind:p.kind,d:p.d,text:p.text,opts:p.opts})),chron:D.chron.slice(-40),past:D.past,notices:S.miles.slice(-8)};
+    if(!a)return out;const f=dynFamily(a);const g=a.grp&&grpById(a.grp);const emp=a.emp&&S.byId.get(a.emp);
+    out.me={...dynP(a),sur:a.sur,given:a.given,health:a.health,hunger:a.hunger,happy:a.happy,rep:a.rep,edu:a.edu||0,occ:a.occ||null,faith:a.faith||null,
+      grp:g?{id:g.id,name:g.name,leader:g.leader===a.id}:null,emp:dynP(emp),staff:S.agents.filter(x=>x.alive&&x.emp===a.id).length,crimes:a.crimes||0,caught:a.caught||0,jail:!!a.jail};
+    out.family={parents:f.parents.map(dynP),siblings:f.siblings.map(dynP),partner:dynP(f.partner),kids:f.kids.map(dynP),grand:f.grand.map(dynP)};
+    out.heirs=dynHeirs();out.assets=dynAssets(a);
+    const circle=dynCircle();out.news=S.events.filter(e=>e.type!=='mile'&&e.ids.some(i=>circle.has(i))).slice(-25).reverse();
+    return out}
   currencyState();
-  return{dynStart,dynRename,dynChoose,dynView,dynRank,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
+  return{dynStart,dynRename,dynChoose,dynView,dynRank,dynCanSee,dynCanTab,dynTabs,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
 }
 if(typeof module!=='undefined')module.exports={GAME_VERSION,SHARE_COUNT,shareCount,votingShares,marketCap,formatMoney,REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};

@@ -165,14 +165,16 @@ async function handleMessage(msg) {
     }catch(e){answer(msg.idRequest,'error',e.message)}return;
   }
   if(msg.type==='panel'){
-    try{if(panelDay!==world.S.day){panelCache.clear();panelDay=world.S.day}
+    try{if(isDynasty&&world.S.dyn&&!world.dynCanTab(msg.tab))throw Error('지금 지위로는 볼 수 없는 정보입니다');
+      if(panelDay!==world.S.day){panelCache.clear();panelDay=world.S.day}
       const key=JSON.stringify([msg.tab,msg.filter,msg.selected]);let body=panelCache.get(key);
       if(!body){body=zlib.gzipSync(Buffer.from(JSON.stringify({day:world.S.day,html:presenter.panel(world,msg.tab,msg.filter,msg.selected)})),{level:1});if(panelCache.size>=32)panelCache.clear();panelCache.set(key,body)}
       answer(msg.idRequest,'panel',body);
     }catch(e){answer(msg.idRequest,'error',e.message)}return;
   }
   if (msg.type === 'resident') {
-    try { const value=resident(msg.id);if(value)value.html=presenter.card(world,Number(msg.id)); answer(msg.idRequest,'resident',value==null?null:zlib.gzipSync(Buffer.from(JSON.stringify(value)),{level:1})); }
+    try { if(isDynasty&&world.S.dyn&&!world.dynCanSee(Number(msg.id))){answer(msg.idRequest,'resident',false);return}
+      const value=resident(msg.id);if(value)value.html=presenter.card(world,Number(msg.id)); answer(msg.idRequest,'resident',value==null?null:zlib.gzipSync(Buffer.from(JSON.stringify(value)),{level:1})); }
     catch(e) { answer(msg.idRequest,'error',e.message); }
     return;
   }
