@@ -1724,7 +1724,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         else{M.noSrc=S.day;mile('armsLack',`무기 부족. ${josa(WEAP_L[cap],'을','를')} 만들 공장도, 사 올 길도 없어 군인들이 옛 무기를 그대로 든다`,[])}}}
     // 군인에게 좋은 무기부터 나눠 주고, 모자라면 맨손·농기구로 싸운다
     let rem=need,fs=0;for(let t=4;t>=0;t--){const k=Math.min(rem,Math.floor(M.arms[t]||0));fs+=k*(1+t*.6);rem-=k}fs+=rem*.6;const avgF=need?fs/need:1;M.unarmed=rem;M.wt=Math.max(0,Math.min(4,Math.round((avgF-1)/.6)));
-    const our=(milN2*.3+S3.filter(a=>a.soldier==='army').length+S3.filter(a=>a.soldier==='navy').length*1.5+S3.filter(a=>a.soldier==='air').length*2.5+S3.filter(a=>a.soldier==='special').length*4+S3.filter(a=>a.soldier==='cyber').length*1.5)*avgF*(.5+M.morale)*(P.alliance?1.3:1);M.str=our;
+    let our=(milN2*.3+S3.filter(a=>a.soldier==='army').length+S3.filter(a=>a.soldier==='navy').length*1.5+S3.filter(a=>a.soldier==='air').length*2.5+S3.filter(a=>a.soldier==='special').length*4+S3.filter(a=>a.soldier==='cyber').length*1.5)*avgF*(.5+M.morale)*(P.alliance?1.3:1);if(S.dyn)our=dynMilAdj(our);M.str=our;
     // 이웃과의 긴장
     if(!T||!T.on){S.milThreat=0;return}let thr=0;for(const t of T.towns){townMil(t);t.mil*=1.003;t.tension=cl((t.tension||.1)+(t.retalUntil>S.day?.03:0)+(our<t.mil*.4?.02:our<t.mil*.8?.008:0)+(t.shock?.004:0)+(Object.values(S.res||{}).some(r=>r.found&&r.amt>3000)?.006:0)+(G&&G.coup?.008:0)+(t.shock&&t.shock.k==='grain'&&t.shock.m>1?.015:0)+gauss()*.015-(t.fta?.008:0)-(P.neutral?.01:0)-(P.alliance&&t===T.towns.slice().sort((x,y)=>y.mil-x.mil)[0]?.02:0)-.005,0,1);t.tension=Math.max(0,t.tension-minScore('dip')*.006);thr=Math.max(thr,t.tension);
       if(!S.war&&!(S.warEnd>S.day-YEAR*8)&&t.tension>.5&&R()<(t.tension-.45)*.12){S.war={t:t.name,d:S.day,score:0,cas:0,civ:0};t.tension=1;X('warStart');log('pol',`${josa(t.name,'이','가')} 쳐들어왔다! 전쟁이 터졌다`,[],{x:MARKET.x,y:MARKET.y,t:'전쟁!'});mile('war',`전쟁. 이웃 ${josa(t.name,'이','가')} ${t.retalUntil>S.day?'무역 보복 끝에':Object.values(S.res||{}).some(r=>r.found&&r.amt>3000)?'우리 땅의 자원을 노리고':'우리가 약한 틈을 타'} 쳐들어왔다`,[]);special('war',`${josa(t.name,'이','가')} 쳐들어오자`)}}S.milThreat=thr;
@@ -4681,6 +4681,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       else add('pet:'+key,'법 바꾸기',`${L.n} 시위·청원`,`지지하는 주민을 모아 의회를 압박 · 주민 지지 약 ${sup.y}/${sup.n}명${dynHard()?' · 강압적인 체제라 붙잡혀 갇힐 수 있음':''}`,adult||dynWait('pet'+key))}
     if(G&&(G.council||[]).length&&!(G.council||[]).includes(me.id)&&G.chief!==me.id){const f=dynFee('council');add('runCouncil','선거',run.council?'의원 선거 출마 등록됨':'의원 선거 출마',`다음 의원 선거(${Math.max(0,(G.nextCouncil||S.day)-S.day)}일 뒤)에 후보로 나감 · 선거비 ${won(f)}`,run.council?'이미 등록함':dynEligible('council')||(me.cash<f?'선거비가 모자람':''))}
     if(!((me.jailUntil||0)>S.day))dynMoreActions(me,add);
+    if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynDipActions(me,add,dynRank());
     if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynEcoActions(me,add,out);
     return out}
   function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');const base=/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
@@ -4702,6 +4703,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(r.pass)log('pol',`${josa(nm(me),'이','가')} 앞장선 ${josa(L.n,'이','가')} 통과됐다`,[me.id])}
     else if(/^(house|land|stock|firm|loan|dep):/.test(k))text=dynEco(me,k);
     else if(/^(fam|kin|net|med|dark|pow):/.test(k))text=dynMore(me,k);
+    else if(/^dip:/.test(k))text=dynDip(me,k);
     else if(k==='runChief'||k==='runCouncil'){const kind=k==='runChief'?'chief':'council',f=dynFee(kind);me.cash-=f;SP(me,'bribe',f);D.run={...(D.run||{}),[kind]:true};text=`${kind==='chief'?chiefTitle():'의원'} 선거에 출마 등록했다(선거비 ${won(f)})`}
     D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}
   // 선거 후보 명단에 출마 등록한 플레이어를 넣는다(당락은 엔진 투표).
@@ -4713,6 +4715,16 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(me&&!ad.includes(me)){dynChron(`${josa(nm(me),'은','는')} ${dynEligible(kind)||'자격이 없어'} ${kind==='chief'?chiefTitle():'의원'} 선거에 나가지 못하다`,[me.id]);return}
     if(me&&ad.includes(me)&&!cand.includes(me)){cand.push(me);dynChron(`${josa(nm(me),'이','가')} ${kind==='chief'?chiefTitle():'의원'} 선거에 출마하다`,[me.id])}}
   const DYN_H={
+    invaded(c,k,me){const D=S.dyn,G=S.gov,t=dynTowns().find(x=>x.name===c.t);if(!S.war||S.war.t!==c.t)return '전쟁은 이미 끝났다';
+      if(k==='pay'){const W0=S.war,cost=(S.houseRef||100)*10,pay=G?Math.min(G.tre,cost):0;if(G){G.tre-=pay;G.st.war=(G.st.war||0)+pay}if(pay<cost*.5&&wr()<.5)return `금고가 모자라 ${josa(c.t,'이','가')} 물러나지 않았다. 싸울 수밖에 없다`;
+        S.warEnd=S.day;S.wars=(S.wars||[]).concat([{t:W0.t,d:W0.d,end:S.day,cas:W0.cas,civ:W0.civ,res:'휴전'}]);D.warDone=W0.d+':'+W0.t;S.war=null;if(t)t.tension=.4;const txt=`${c.t}에 배상금 ${won(pay)}을 주고 물러나게 했다`;dynChron(txt,[me.id]);mile('armistice',`굴욕적 화친. ${txt}`,[me.id]);return txt}
+      if(k==='help'){const ok=dynTowns().filter(x=>x.name!==c.t&&!S.dyn.realms[x.name]?.prov&&(x.tension||0)<.4);if(ok.length&&wr()<.45){D.helpUntil=S.day+YEAR;const h=ok[0];return `${josa(h.name,'이','가')} 이번 전쟁에 군대를 보내 주기로 했다(우리 힘 +20%, 1년)`}return '도와주겠다는 나라가 없었다. 우리 힘으로 싸운다'}
+      return '맞서 싸우기로 했다'},
+    conquest(c,k,me){const t=dynTowns().find(x=>x.name===c.t),R0=t&&S.dyn.realms[c.t];if(!t||!R0||R0.prov)return '이미 처리됐다';if(k!=='annex')return `${josa(c.t,'은','는')} 배상금을 물고 그대로 남았다`;
+      R0.ruler={sur:me.sur,given:me.given,sex:me.sex,born:S.day-me.age,g:R0.ruler.g};R0.heir=null;return dynAnnex(t,R0,'war')},
+    claim(c,k,me){const t=dynTowns().find(x=>x.name===c.t),R0=t&&S.dyn.realms[c.t];if(!t||!R0)return '이미 처리됐다';R0.claimAsk=0;
+      if(k!=='take'||R0.prov){realmNewRuler(R0,'통치 가문의 대가 끊겼다',false);return `${c.t}의 계승권을 포기했다`}
+      const w=S.byId.get(c.who)||me;R0.ruler={sur:w.sur,given:w.given,sex:w.sex,born:S.day-w.age,g:R0.ruler.g};R0.heir=null;return dynAnnex(t,R0,'union')},
     start(){return '가문의 역사가 시작됩니다'},
     proposeOut(c,k,me){const b=S.byId.get(c.to);if(k!=='yes')return '청혼하지 않았다';
       if(!dynSingle(me)||!dynSingle(b))return '이미 늦었다. 상대가 혼인할 수 없는 처지다';
@@ -5131,7 +5143,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 15일마다: 죽음(나이·전쟁·체제), 선거, 정변
     let pd=.002+Math.max(0,(age-45)/35)**3*.12+(atWar?.01:0)+(R0.regime==='mil'?.003:0);
     if(wr()<pd){const cause=age>70&&wr()<.7?'노환으로 죽었다':atWar&&wr()<.5?'전쟁 중에 죽었다':wpick(['병으로 죽었다','사고로 죽었다','암살당했다']);
-      const hered=R0.regime==='mon'||R0.regime==='cmon';realmNewRuler(R0,`${tt} ${josa(rName(r),'이','가')} ${cause}`,hered&&!!R0.heir);if(hered&&R0.ruler.sur!==r.sur)realmLog(R0,`${R0.name}: 대가 끊겨 왕조가 바뀌었다`,true);return}
+      const hered=R0.regime==='mon'||R0.regime==='cmon';if(hered&&!R0.heir&&R0.kin&&!R0.claimAsk&&dynClaim(R0)){R0.claimAsk=S.day;realmLog(R0,`${R0.name}: ${tt} ${josa(rName(r),'이','가')} ${cause}. 후계자가 없다`,true);return}R0.claimAsk=0;realmNewRuler(R0,`${tt} ${josa(rName(r),'이','가')} ${cause}`,hered&&!!R0.heir);if(hered&&R0.ruler.sur!==r.sur)realmLog(R0,`${R0.name}: 대가 끊겨 왕조가 바뀌었다`,true);return}
     if(R0.heir&&wr()<.004)R0.heir=null;if(!R0.heir&&(R0.regime==='mon'||R0.regime==='cmon')&&wr()<.05)R0.heir=realmHeir(R0);
     if(R0.elect&&S.day>=R0.elect){R0.elect=S.day+4*YEAR;if(wr()<.45)realmLog(R0,`${R0.name}: 선거에서 ${tt} ${josa(rName(r),'이','가')} 다시 뽑혔다`);else realmNewRuler(R0,'선거가 치러졌다',false);return}
     // 정변: 긴장·패전·호전성에 따라 드물게. 공화·과두는 쿠데타, 군주·신정은 혁명이나 왕조 교체
@@ -5141,8 +5153,70 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       else if(old==='com')nr=wpick(['msoc','mil','rep']);else nr=wpick(['mil','mil','com',era>=2?'rep':'olig']);
       if(nr===old)return;R0.regime=nr;R0.elect=(nr==='rep'||nr==='olig')?S.day+4*YEAR:0;
       realmNewRuler(R0,`${old==='mil'?'군정이 무너졌다':nr==='mil'?'쿠데타가 일어났다':nr==='com'?'공산 혁명이 일어났다':'체제가 바뀌었다'} (${REALM_REG[old]} → ${REALM_REG[nr]})`,false)}}
+  // ---- 2차 5단계: 외교·전쟁·합병 (가문 모드 전용). 동현 결정: 정복·합병한 나라는 속령(숫자로 인구·세금·병력) + 인재 일부만 실제 주민으로 이주.
+  // 혼인 동맹은 의원·귀족부터, 동맹·선전포고·화친은 최고 권력자만.
+  const DYN_POP_CAP=1500;// 속령 이주로 늘릴 수 있는 실제 주민 상한(1GB 서버 기준, 측정 후 조정)
+  const rRel=(t,R0)=>R0&&R0.prov?'속령':S.war&&S.war.t===t.name?'전쟁 중':R0&&R0.ally?'동맹':t.fta?'자유무역':(t.tension||0)>=.6?'적대':(t.tension||0)>=.35?'긴장':'보통';
+  function dynTowns(){return (S.trade&&S.trade.on&&S.trade.towns)||[]}
+  function dynMilAdj(our){const D=S.dyn;if(!D||!D.realms)return our;let mul=1,add=0;for(const t of dynTowns()){const R0=D.realms[t.name];if(!R0)continue;if(R0.ally&&!(S.war&&S.war.t===t.name))mul+=.3;if(R0.prov)mul+=0;if(R0.prov)add+=(t.mil||0)*.3}if((D.helpUntil||0)>S.day&&S.war)mul+=.2;return our*mul+add}
+  function dynWedCands(me){const f=dynFamily(me);return [me,...f.kids,...f.siblings,...f.grand].filter(x=>dynSingle(x)&&x.age>=16*YEAR&&x.age<45*YEAR&&!x.abroadUntil)}
+  function dynDipActions(me,add,r){const D=S.dyn,G=S.gov,T=dynTowns();if(!T.length||!D.realms||r<3)return;const top=r>=4,hr=S.houseRef||100;
+    const cands=dynWedCands(me);
+    for(const t of T){const R0=D.realms[t.name];if(!R0||R0.prov)continue;const war=S.war&&S.war.t===t.name;const nm2=t.name;
+      if(!war){const c=cands[0];const p=dynWedP(t,R0);
+        add(c?`dip:wed:${nm2}:${c.id}`:`dip:wed:${nm2}:0`,'외교',`${nm2} 왕실과 혼인 동맹`,c?`${nm(c)}(${Math.floor(c.age/YEAR)}세)를 ${R0.ruler.sur}씨 통치 가문과 혼인시킴 · 상대가 우리 마을로 옴 · 성사 약 ${Math.round(p*100)}% · 긴장↓, 그 집안 대가 끊기면 우리 가문이 계승권을 가짐`:'',
+          !c?'혼인시킬 미혼 가족(16~44세)이 없음':R0.kin?'이미 혼인으로 맺어짐':dynWait('wed'+nm2))}
+      if(!top)continue;
+      if(!war&&!R0.ally){const p=dynAllyP(t,R0);add(`dip:ally:${nm2}`,'외교',`${nm2}와 동맹`,`전쟁 때 우리 군대 힘 +30% · 긴장이 점점 줄어듦 · 성사 약 ${Math.round(p*100)}%`,(t.tension||0)>=.5?'긴장이 너무 높음':dynWait('ally'+nm2))}
+      if(R0.ally&&!war)add(`dip:unally:${nm2}`,'외교',`${nm2}와 동맹 끊기`,'긴장이 오름','');
+      if(!war){const our=S.mil?.str||0;add(`dip:war:${nm2}`,'외교',`${nm2}에 선전포고`,`우리 군대 ${Math.round(our)} 대 상대 ${Math.round(t.mil||0)} · 이기면 속령으로 삼거나 배상금 · 지면 배상금과 땅을 잃음${R0.ally?' · 동맹을 깨는 것이라 다른 나라도 우리를 믿지 않게 됨':''}`,
+        !G?'정부가 없음':S.war?'이미 다른 나라와 전쟁 중':!S.mil||our<1?'군대가 없음':dynWait('war'))}
+      if(war){const cost=hr*(6+Math.max(0,-S.war.score)/10);add(`dip:peace:${nm2}`,'외교',`${nm2}에 화친 요청`,`배상금 약 ${won(cost)}을 내고 전쟁을 끝냄 · 받아들일지는 전황에 달림`,G&&G.tre<cost*.5?'나라 금고가 너무 비었음':dynWait('peace'))}}}
+  function dynWedP(t,R0){const D=S.dyn;const our=S.mil?.str||1,rel=Math.max(0,(S.agents.length/(t.pop||1000))*3+our/Math.max(1,t.mil||1)*.3);return Math.max(.05,Math.min(.9,.25+rel*.25-(t.tension||0)*.4+(R0.ally?.2:0)+(dynRank()>=4?.15:0)))}
+  function dynAllyP(t,R0){return Math.max(.05,Math.min(.9,.55-(t.tension||0)*.8+(R0.kin?.25:0)+(t.fta?.1:0)-(S.dyn.betray||0)*.2))}
+  function dynForeignSpouse(R0,mate){const sex=mate.sex==='M'?'F':'M';const hr=S.houseRef||100;
+    const b=mk({sur:R0.ruler.sur,age:Math.max(16*YEAR,mate.age+Math.round((wr()-.5)*8*YEAR)),cash:hr*(3+wr()*5),g:randGenome(),migrant:true,sex});b.sex=sex;b.orient='het';b.inv.grain=8;for(const k of PROD)b.skill[k]=.2+wr()*.2;initQ(b);b.edu=Math.max(b.edu||0,2);b.royal=R0.name;b.rep=1;return b}
+  function dynDip(me,k){const D=S.dyn,G=S.gov,hr=S.houseRef||100,[,op,name,arg]=k.split(':');const t=dynTowns().find(x=>x.name===name),R0=D.realms&&D.realms[name];if(!t||!R0)throw Error('없는 나라입니다');const cool=(key,d)=>{D.cool['act'+key]=S.day+d};
+    if(op==='wed'){const c=S.byId.get(Number(arg));if(!c||!dynWedCands(me).includes(c))throw Error('혼인시킬 사람이 없습니다');cool('wed'+name,YEAR);
+      if(wr()>dynWedP(t,R0)){R0.tie=(R0.tie||0)-.1;realmLog(R0,`${name}: 우리 가문의 혼담을 거절했다`);return `${name} 왕실이 혼담을 거절했다`}
+      const b=dynForeignSpouse(R0,c);dynWed(c,b);R0.kin={id:c.id,spouse:b.id,d:S.day};R0.tie=Math.min(1,(R0.tie||0)+.5);t.tension=Math.max(0,(t.tension||0)-.25);
+      const txt=`${josa(nm(c),'이','가')} ${name} 통치 가문의 ${josa(nm(b),'과','와')} 혼인했다. 두 나라가 사돈이 됐다`;dynChron(txt,[c.id,b.id]);realmLog(R0,`${name}: ${txt}`,true);log('pol',txt,[c.id,b.id]);return txt}
+    if(op==='ally'){cool('ally'+name,YEAR);if(wr()>dynAllyP(t,R0)){t.tension=Math.min(1,(t.tension||0)+.05);realmLog(R0,`${name}: 우리의 동맹 제안을 거절했다`);return `${josa(name,'이','가')} 동맹을 거절했다`}
+      R0.ally=S.day;t.tension=Math.max(0,(t.tension||0)-.2);const txt=`${josa(name,'과','와')} 동맹을 맺었다`;dynChron(txt,[me.id]);realmLog(R0,`${name}: ${txt}`,true);mile('dynAlly',`동맹. 우리 마을이 ${josa(name,'과','와')} 동맹을 맺었다`,[me.id]);return txt}
+    if(op==='unally'){R0.ally=0;t.tension=Math.min(1,(t.tension||0)+.2);const txt=`${josa(name,'과','와')} 동맹을 끊었다`;dynChron(txt,[me.id]);realmLog(R0,`${name}: ${txt}`);return txt}
+    if(op==='war'){cool('war',YEAR*2);if(R0.ally){R0.ally=0;D.betray=(D.betray||0)+1;for(const x of dynTowns())x.tension=Math.min(1,(x.tension||0)+.1)}
+      S.war={t:name,d:S.day,score:0,cas:0,civ:0,by:'us'};t.tension=1;R0.atk=S.day;
+      const txt=`${josa(nm(me),'이','가')} ${name}에 선전포고했다. 전쟁이 시작됐다`;log('pol',txt,[me.id],{x:MARKET.x,y:MARKET.y,t:'전쟁!'});mile('war',`전쟁. 우리 마을이 ${name}에 먼저 쳐들어갔다`,[me.id]);dynChron(txt,[me.id]);realmLog(R0,`${name}: 우리 마을이 선전포고했다`,true);return txt}
+    if(op==='peace'){cool('peace',YEAR/2);const W0=S.war;const cost=hr*(6+Math.max(0,-W0.score)/10);const p=Math.max(.1,Math.min(.95,.5+W0.score/150+(R0.kin?.15:0)));
+      if(wr()>p)return `${josa(name,'이','가')} 화친을 거절했다. 전쟁은 계속된다`;const pay=Math.min(G.tre,cost);G.tre-=pay;G.st.war=(G.st.war||0)+pay;
+      S.warEnd=S.day;S.wars=(S.wars||[]).concat([{t:W0.t,d:W0.d,end:S.day,cas:W0.cas,civ:W0.civ,res:'휴전'}]);S.war=null;t.tension=Math.min(t.tension,.35);
+      const txt=`${josa(name,'과','와')} 화친했다(배상금 ${won(pay)})`;mile('armistice',`화친. ${josa(name,'과','와')} 배상금 ${won(pay)}을 주고 전쟁을 끝냈다`,[me.id]);dynChron(txt,[me.id]);realmLog(R0,`${name}: ${txt}`,true);return txt}
+    throw Error('모르는 외교 행동입니다')}
+  // 속령으로 삼기: 그 나라는 지도에서 우리 색, 세금·병력이 우리 몫. 귀족·인재 일부만 실제 주민으로 옮겨 온다.
+  function dynAnnex(t,R0,how){const D=S.dyn,me=dynMe(),hr=S.houseRef||100;R0.prov={d:S.day,how,old:R0.regime,unrest:.1};R0.ally=0;t.tension=0;t.fta=true;
+    const alive=S.agents.filter(a=>a.alive).length;const n=Math.max(0,Math.min(30,Math.max(10,Math.round((t.pop||1000)/150)),DYN_POP_CAP-alive));const ids=[];
+    for(let i=0;i<n;i++){const a=mk({age:Math.floor((20+wr()*25)*YEAR),cash:hr*(1+wr()*4),g:randGenome(),migrant:true});a.inv.grain=8;for(const k of PROD)a.skill[k]=.15+wr()*.35;initQ(a);a.edu=Math.floor(wr()*3)+(wr()<.3?1:0);a.from=t.name;ids.push(a.id)}
+    {const up=Math.round((t.pop||1000)/15);S.cap0=Math.min(DYN_POP_CAP,(S.cap0||S.cap||260)+up);S.cap=Math.min(DYN_POP_CAP,(S.cap||260)+up)}
+    const txt=`${josa(t.name,'이','가')} 우리 ${how==='union'?'가문의 계승으로 합쳐져':'군대에 정복되어'} 속령이 됐다. 그곳 귀족·인재 ${n}명이 우리 마을로 옮겨 왔다`;
+    dynChron(txt,me?[me.id]:[]);realmLog(R0,`${t.name}: ${txt}`,true);mile('dynAnnex',`합병. ${txt}`,ids.slice(0,5));return txt}
+  // 속령: 15일마다 세금과 불만. 우리 힘이 약하면 독립할 수 있다.
+  function dynProvTick(t,R0){const G=S.gov,hr=S.houseRef||100,P=R0.prov;t.tension=0;t.fta=true;
+    const tax=(t.pop||1000)/1000*hr*.4*(t.dev||1);if(G){G.tre+=tax;G.st.prov=(G.st.prov||0)+tax}P.tax=(P.tax||0)+tax;
+    const our=S.mil?.str||0;P.unrest=Math.max(0,Math.min(1,P.unrest+(our<(t.mil||0)*.5?.02:-.01)+(G?((G.approval??.5)<.3?.01:0):.02)+(wr()-.5)*.02));
+    if(P.unrest>.6&&wr()<(P.unrest-.55)*.2){const how=P.how;R0.prov=null;R0.regime=P.old||'mon';t.tension=.8;t.fta=false;realmNewRuler(R0,'독립 봉기가 일어나 속령에서 벗어났다',false);
+      const me=dynMe();const txt=`${josa(t.name,'이','가')} 독립했다`;dynChron(txt,me?[me.id]:[]);mile('dynRevolt',`속령 독립. ${josa(t.name,'이','가')} 봉기해 떨어져 나갔다${how==='union'?'':'. 정복의 대가였다'}`,[]);if(me&&dynRank()>=3)dynPush('notice',`${josa(t.name,'이','가')} 봉기해 독립했습니다.`,[{k:'ok',label:'확인'}],{d:S.day,t:t.name})}}
+  // 매일: 전쟁 시작·승리, 왕실 단절 계승권을 살핀다.
+  function dynWarWatch(){const D=S.dyn,me=dynMe(),r=me?dynRank():0;
+    if(S.war&&D.warSeen!==S.war.d+':'+S.war.t){D.warSeen=S.war.d+':'+S.war.t;const R0=D.realms&&D.realms[S.war.t];
+      if(S.war.by!=='us'&&me&&r>=4&&R0){const cost=(S.houseRef||100)*10;dynPush('invaded',`${josa(S.war.t,'이','가')} 국경에 군대를 모아 쳐들어왔습니다. 어떻게 할까요?`,
+        [{k:'fight',label:'맞서 싸운다',hint:`우리 군대 ${Math.round(S.mil?.str||0)} · 동맹 ${dynTowns().filter(x=>D.realms[x.name]?.ally).length}곳이 힘을 보탬`},{k:'pay',label:'배상금을 주고 물러나게 한다',hint:`나라 금고에서 약 ${won(cost)}`},{k:'help',label:'다른 나라에 도움을 청한다',hint:'동맹이 아닌 나라가 이번만 힘을 보탤 수도 있음'}],{t:S.war.t,d:S.war.d})}}
+    const last=(S.wars||[]).at(-1);if(last&&D.warDone!==last.d+':'+last.t){D.warDone=last.d+':'+last.t;const t=dynTowns().find(x=>x.name===last.t),R0=t&&D.realms&&D.realms[t.name];
+      if(last.res==='승'&&t&&R0&&!R0.prov&&me&&r>=4)dynPush('conquest',`${josa(t.name,'이','가')} 항복했습니다. 어떻게 할까요?`,[{k:'annex',label:'속령으로 삼는다',hint:`세금·병력이 우리 몫, 그곳 귀족·인재 일부가 이주해 옴 · 불만이 쌓이면 독립할 수 있음`},{k:'rep',label:'배상금만 받고 돌려준다',hint:'엔진이 정한 배상금은 이미 받음'}],{t:t.name})}}
+  function dynClaim(R0){const D=S.dyn,me=dynMe();if(!R0.kin||!me)return false;const c=S.byId.get(R0.kin.id);if(!c)return false;const kin=dynKin();const heirs=[c,...(c.kids||[]).map(id=>S.byId.get(id))].filter(x=>x&&x.alive&&kin.has(x.id));if(!heirs.length)return false;
+    dynPush('claim',`${R0.name} 통치 가문의 대가 끊겼습니다. 사돈인 우리 가문의 ${josa(nm(heirs[0]),'이','가')} 계승권을 가집니다.`,[{k:'take',label:'계승해 합친다',hint:'전쟁 없이 속령이 됨'},{k:'drop',label:'포기한다',hint:'그 나라가 새 통치자를 세움'}],{t:R0.name,who:heirs[0].id});return true}
   function dynWorldTick(){const D=S.dyn,T=S.trade;if(!T||!T.towns||!T.towns.length)return;D.realms=D.realms||{};
-    for(const t of T.towns){if(!D.realms[t.name]){D.realms[t.name]=realmInit(t);continue}if(S.day%15===0)realmTick(t,D.realms[t.name])}
+    for(const t of T.towns){const R0=D.realms[t.name];if(!R0){D.realms[t.name]=realmInit(t);continue}if(R0.prov){t.tension=0;t.fta=true;if(S.day%15===0)dynProvTick(t,R0);continue}if(S.day%15===0)realmTick(t,R0);if(R0.ally&&S.day%15===0)t.tension=Math.max(0,(t.tension||0)-.01)}
+    if(T.on)dynWarWatch();
     if(T.on&&!D.wknown){D.wknown=S.day;dynChron('이웃 나라들을 알게 되다. 세계 지도가 열렸다',[])}}
   function dynWorldView(r){const D=S.dyn,T=S.trade,G=S.gov,our=S.mil?.str||0;const known=!!(T&&T.on&&D.realms);
     const approx=m=>r>=3?Math.round(m):m<our*.6?'우리보다 약함':m>our*1.6?'우리보다 강함':'우리와 비슷';
@@ -5151,7 +5225,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(!known)return {known:false,us,realms:[],news:[]};
     const realms=T.towns.map(t=>{const R0=D.realms[t.name];if(!R0)return null;const p=REALM_POS[t.name]||[0,0];
       return {name:t.name,tag:t.tag,x:p[0],y:p[1],pop:t.pop,era:t.era??0,dev:Math.round((t.dev||1)*100)/100,mil:approx(t.mil||0),tension:Math.round((t.tension||0)*100),fta:!!t.fta,war:!!(S.war&&S.war.t===t.name),
-        regime:R0.regime,regName:REALM_REG[R0.regime],title:REALM_TITLE[R0.regime],house:R0.ruler.sur+'씨',dyn:R0.dyn||1,since:R0.since,
+        regime:R0.prov?'prov':R0.regime,regName:R0.prov?(R0.prov.how==='union'?'우리 속령(계승)':'우리 속령(정복)'):REALM_REG[R0.regime],rel:rRel(t,R0),ally:!!R0.ally,prov:R0.prov?{d:R0.prov.d,unrest:Math.round(R0.prov.unrest*100),tax:Math.round(R0.prov.tax||0)}:null,kin:R0.kin?{name:nm(S.byId.get(R0.kin.id)||{sur:'',given:''}),spouse:nm(S.byId.get(R0.kin.spouse)||{sur:'',given:''})}:null,title:R0.prov?(R0.prov.how==='union'?'군주(겸임)':'총독'):REALM_TITLE[R0.regime],house:R0.ruler.sur+'씨',dyn:R0.dyn||1,since:Math.max(0,R0.since),
         ruler:{name:rName(R0.ruler),age:rAge(R0.ruler),sex:R0.ruler.sex,traits:r>=3?REALM_G.map(([k,l])=>[l,Math.round(R0.ruler.g[k]*100)]):null},
         heir:R0.heir?{name:rName(R0.heir),age:rAge(R0.heir),sex:R0.heir.sex}:null,hist:R0.hist.slice(-6).reverse()}}).filter(Boolean);
     return {known:true,us,realms,fw:S.fw&&S.fw.until>S.day?{a:S.fw.a,b:S.fw.b}:null,news:(D.wnews||[]).slice(-12).reverse()}}

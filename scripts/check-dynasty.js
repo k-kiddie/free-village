@@ -113,6 +113,28 @@ function main(){
     const y=load(ex);const py=y.S.dyn.pending.find(p=>p.kind==='death');y.dynChoose(py.id,'watch');assert(y.S.dyn.watch&&y.dynCanSee(1)&&y.dynCanTab('gov'),'관전은 전체 공개');for(let i=0;i<5;i++)y.step();st3.watch=true}
   console.log(JSON.stringify({stage3:st3,events:evs,dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,acts,ms:Date.now()-t0}));
 
+  // 11. 2차: 세계 지도(이웃 나라 통치 가문)·외교(혼인 동맹·동맹·선전포고·화친)·정복 속령·왕실 단절 계승
+  const world2=(()=>{const x=engine.createWorld(11,100),X=x.S;x.dynStart();const pick=ks=>p=>(p.opts.find(o=>ks.includes(o.k))||p.opts[0]).k;const st={kinds:{}};
+    drive(x,300,pick(['take','annex','fight']),st);const me=X.byId.get(X.dyn.pid);if(!X.gov){me.cash+=1e7;x.dynAct('lord')}else X.gov.chief=me.id;
+    const v=x.dynView().world;assert(v.known&&v.realms.length===3,'이웃 나라 3곳');for(const r of v.realms){assert(r.ruler.name&&r.regName&&r.title,'통치자·체제 표시');assert(r.ruler.traits,'권력자는 통치자 성향을 앎')}
+    // 혼인 동맹: 상대가 우리 마을로 와서 배우자가 된다
+    const sp=me.partner&&X.byId.get(me.partner);if(sp){sp.partner=null;me.partner=null}
+    let wed=null;for(let i=0;i<40&&!wed;i++){X.dyn.cool={};const a=x.dynActions().find(a=>a.k.startsWith('dip:wed:'));assert(a&&a.ok,a&&a.why);const r=x.dynAct(a.k);if(/혼인했다/.test(r.text))wed=a.k.split(':')[2]}
+    assert(wed,'혼인 동맹 성사');const R1=X.dyn.realms[wed],sp2=X.byId.get(R1.kin.spouse);assert(sp2&&sp2.partner===me.id&&me.partner===sp2.id&&sp2.royal===wed,'사돈 배우자');
+    // 왕실 단절 → 계승권 선택지 → 속령(계승)
+    R1.regime='mon';R1.heir=null;R1.ruler.born=X.day-200*YEAR;drive(x,120,pick(['take']),st);assert(R1.prov&&R1.prov.how==='union','계승 합병');
+    // 선전포고 → 승리 → 정복 선택지 → 속령(정복), 인재 이주, 수용 한도 증가
+    const t=X.trade.towns.find(z=>!X.dyn.realms[z.name].prov);const pop0=X.agents.filter(a=>a.alive).length,cap0=X.cap;
+    X.dyn.cool={};X.mil=X.mil||{lvl:2,str:5,morale:.6};X.mil.str=Math.max(X.mil.str||0,5);x.dynAct('dip:war:'+t.name);assert(X.war&&X.war.t===t.name&&X.war.by==='us','선전포고');
+    for(let i=0;i<60&&X.war;i++){X.war.score=100;X.gov.chief=me.id;drive(x,1,pick(['annex']),st)}drive(x,1,pick(['annex']),st);
+    const R2=X.dyn.realms[t.name];assert(R2.prov&&R2.prov.how==='war','정복 속령');assert(X.agents.filter(a=>a.from===t.name).length>=10,'인재 이주');assert(X.cap>cap0,'수용 한도 증가');
+    // 속령은 세금을 내고 우리와 전쟁하지 않는다
+    const tre0=X.gov.tre;drive(x,30,pick(['annex','take']),st);assert(R2.prov?R2.prov.tax>0:true,'속령 세금');assert(!(X.war&&X.dyn.realms[X.war.t]?.prov),'속령과 전쟁 없음');
+    // 화친: 다른 나라와 전쟁 중 배상금을 내고 끝낼 수 있다
+    const t3=X.trade.towns.find(z=>!X.dyn.realms[z.name].prov);if(t3&&!X.war){X.dyn.cool={};X.mil.str=Math.max(X.mil.str||0,5);x.dynAct('dip:war:'+t3.name);X.gov.tre+=1e6;let ok=false;for(let i=0;i<20&&!ok;i++){X.dyn.cool={};const r=x.dynAct('dip:peace:'+t3.name);ok=/화친했다/.test(r.text)}assert(ok&&!X.war,'화친')}
+    const s1=JSON.stringify(x.exportState());const y=engine.createWorld(11,100);y.importState(JSON.parse(s1));assert.deepEqual(y.S.dyn.realms,X.dyn.realms,'세계 상태 저장 왕복');assert.equal(y.S.dyn.wr,X.dyn.wr);
+    return {wed,union:R1.name,conquered:t.name,migrants:X.agents.filter(a=>a.from===t.name).length,cap:[cap0,X.cap],pop:[pop0,X.agents.filter(a=>a.alive).length],news:(X.dyn.wnews||[]).length}})();
+  console.log(JSON.stringify({world2}));
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dyn-base-'));const baseFile=path.join(tmp,'engine.js');
   fs.writeFileSync(baseFile,execFileSync('git',['show',base+':engine.js'],{cwd:root}));
