@@ -190,6 +190,8 @@ async function handleMessage(msg) {
       else if(c.action==='save') await save();
       else if(isDynasty&&c.action==='choose'){const r=world.dynChoose(c.id,String(c.k||''));lastSavedDay=-1;clockAt=Date.now();lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
       else if(isDynasty&&c.action==='act'){const r=world.dynAct(String(c.k||''));lastSavedDay=-1;panelDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
+      else if(isDynasty&&c.action==='budget'){const r=world.dynSetBudget(c.budget||{});lastSavedDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
+      else if(isDynasty&&c.action==='vault'){const r=world.dynVault(c.dir,c.frac);world.S.dyn.res={d:world.S.day,kind:'act',text:r.text};lastSavedDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
       else if(isDynasty&&c.action==='rename'){const r=world.dynRename(c.sur,c.given);lastSavedDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
       else if(c.action==='suspend') {running=false;pendingDays=0;dayFraction=0;jumpTotal=0;await save()}
       else throw new Error('알 수 없는 명령');

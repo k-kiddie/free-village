@@ -4536,6 +4536,37 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     else{const kid=dynKidOf(a)?a:b,o=kid===a?b:a;if(!dynCools([['kid'+kid.id,YEAR/4],['kidO'+o.id,YEAR]]))return;const el=dynElder(o);
       dynPush('kidMatch',`자녀 ${josa(nm(kid),'이','가')} ${nm(o)}(${Math.floor(o.age/YEAR)}세, ${dynFamName(o.family,o)}${el&&el.st?', 부모가 '+el.st:''}, 재산 ${won(Math.max(W(o),el?W(el.p):0))})${o===a?'의 구애를 받고 있습니다':'와 혼인하고 싶어 합니다'}.`,
         [{k:'yes',label:'허락한다',hint:'얻는 것: '+dynGain(o).text},{k:'no',label:'반대한다',hint:`낭만적인 자녀는 반대를 무릅쓰고 혼인할 수 있음`}],{kid:kid.id,other:o.id,p})}}
+  // ---- 지출 설정(7-3). 5일마다 내 캐릭터에게만 적용. 쓴 돈은 마을 사람에게 간다(돈이 사라지지 않음) ----
+  const DYN_GIVE=['없음','교회','촌장','가난한 이웃'],DYN_DEBT=['최소','빨리'];
+  function dynSetBudget(b){const D=S.dyn;if(!D)throw Error('가문 모드가 아닙니다');const B=D.budget,n=(v,lo,hi)=>{v=Number(v);if(!Number.isFinite(v))throw Error('지출 설정 값이 올바르지 않습니다');return Math.max(lo,Math.min(hi,v))};
+    if(b.life!=null)B.life=Math.round(n(b.life,0,4));if(b.edu!=null)B.edu=Math.round(n(b.edu,0,3));if(b.save!=null)B.save=Math.round(n(b.save,0,.5)*20)/20;if(b.give!=null)B.give=Math.round(n(b.give,0,3));if(b.debt!=null)B.debt=Math.round(n(b.debt,0,1));return {...B}}
+  function dynPayee(me){const own=[...S.shops.map(s=>s.owner),...S.bldgs.filter(b=>!b.firm).map(b=>b.owner)].map(id=>S.byId.get(id)).filter(x=>x&&x.alive&&x!==me);if(own.length)return pick(own);const ad=adultsC().filter(x=>x!==me);return ad.length?pick(ad):null}
+  function dynPay(me,to,amt,why){amt=Math.min(amt,Math.max(0,me.cash));if(!(amt>0)||!to)return 0;me.cash-=amt;SP(me,why,amt);to.cash+=amt;to.src.biz=(to.src.biz||0)+amt;return amt}
+  const DYN_EDU_NEED=[14,34,60,100],DYN_EDU_AGE=[6,8,14,17];
+  function dynBudgetTick(me){const D=S.dyn,B=D.budget,wA=Math.max(.5,S.wageAvg||1),st={life:0,edu:0,give:0,debt:0,saved:0};
+    if(D.vault==null)D.vault=0;const keep=wA*15,spare=()=>Math.max(0,me.cash-keep);// 생활비 15일치는 늘 남긴다
+    // 생활 수준
+    const lv=B.life;if(lv>=3){st.life=dynPay(me,dynPayee(me),wA*(lv===4?4:1),'lux');if(st.life>0){me.fun=Math.min(1,(me.fun||0)+(lv===4?.12:.06));me.health=Math.min(100,me.health+(lv===4?1:.5));if(lv===4){me.rep=Math.min(1,(me.rep??1)+.01);const p=S.price.cloth||8;me.inv.cloth=(me.inv.cloth||0)+st.life*.3/p}}}
+    else if(lv<=1){const r=lv===0?.1:.04,amt=spare()*r;me.cash-=amt;D.vault+=amt;st.saved+=amt;me.fun=Math.max(0,(me.fun||0)-(lv===0?.04:.01));if(lv===0){me.health=Math.max(1,me.health-1);me.rep=Math.max(0,(me.rep??1)-.004)}}
+    // 저축: 하루 평균 수입의 일부를 가문 금고로
+    if(B.save>0){const amt=Math.min(spare()*.5,Math.max(0,me.incAvg||0)*5*B.save);me.cash-=amt;D.vault+=amt;st.saved+=amt}
+    // 교육비: 자녀 과외(엔진의 집안 교육 점수 eduP를 같이 씀)
+    if(B.edu>0){const fee=[0,.3,1,2.5][B.edu]*wA,gain=[0,.6,1.5,3][B.edu];
+      for(const k of me.kids.map(id=>S.byId.get(id)).filter(k=>k&&k.alive&&k.age>=6*YEAR&&k.age<23*YEAR&&(k.edu||0)<4)){
+        const e=k.edu||0,tutor=adultsC().filter(x=>x!==me&&(x.edu||0)>e).sort((x,y)=>(y.act===TEACH)-(x.act===TEACH)||(y.edu||0)-(x.edu||0))[0];if(!tutor||me.cash<fee)continue;
+        st.edu+=dynPay(me,tutor,fee,'edu');k.eduP=(k.eduP||0)+gain;
+        if(k.eduP>=DYN_EDU_NEED[e]&&k.age>=DYN_EDU_AGE[e]*YEAR){k.edu=e+1;k.eduP=0;S.tot['edu'+k.edu]=(S.tot['edu'+k.edu]||0)+1;dynChron(`${josa(nm(k),'이','가')} 과외로 ${EDU_L[k.edu]} 학력을 갖추다`,[k.id])}}}
+    // 기부·후원
+    if(B.give>0&&me.cash>wA*3){const amt=wA;
+      if(B.give===1){const f=me.faith&&S.faiths.find(x=>x.id===me.faith);if(f){const a=Math.min(amt,me.cash);me.cash-=a;f.tre=(f.tre||0)+a;SP(me,'give',a);st.give=a;me.fun=Math.min(1,(me.fun||0)+.02);me.rep=Math.min(1,(me.rep??1)+.004)}}
+      else if(B.give===2){const ch=S.gov&&S.byId.get(S.gov.chief);if(ch&&ch!==me&&ch.alive){st.give=dynPay(me,ch,amt,'give');dynTie(ch.family,.02,`${nm(ch)} 후원`,ch)}}
+      else{const med=median(),poor=adultsC().filter(x=>x!==me&&(x.w||0)<med*.5);if(poor.length){st.give=dynPay(me,pick(poor),amt,'give');me.rep=Math.min(1,(me.rep??1)+.008)}}}
+    // 빚 빨리 갚기
+    if(B.debt===1)for(const L of S.loans.filter(l=>l.b===me.id)){const l=S.byId.get(L.l);const pay=Math.min(L.bal,Math.max(0,me.cash)*.3);if(!(pay>0))break;me.cash-=pay;L.bal-=pay;L.paid=(L.paid||0)+pay;if(l)l.cash+=pay;st.debt+=pay;if(L.bal<.5){closeLoan(L);dynChron(`${josa(nm(me),'이','가')} 빚을 다 갚다`,[me.id])}}
+    D.spent=st}
+  function dynVault(dir,frac){const D=S.dyn,me=dynMe();if(!me)throw Error('캐릭터가 없습니다');frac=Math.max(.1,Math.min(1,Number(frac)||1));
+    if(dir==='out'){const a=(D.vault||0)*frac;D.vault-=a;me.cash+=a;return {text:`가문 금고에서 ${won(a)}을 꺼냈다`}}
+    const a=Math.max(0,me.cash)*frac;me.cash-=a;D.vault=(D.vault||0)+a;return {text:`가문 금고에 ${won(a)}을 넣었다`}}
   // ---- 능동 행동(7-1). 결과 계산은 기존 엔진 함수(councilVotes·foundCouncil·crownLord·revoltRun·makeGang·newParty·선거)를 그대로 쓴다 ----
   function dynPolTitle(a){const G=S.gov;if(!a||!G)return '';if(G.king===a.id)return '왕';if(G.chief===a.id)return chiefTitle();if(G.regent===a.id)return '섭정';if((G.council||[]).includes(a.id))return '의원';return ''}
   const dynFee=k=>Math.max(5,(S.wageAvg||1)*(k==='chief'?10:5));
@@ -4632,6 +4663,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function dynTick(){const D=S.dyn;if(D.over)return;const me=dynMe();
     if(me&&W(me)>D.peak.w)D.peak.w=W(me);
     if(me&&me.alive){const tt=dynPolTitle(me);if(D.title===undefined)D.title=tt;else if(tt!==D.title){const t=tt?`${josa(nm(me),'이','가')} ${josa(tt,'이','가')} 됐습니다`:`${josa(nm(me),'이','가')} ${D.title} 자리에서 물러났습니다`;D.title=tt;dynChron(t,[me.id]);dynPush('notice',t,[{k:'ok',label:'확인'}],{d:S.day})}
+      if(S.day%5===0&&!((me.jailUntil||0)>S.day))dynBudgetTick(me);
       if(S.day%15===0){dynScanTies();
         for(const t of [me,...me.kids.map(id=>S.byId.get(id))])if(dynSingle(t)&&t.age>=18*YEAR&&t.age<45*YEAR&&dynCool('arr'+t.id,YEAR))dynArrangeOffer(t)}return}
     const dead=me,age=dead?Math.floor(dead.age/YEAR):0,cause=dead?.cause||'알 수 없는 이유';const h=dead&&dynHeir(dead);
@@ -4678,12 +4710,12 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     out.me={...dynP(a),sur:a.sur,given:a.given,health:a.health,hunger:a.hunger,happy:a.happy,rep:a.rep,edu:a.edu||0,occ:a.occ||null,faith:a.faith||null,
       grp:g?{id:g.id,name:g.name,leader:g.leader===a.id}:null,emp:dynP(emp),staff:S.agents.filter(x=>x.alive&&x.emp===a.id).length,crimes:a.crimes||0,caught:a.caught||0,jail:!!a.jail};
     out.family={parents:f.parents.map(dynP),siblings:f.siblings.map(dynP),partner:dynP(f.partner),kids:f.kids.map(dynP),grand:f.grand.map(dynP)};
-    out.actions=dynActions();out.run=D.run||{};out.title=dynPolTitle(a);out.regime=S.gov?regime():'none';
+    out.actions=dynActions();out.vault=D.vault||0;out.spent=D.spent||null;out.wageAvg=S.wageAvg||0;out.run=D.run||{};out.title=dynPolTitle(a);out.regime=S.gov?regime():'none';
     out.heirs=dynHeirs();out.assets=dynAssets(a);out.ties=Object.entries(D.ties||{}).map(([fam,t])=>({fam:+fam,...t})).sort((x,y)=>y.v-x.v);
     const circle=dynCircle();out.news=S.events.filter(e=>e.type!=='mile'&&e.ids.some(i=>circle.has(i))).slice(-25).reverse();
     return out}
   currencyState();
-  return{dynStart,dynRename,dynChoose,dynAct,dynActions,dynView,dynRank,dynCanSee,dynCanTab,dynTabs,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
+  return{dynStart,dynRename,dynChoose,dynAct,dynActions,dynSetBudget,dynVault,dynView,dynRank,dynCanSee,dynCanTab,dynTabs,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
 }
 if(typeof module!=='undefined')module.exports={GAME_VERSION,SHARE_COUNT,shareCount,votingShares,marketCap,formatMoney,REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};
 
