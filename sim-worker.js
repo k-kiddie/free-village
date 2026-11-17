@@ -13,9 +13,13 @@ const mapKeys=[...new Set([...mapSource.matchAll(/\bS\.([\w]+)/g)].map(m=>m[1]))
 let panelDay=-1;const panelCache=new Map();
 
 const saveDir = process.env.VILLAGE_SAVE_DIR || path.join(__dirname, 'save');
-const saveFile = path.join(saveDir, 'village.json.gz');
+// 'village' = 원래 자유방임 마을, 'dynasty' = 가문 모드 마을. 서로 다른 저장 파일을 쓴다.
+const worldName = workerData.name === 'dynasty' ? 'dynasty' : 'village';
+const isDynasty = worldName === 'dynasty';
+const saveFile = path.join(saveDir, isDynasty ? 'god.json.gz' : 'village.json.gz');
+const defaultPopulation = isDynasty ? (workerData.population || 100) : (workerData.population || 5000);
 let seed = workerData.seed || 20261116;
-let population = workerData.population || 5000;
+let population = defaultPopulation;
 let world, running = false, speed = 1, pendingDays = 0, busySave = false;
 let clockAt = Date.now(), dayFraction = 0;
 let lastViewDay = -1;
@@ -31,18 +35,30 @@ function shouldStop(){if(!stopMark||autoStop==='none')return false;const d=world
 
 function restore() {
   try {
-    let raw;try{raw=zlib.gunzipSync(fs.readFileSync(saveFile))}catch(e){if(e.code!=='ENOENT')throw e;raw=fs.readFileSync(path.join(saveDir,'village.json'))}
+    let raw;try{raw=zlib.gunzipSync(fs.readFileSync(saveFile))}catch(e){if(e.code!=='ENOENT'||isDynasty)throw e;raw=fs.readFileSync(path.join(saveDir,'village.json'))}
     const saved = JSON.parse(raw.toString('utf8'));
     seed = saved.seed||seed; population = saved.population||saved.pop||saved.state?.S?.agents?.length||population;
     world = createWorld(seed, population);
     world.importState(saved.state);
     lastSavedDay = world.S.day;
+    // 1단계에서 만든 가문 모드 마을(S.dyn 없음)은 이어서 내 캐릭터를 정한다.
+    if(isDynasty&&!world.S.dyn&&typeof world.dynStart==='function'){world.dynStart();lastSavedDay=-1}
     return true;
   } catch (e) {
     if (e.code !== 'ENOENT') { parentPort.postMessage({ type: 'log', message: `저장 복원 실패: ${e.message}` }); process.exit(1); }
     return false;
   }
 }
+
+function newWorld() {
+  const w=createWorld(seed,population);
+  // 가문 모드 엔진 시작 함수(2단계에서 engine.js에 추가). 원래 마을에서는 호출하지 않는다.
+  if(isDynasty&&typeof w.dynStart==='function')w.dynStart();
+  return w;
+}
+
+// 가문 모드: 선택지가 떠 있으면 답할 때까지 하루도 진행하지 않는다.
+const dynWaiting=()=>isDynasty&&!!world?.S.dyn&&world.S.dyn.pending.length>0;
 
 function makeView() {
   const S = world.S;
@@ -62,10 +78,11 @@ function makeView() {
   mapState.shops=S.shops.map(sh=>({...sh,busy:busyShops.has(sh.slot)}));
   mapState.fx=S.fx.slice(-7);mapState.day=day;
   return {
-    version:1, seed, population:agents.length, day, year:Math.floor(day/YEAR)+1,stopped,canImport:lastSavedDay<0&&day===0,jump:jumpTotal?{total:jumpTotal,left:pendingDays}:null,
+    version:1, world:worldName, seed, population:agents.length, day, year:Math.floor(day/YEAR)+1,stopped,canImport:!isDynasty&&lastSavedDay<0&&day===0,jump:jumpTotal?{total:jumpTotal,left:pendingDays}:null,
     season:world.season(), running, speed, leader:S.leader,
     hud:{ adults:adultN, homeless, houses:S.houses.length, wageAvg:S.wageAvg, price:S.price, top:S.leader?world.W(S.byId.get(S.leader)):0, miles:S.miles, savedDay:lastSavedDay },
-    map:mapState, geometry:{geo:S.geo,mapBig:S.mapBig,plots:engine.PLOTS,expl:engine.EXPL}
+    map:mapState, geometry:{geo:S.geo,mapBig:S.mapBig,plots:engine.PLOTS,expl:engine.EXPL},
+    ...(isDynasty&&S.dyn?{dyn:world.dynView(),waiting:dynWaiting()}:{})
   };
 }
 
@@ -100,13 +117,15 @@ function advance() {
   if(busySave){clockAt=Date.now();setTimeout(advance,50);return;}
   const now=Date.now();
   if(now-lastClientAt>60_000 && (running || pendingDays>0)){running=false;pendingDays=0;dayFraction=0;lastViewDay=-1;sendView(true);}
-  if(running){dayFraction+=Math.min(1000,now-clockAt)*speed/1000;const due=Math.floor(dayFraction);if(due){pendingDays=Math.min(speed,pendingDays+due);dayFraction-=due}}
+  if(dynWaiting()){if(pendingDays||jumpTotal){pendingDays=0;jumpTotal=0;lastViewDay=-1;sendView(true)}dayFraction=0;clockAt=now;}
+  if(running&&!dynWaiting()){dayFraction+=Math.min(1000,now-clockAt)*speed/1000;const due=Math.floor(dayFraction);if(due){pendingDays=Math.min(speed,pendingDays+due);dayFraction-=due}}
   clockAt=now;
   const start = Date.now();
   let n = 0;
   try {
     while (pendingDays > 0 && n < 1 && Date.now() - start < 40) {
       world.step(); pendingDays--; n++;
+      if(dynWaiting()){pendingDays=0;dayFraction=0;lastViewDay=-1;sendView(true);break;}
       if(running&&shouldStop()){running=false;pendingDays=0;stopped=stopMark;lastViewDay=-1;sendView(true);break;}
     }
   } catch (e) {
@@ -138,6 +157,7 @@ async function handleMessage(msg) {
   while(busySave)await new Promise(r=>setTimeout(r,10));
   if(msg.type==='import'){
     try{
+      if(isDynasty)throw Error('가문 모드 마을에는 기존 저장을 가져오지 않습니다');
       if(lastSavedDay>=0||world.S.day!==0)throw Error('서버에 진행 중인 마을이 있어 가져오지 않았습니다');
       const o=JSON.parse(msg.raw);if(!Number.isFinite(o.seed)||!o.state?.S||!Array.isArray(o.state.S.agents)||!Array.isArray(o.state.dead))throw Error('지원하지 않는 저장 형식');
       for(const a of o.state.S.agents)if(!a.g||!Array.isArray(a.q))throw Error('주민 학습 데이터가 없는 저장');
@@ -145,14 +165,16 @@ async function handleMessage(msg) {
     }catch(e){answer(msg.idRequest,'error',e.message)}return;
   }
   if(msg.type==='panel'){
-    try{if(panelDay!==world.S.day){panelCache.clear();panelDay=world.S.day}
+    try{if(isDynasty&&world.S.dyn&&!world.dynCanTab(msg.tab))throw Error('지금 지위로는 볼 수 없는 정보입니다');
+      if(panelDay!==world.S.day){panelCache.clear();panelDay=world.S.day}
       const key=JSON.stringify([msg.tab,msg.filter,msg.selected]);let body=panelCache.get(key);
       if(!body){body=zlib.gzipSync(Buffer.from(JSON.stringify({day:world.S.day,html:presenter.panel(world,msg.tab,msg.filter,msg.selected)})),{level:1});if(panelCache.size>=32)panelCache.clear();panelCache.set(key,body)}
       answer(msg.idRequest,'panel',body);
     }catch(e){answer(msg.idRequest,'error',e.message)}return;
   }
   if (msg.type === 'resident') {
-    try { const value=resident(msg.id);if(value)value.html=presenter.card(world,Number(msg.id)); answer(msg.idRequest,'resident',value==null?null:zlib.gzipSync(Buffer.from(JSON.stringify(value)),{level:1})); }
+    try { if(isDynasty&&world.S.dyn&&!world.dynCanSee(Number(msg.id))){answer(msg.idRequest,'resident',false);return}
+      const value=resident(msg.id);if(value)value.html=presenter.card(world,Number(msg.id)); answer(msg.idRequest,'resident',value==null?null:zlib.gzipSync(Buffer.from(JSON.stringify(value)),{level:1})); }
     catch(e) { answer(msg.idRequest,'error',e.message); }
     return;
   }
@@ -164,8 +186,13 @@ async function handleMessage(msg) {
       else if(c.action==='speed') speed=Math.max(1,Math.min(100,Math.floor(Number(c.value)||1)));
       else if(c.action==='autostop'){if(!['none','mile','season','year'].includes(c.value))throw Error('알 수 없는 멈춤 기준');autoStop=c.value;markStop();}
       else if(c.action==='advance') { if(!Number.isFinite(c.days)||c.days<1||c.days>3650)throw Error('건너뛸 날짜가 올바르지 않습니다');running=false;pendingDays=Math.floor(c.days);jumpTotal=pendingDays;stopped=null; }
-      else if(c.action==='new') { running=false;pendingDays=0;dayFraction=0;seed=Number(c.seed)||((seed*7919+13)%99991+1);population=Math.max(1,Math.min(10000,Math.floor(Number(c.population)||5000)));world=createWorld(seed,population);lastViewDay=-1;lastSavedDay=-1;panelDay=-1;panelCache.clear();await save();sendView(true); }
+      else if(c.action==='new') { running=false;pendingDays=0;dayFraction=0;seed=Number(c.seed)||((seed*7919+13)%99991+1);population=isDynasty?defaultPopulation:Math.max(1,Math.min(10000,Math.floor(Number(c.population)||5000)));world=newWorld();lastViewDay=-1;lastSavedDay=-1;panelDay=-1;panelCache.clear();await save();sendView(true); }
       else if(c.action==='save') await save();
+      else if(isDynasty&&c.action==='choose'){const r=world.dynChoose(c.id,String(c.k||''));lastSavedDay=-1;clockAt=Date.now();lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
+      else if(isDynasty&&c.action==='act'){const r=world.dynAct(String(c.k||''));lastSavedDay=-1;panelDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
+      else if(isDynasty&&c.action==='budget'){const r=world.dynSetBudget(c.budget||{});lastSavedDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
+      else if(isDynasty&&c.action==='vault'){const r=world.dynVault(c.dir,c.frac);world.S.dyn.res={d:world.S.day,kind:'act',text:r.text};lastSavedDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
+      else if(isDynasty&&c.action==='rename'){const r=world.dynRename(c.sur,c.given);lastSavedDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
       else if(c.action==='suspend') {running=false;pendingDays=0;dayFraction=0;jumpTotal=0;await save()}
       else throw new Error('알 수 없는 명령');
       lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day});
@@ -173,7 +200,7 @@ async function handleMessage(msg) {
   }
 }
 
-if (!restore()) world=createWorld(seed,population);
+if (!restore()) world=newWorld();
 sendView();
 setInterval(()=>save().catch(()=>{}),60_000);
 advance();
