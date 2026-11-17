@@ -642,7 +642,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     migrateShares(f);if(!Number.isFinite(price)||price<=0||!Number.isFinite(requested))return 0;
     const offered=Math.min(100000000-shareCount(f),Math.max(0,Math.floor(requested)));if(!offered)return 0;
     const oldTotal=shareCount(f),oldMarket=marketCap(f);let issued=0,raised=0;
-    const subscribe=(id,quota)=>{if(String(id)==='T')return;const buyer=holderAccount(id,f);if(!buyer||buyer.wallet===f)return;
+    const subscribe=(id,quota)=>{if(String(id)==='T'||(S.dyn&&dynOwnKey(String(id))))return;const buyer=holderAccount(id,f);if(!buyer||buyer.wallet===f)return;
       const n=Math.min(quota,offered-issued,Math.floor(buyer.cash/price));if(n<=0)return;const pay=n*price;
       buyer.cash-=pay;f.cash=(f.cash||0)+pay;setShares(f,id,(f.sh[id]||0)+n);issued+=n;raised+=pay;if(buyer.agent)SP(buyer.agent,'stock',pay);if(String(id)==='X')recordForeignCapital(pay);
     };
@@ -664,7 +664,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   }
   function buybackShares(f,requested){
     migrateShares(f);if(!Number.isFinite(requested))return 0;let left=Math.min(Math.max(0,Math.floor(requested)),Math.max(0,votingShares(f)-1)),bought=0;
-    for(const id of shareKeys(f).keys.slice()){if(id==='T'||!left)continue;const n=tradeStock(f,id,'T',Math.min(left,f.sh[id]),f.price);bought+=n;left-=n}
+    for(const id of shareKeys(f).keys.slice()){if(id==='T'||!left||(S.dyn&&dynOwnKey(id)))continue;const n=tradeStock(f,id,'T',Math.min(left,f.sh[id]),f.price);bought+=n;left-=n}
     if(bought)stockActionLog(f,'buyback',`${f.name} 자사주 매입. ${bought}주, ${won(bought*f.price)}`);return bought;
   }
   function cancelTreasury(f){const n=f.sh.T||0;if(!n||shareCount(f)<=n)return 0;setShares(f,'T',0);f.totalShares=shareCount(f)-n;stockActionLog(f,'shareCancel',`${f.name} 자사주 소각. ${n}주, 총 ${f.totalShares}주`);return n}
@@ -696,11 +696,11 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       const pending=(sites.get(f.id)||[]).reduce((n,b)=>n+S.houseRef*1.4*Math.min(1,.4+b.prog/(b.need||40)),0);
       const fund=(f.divE*100+(asset+pending+(f.cash||0))*.6+(subs.get(f.id)||0)*.8)/votingShares(f),mom=f.price/Math.max(.0001,f.p30||f.price)-1;
       const buys=[],sells=[],buyIds=new Set(),sellIds=new Set();
-      const bid=(id,cap=20)=>{id=String(id);if(buyIds.has(id))return;buyIds.add(id);const a=holderAccount(id,f);if(!a||a.cash<f.price)return;
+      const bid=(id,cap=20)=>{id=String(id);if(S.dyn&&dynOwnKey(id))return;if(buyIds.has(id))return;buyIds.add(id);const a=holderAccount(id,f);if(!a||a.cash<f.price)return;
         const g=a.agent?.g||{imitate:.2,econ:1.2,vigil:.7},value=fund*(1+g.imitate*mom*2.5+gauss()*.15)*(.8+g.econ*.2)*(f.pump?1.6-g.vigil*.5:1);
         if(value>f.price*(a.agent?1.02:.98)){const q=Math.min(cap,Math.floor(a.cash*(a.agent?.05:.02)/Math.max(.0001,f.price)));if(q>0)buys.push({id,q,p:Math.min(value,f.price*1.08)})}
       };
-      const ask=(id)=>{id=String(id);if(id==='X'||sellIds.has(id))return;sellIds.add(id);const a=holderAccount(id,f),holding=f.sh[id]||0;if(!a||!holding)return;const g=a.agent?.g||{imitate:.2,ask:1},isCeo=+id===f.ceo;
+      const ask=(id)=>{id=String(id);if(S.dyn&&dynOwnKey(id))return;if(id==='X'||sellIds.has(id))return;sellIds.add(id);const a=holderAccount(id,f),holding=f.sh[id]||0;if(!a||!holding)return;const g=a.agent?.g||{imitate:.2,ask:1},isCeo=+id===f.ceo;
         const value=fund*(1+g.imitate*mom*2.5+gauss()*.15);
         if((!isCeo&&(R()<.03||value<f.price*.95))||a.cash<5*PL()||(isCeo&&f.pump)||id==='T'){
           const q=Math.min(isCeo&&f.pump?500:a.agent?20:250,Math.floor(holding*(isCeo&&!f.pump?.1:1)));if(q>0)sells.push({id,q,p:Math.max(value,f.price*.94)*g.ask})}
@@ -2570,7 +2570,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(!S.exch){const traded=S.firms.filter(f=>Object.keys(f.sh).length>=4).length;if(pw>=1&&traded>=4&&R()<.03){S.exch={d:S.day,base:0};X('exch');mile('exch',`증권거래소 개장. 주식을 사고팔 거래소가 문을 열었다. 이제 큰 회사는 상장할 수 있다`,[])}return}
     const L=S.firms.filter(f=>f.listed);
     // 상장(IPO): 큰 회사가 공모로 돈을 모은다. 사장 주식 일부를 개미들에게 판다
-    for(const f of S.firms){if(f.listed||f.delisted)continue;const ceo=S.byId.get(f.ceo);if(!ceo||!ceo.alive)continue;if(((f.size||0)>=12||(f.cash||0)>hr*8)&&R()<.02){const q=Math.min(Math.floor(shareCount(f)*.25),Math.floor((f.sh[ceo.id]||0)*.35));if(q<shareCount(f)*.05)continue;
+    for(const f of S.firms){if(f.listed||f.delisted)continue;const ceo=S.byId.get(f.ceo);if(!ceo||!ceo.alive||(S.dyn&&ceo.id===S.dyn.pid))continue;if(((f.size||0)>=12||(f.cash||0)>hr*8)&&R()<.02){const q=Math.min(Math.floor(shareCount(f)*.25),Math.floor((f.sh[ceo.id]||0)*.35));if(q<shareCount(f)*.05)continue;
       const inv=investors(ceo),lot=Math.max(1,Math.floor(q/Math.min(1500,inv.length||1)));let sold=0,raised=0;for(const a of inv){if(sold>=q)break;const pr=f.price*1.1,k=Math.min(q-sold,lot,Math.floor(a.cash*.15/pr));if(k<1)continue;a.cash-=k*pr;SP(a,'stock',k*pr);setShares(f,a.id,(f.sh[a.id]||0)+k);setShares(f,ceo.id,f.sh[ceo.id]-k);sold+=k;raised+=k*pr}
       f.cash+=raised*.7;ceo.cash+=raised*.3;if(sold<shareCount(f)*.03)continue;f.listed=S.day;f.ipoP=f.price;X('ipo');mEv('ipo',`${S.mileSet.has('ipo')?'상장':'첫 상장'}. ${josa(f.name,'이','가')} 거래소에 상장해 주민 ${stockOwnership(f).people}명에게서 ${won(raised)}을 모았다`,[ceo.id])}}
     // 주가지수
@@ -2580,9 +2580,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       const was=S.fever||0;S.fever=cl(ch>.25?was+.15:ch<-.15?0:was*.9,0,1);if(S.fever>.5&&was<=.5){X('fever');mEv('fever',`개미 열풍. 주가지수가 ${S.idx}까지 오르자 너도나도 주식을 사들였다. 빚을 내 주식을 사는 사람도 생겼다`,[]);for(const a of S.agents)if(a.alive&&isAdult(a)&&a.g.imitate>.6&&a.cash<hr*.5&&R()<.05){a.margin=S.day;X('margin')}}
       if(ch<-.25&&was>.2){X('stockCrash');const vic=S.agents.filter(a=>a.alive&&a.margin&&S.day-a.margin<YEAR*2);for(const a of vic){a.debtStock=1;a.margin=0}mEv('stockCrash',`증시 폭락. 주가지수가 ${S.idx}로 곤두박질쳤다${vic.length?`. 빚내서 주식을 산 ${vic.length}명이 손실을 입었다`:''}`,[])}}
     // 내부자 거래: 나쁜 소식(구조조정·적자)을 먼저 아는 사장·임원이 미리 판다
-    for(const f of L){const ceo=S.byId.get(f.ceo);if(!ceo||!ceo.alive)continue;const bad=(f.rsD&&S.day-f.rsD<10)||(f.cash<hr*.2);if(bad&&ceo.g.cheat>.45&&(f.sh[ceo.id]||0)>votingShares(f)*.1&&!(f.insD&&S.day-f.insD<YEAR*2)&&R()<.4){const buyer=pick(S.agents.filter(a=>a.alive&&isAdult(a)&&a!==ceo&&a.cash>=f.price));if(!buyer)continue;const q=Math.min(Math.floor(f.sh[ceo.id]*.3),Math.floor(buyer.cash/f.price));if(q<1)continue;const gain=q*f.price;buyer.cash-=gain;ceo.cash+=gain;setShares(f,ceo.id,f.sh[ceo.id]-q);setShares(f,buyer.id,(f.sh[buyer.id]||0)+q);f.insD=S.day;f.price*=.85;X('insider');mEv('insider',`내부자 거래. ${f.name} 사장 ${josa(nm(ceo),'이','가')} 나쁜 소식이 나기 전에 주식을 팔아 치웠다`,[ceo.id]);if(R()<(sec?.6:.15))fileC('insider',ceo,gain*2,sec?.75:.5)}}
+    for(const f of L){const ceo=S.byId.get(f.ceo);if(!ceo||!ceo.alive||(S.dyn&&ceo.id===S.dyn.pid))continue;const bad=(f.rsD&&S.day-f.rsD<10)||(f.cash<hr*.2);if(bad&&ceo.g.cheat>.45&&(f.sh[ceo.id]||0)>votingShares(f)*.1&&!(f.insD&&S.day-f.insD<YEAR*2)&&R()<.4){const buyer=pick(S.agents.filter(a=>a.alive&&isAdult(a)&&a!==ceo&&a.cash>=f.price&&!(S.dyn&&a.id===S.dyn.pid)));if(!buyer)continue;const q=Math.min(Math.floor(f.sh[ceo.id]*.3),Math.floor(buyer.cash/f.price));if(q<1)continue;const gain=q*f.price;buyer.cash-=gain;ceo.cash+=gain;setShares(f,ceo.id,f.sh[ceo.id]-q);setShares(f,buyer.id,(f.sh[buyer.id]||0)+q);f.insD=S.day;f.price*=.85;X('insider');mEv('insider',`내부자 거래. ${f.name} 사장 ${josa(nm(ceo),'이','가')} 나쁜 소식이 나기 전에 주식을 팔아 치웠다`,[ceo.id]);if(R()<(sec?.6:.15))fileC('insider',ceo,gain*2,sec?.75:.5)}}
     // 작전 세력: 회사 바깥 큰손·조폭이 작은 상장사 주가를 띄우고 턴다
-    if(L.length>=2&&R()<(sec?.01:.03)){const f=L.slice().sort((x,y)=>x.price-y.price)[0];const op=S.agents.filter(a=>a.alive&&isAdult(a)&&a.g.cheat>.55&&a.cash>hr*2&&a.id!==f.ceo&&(f.sh[a.id]||0)>=1).sort((x,y)=>y.cash-x.cash)[0];if(op&&!f.pump){const buyer=pick(S.agents.filter(a=>a.alive&&isAdult(a)&&a!==op&&a.cash>=f.price*1.1));if(buyer){const q=Math.min(500,Math.floor(f.sh[op.id]),Math.floor(buyer.cash/(f.price*1.1))),gain=q*f.price*1.1;if(q){buyer.cash-=gain;op.cash+=gain;setShares(f,op.id,f.sh[op.id]-q);setShares(f,buyer.id,(f.sh[buyer.id]||0)+q);f.pump=10;f.op=op.id;X('opPump');mEv('opPump',`작전 세력. ${josa(nm(op),'이','가')} 헛소문을 퍼뜨려 ${f.name} 주가를 띄운 뒤 팔고 빠졌다`,[op.id,buyer.id]);if(R()<(sec?.5:.1))fileC('manip',op,gain*2,sec?.7:.5)}}}}
+    if(L.length>=2&&R()<(sec?.01:.03)){const f=L.slice().sort((x,y)=>x.price-y.price)[0];const op=S.agents.filter(a=>a.alive&&isAdult(a)&&a.g.cheat>.55&&a.cash>hr*2&&a.id!==f.ceo&&(f.sh[a.id]||0)>=1&&!(S.dyn&&a.id===S.dyn.pid)).sort((x,y)=>y.cash-x.cash)[0];if(op&&!f.pump){const buyer=pick(S.agents.filter(a=>a.alive&&isAdult(a)&&a!==op&&a.cash>=f.price*1.1&&!(S.dyn&&a.id===S.dyn.pid)));if(buyer){const q=Math.min(500,Math.floor(f.sh[op.id]),Math.floor(buyer.cash/(f.price*1.1))),gain=q*f.price*1.1;if(q){buyer.cash-=gain;op.cash+=gain;setShares(f,op.id,f.sh[op.id]-q);setShares(f,buyer.id,(f.sh[buyer.id]||0)+q);f.pump=10;f.op=op.id;X('opPump');mEv('opPump',`작전 세력. ${josa(nm(op),'이','가')} 헛소문을 퍼뜨려 ${f.name} 주가를 띄운 뒤 팔고 빠졌다`,[op.id,buyer.id]);if(R()<(sec?.5:.1))fileC('manip',op,gain*2,sec?.7:.5)}}}}
     // 상장 폐지
     for(const f of L){const ceo=S.byId.get(f.ceo);if(!ceo||!ceo.alive||f.price<(f.ipoP||1)*.08||(f.cash<-hr)){f.listed=0;f.delisted=S.day;X('delist');mEv('delist',`상장 폐지. ${f.name} 주식이 거래소에서 퇴출됐다. 주주들의 주식이 휴지 조각이 됐다`,ceo?[ceo.id]:[])}}}
   function minScore(k){const G=S.gov;let m=G&&G.min&&G.min[k];if(m&&m.into)m=G.min[m.into];return m&&m.mn?m.score*[1,.8,.65][m.tier||0]*(.5+.5*Math.min(1,m.cap??.5)):0}
@@ -2727,7 +2727,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(S.day%30===15)for(const A of S.firms.slice()){const c=S.byId.get(A.ceo);if(!c||c.g.boss<.45||!(A.cash>50*PL())||A.parent)continue;
       const ancestors=new Set();let parent=A;while(parent&&parent.parent&&!ancestors.has(parent.parent)){ancestors.add(parent.parent);parent=firmById(parent.parent)}
       const tg=S.firms.filter(B=>B!==A&&!ancestors.has(B.id)&&!B.parent&&B.ceo!==A.ceo&&marketCap(B)<A.cash*1.6&&!(B.sh['F'+A.id]>votingShares(B)*.5)).sort((x,y)=>x.price-y.price)[0];if(!tg||R()>.4)continue;
-      const pr=tg.price*1.25;let stake=tg.sh['F'+A.id]||0;for(const[id,n]of persons(tg).sort((x,y)=>x[1]-y[1])){if(stake>votingShares(tg)*.5)break;if(+id===tg.ceo&&R()<.6)continue;const x=S.byId.get(+id);if(!x||R()>.7)continue;const q=Math.min(n,Math.ceil(votingShares(tg)*.51)-stake,Math.floor(A.cash/pr));if(q<1)break;A.cash-=q*pr;x.cash+=q*pr;x.src.stock=(x.src.stock||0)+q*pr;setShares(tg,id,tg.sh[id]-q);stake+=q;setShares(tg,'F'+A.id,stake)}
+      const pr=tg.price*1.25;let stake=tg.sh['F'+A.id]||0;for(const[id,n]of persons(tg).sort((x,y)=>x[1]-y[1])){if(stake>votingShares(tg)*.5)break;if(S.dyn&&dynOwnKey(String(id)))continue;if(+id===tg.ceo&&R()<.6)continue;const x=S.byId.get(+id);if(!x||R()>.7)continue;const q=Math.min(n,Math.ceil(votingShares(tg)*.51)-stake,Math.floor(A.cash/pr));if(q<1)break;A.cash-=q*pr;x.cash+=q*pr;x.src.stock=(x.src.stock||0)+q*pr;setShares(tg,id,tg.sh[id]-q);stake+=q;setShares(tg,'F'+A.id,stake)}
       if(stake>votingShares(tg)*.5){tg.parent=A.id;if(A.pre&&tg.suf&&tg.pre!==A.pre){const nn=A.pre+tg.suf;if(!S.firms.some(x=>x.name===nn)){log('econ',`${josa(tg.name,'이','가')} ${josa(A.pre+' 그룹','으로','로')} 들어가며 이름을 ${josa(nn,'으로','로')} 바꿨다`,[A.ceo]);tg.name=nn;tg.pre=A.pre}}const old=S.byId.get(tg.ceo);setCeo(tg,A.ceo);A.subs=(A.subs||0)+1;log('econ',`${josa(A.name,'이','가')} ${tg.name} 주식 ${(stake/100).toFixed(1)}%를 사들여 계열사로 만들었다`,[A.ceo,old&&old.id].filter(Boolean),{x:60,y:60,t:'기업 인수'});
         A.mergedD=S.day;mile('mna',`첫 기업 인수. ${josa(A.name,'이','가')} ${tg.name} 주식을 과반까지 사들여 계열사로 거느리게 됐다`,[A.ceo]);
         const subs=S.firms.filter(x=>x.parent===A.id).length;if(subs>=3)mile('group',`첫 재벌 그룹. ${A.pre?A.pre+' 그룹(':''}${A.name}${josa(A.pre?')':'','이','가')} 계열사 ${subs}곳을 거느린 그룹이 됐다`,[A.ceo])}}
@@ -3710,7 +3710,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       const owe=ill+ill*mult;let got=Math.min(Math.max(0,d.cash),owe);d.cash-=got;
       // 현금이 모자라면 재산 몰수: 주식 → 남는 집 → 밭 순서
       let seized='';if(got<owe*.9){let left=owe-got;const hr=S.houseRef||100;
-        for(const f of S.firms){if(left<=0)break;const q=f.sh[d.id]||0;if(q<=0)continue;const v=q*f.price;const take=Math.min(q,Math.ceil(left/Math.max(.0001,f.price*.8)));const buyer=S.agents.filter(x=>x.alive&&isAdult(x)&&x!==d&&x.cash>take*f.price*.8).sort((x,y)=>y.cash-x.cash)[0];if(!buyer)continue;buyer.cash-=take*f.price*.8;setShares(f,d.id,f.sh[d.id]-take);setShares(f,buyer.id,(f.sh[buyer.id]||0)+take);left-=take*f.price*.8;got+=take*f.price*.8;seized+=`${f.name} 주식 `}
+        for(const f of S.firms){if(left<=0)break;const q=f.sh[d.id]||0;if(q<=0)continue;const v=q*f.price;const take=Math.min(q,Math.ceil(left/Math.max(.0001,f.price*.8)));const buyer=S.agents.filter(x=>x.alive&&isAdult(x)&&x!==d&&x.cash>take*f.price*.8&&!(S.dyn&&x.id===S.dyn.pid)).sort((x,y)=>y.cash-x.cash)[0];if(!buyer)continue;buyer.cash-=take*f.price*.8;setShares(f,d.id,f.sh[d.id]-take);setShares(f,buyer.id,(f.sh[buyer.id]||0)+take);left-=take*f.price*.8;got+=take*f.price*.8;seized+=`${f.name} 주식 `}
         const hs=S.houses.filter(h=>h.owner===d.id);for(const h of hs.slice(d.home&&hs.some(x=>x.id===d.home)?1:0)){if(left<=0)break;if(d.home===h.id)continue;h.owner=null;h.sale=hr*.8;h.seized=1;left-=hr*.7;got+=hr*.7;seized+='집 '}
         for(const pl of S.plots){if(left<=0)break;if(pl.owner!==d.id||pl.gone)continue;pl.owner=null;pl.pub=true;left-=(S.plotRef||100)*.7;got+=(S.plotRef||100)*.7;seized+='밭 '}
         if(seized){X('confiscate');mile('confiscate',`재산 몰수. ${josa(nm(d),'이','가')} 벌금을 낼 현금이 없어 ${seized.trim().split(' ').filter((x,i,a)=>a.indexOf(x)===i).join('·')}을 빼앗겼다`,[d.id])}}
@@ -4593,7 +4593,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   // ---- 경제 행동: 집·땅·주식·대출·예금·회사. 기존 엔진 거래 규칙(가격·사기·대출 심사·상장)을 그대로 쓴다 ----
   const dynHouseV=h=>S.houseRef*lvOf(h.lot)*hq(h)*(.4+.6*h.cond);
   function dynBanks(me){return S.agents.filter(x=>x!==me&&x.alive&&isAdult(x)&&activeLoans(x.id)>=4&&(x.rep??1)>=.85)}
-  function dynEcoActions(me,add){const wA=Math.max(.5,S.wageAvg||1);
+  // 플레이어 본인 계좌(개인·개인 투자 계좌). 엔진 자동 주식 거래에서 뺀다.
+  function dynOwnKey(id){const p=S.dyn.pid;return id===String(p)||id==='I'+p}
+  function dynEcoActions(me,add,out){const wA=Math.max(.5,S.wageAvg||1);
     // 집
     const sale=S.houses.filter(h=>h.sale&&!h.occ&&h.owner!==me.id&&!banned(me,'buyHouse')).sort((x,y)=>x.sale-y.sale);
     const pickH=[...new Set([sale[0],sale.slice().sort((x,y)=>lvOf(y.lot)*hq(y)-lvOf(x.lot)*hq(x))[0]].filter(Boolean))];
@@ -4608,15 +4610,17 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(lands.length){const x=lands[0];add('land:buy:'+x.i,'집·땅',`농지 사기 ${won(x.pl.sale)}`,`매물 ${lands.length}필지 중 가장 싼 땅`,banned(me,'buyLand')?'법으로 금지됨':me.cash<x.pl.sale?'돈이 모자람':'')}
     {const mine=S.plots.map((pl,i)=>({pl,i})).filter(x=>!x.pl.gone&&x.pl.owner===me.id);const forSale=mine.filter(x=>x.pl.sale);const free=mine.filter(x=>!x.pl.sale);
       if(free.length)add('land:sell:'+free[0].i,'집·땅',`농지 1필지 팔려고 내놓기`,`시세 약 ${won(S.plotRef)} · 가진 농지 ${mine.length}필지`,'');if(forSale.length)add('land:unlist:'+forSale[0].i,'집·땅','농지 매물 거두기','','')}
-    // 주식
-    const firms=S.firms.filter(f=>f.price>0&&!f.gone).sort((x,y)=>marketCap(y)-marketCap(x)).slice(0,4);
-    for(const f of firms){const tot=shareCount(f),mine=Math.floor((f.sh[String(me.id)]||0));
-      add('stock:buy:'+f.id,'주식',`${f.name} 주식 사기`,`1주 ${won(f.price)} · 현금 30%어치(시세보다 5% 비싸게) · 시가총액 ${won(marketCap(f))}`,me.cash<f.price*1.05*2?'돈이 모자람':'');
-      if(mine>0)add('stock:sell:'+f.id,'주식',`${f.name} 주식 절반 팔기`,`가진 ${mine.toLocaleString()}주(${(mine/tot*100).toFixed(1)}%) · 시세보다 5% 싸게`,'')}
+    // 주식: 큰 회사 4곳 + 내가 가진 회사 + 내가 사장인 회사. 양은 고른다.
+    const mineF=f=>(f.sh[String(me.id)]||0)+(f.sh['I'+me.id]||0)>0||f.ceo===me.id;
+    const firms=[...new Set([...S.firms.filter(f=>f.price>0&&!f.gone).sort((x,y)=>marketCap(y)-marketCap(x)).slice(0,4),...S.firms.filter(f=>f.price>0&&!f.gone&&mineF(f))])];
+    for(const f of firms){const tot=shareCount(f),vs=votingShares(f),mine=Math.floor(f.sh[String(me.id)]||0),ceo=f.ceo===me.id;
+      out.push({k:'stock:buy:'+f.id,group:'주식',label:`${f.name}${ceo?' (내 회사)':''} 주식 사기`,hint:`1주 ${won(f.price)} · 시가총액 ${won(marketCap(f))} · 내 지분 ${(mine/tot*100).toFixed(1)}% · 현금의 몇 %어치를 살지 고름(시세보다 5% 비싸게)`,ok:me.cash*.6>=f.price*1.05,why:me.cash*.6>=f.price*1.05?'':'돈이 모자람',opts:[[.1,'현금 10%'],[.3,'30%'],[.6,'60%']]});
+      if(mine>0){const warn=ceo&&mine/vs>.5?` · ⚠️ 지분이 50% 밑으로 떨어지면 경영권을 잃을 수 있음(지금 ${(mine/vs*100).toFixed(1)}%)`:'';
+        out.push({k:'stock:sell:'+f.id,group:'주식',label:`${f.name}${ceo?' (내 회사)':''} 주식 팔기`,hint:`가진 ${mine.toLocaleString()}주(${(mine/tot*100).toFixed(1)}%) · 부자 주민에게 시세보다 5% 싸게${warn}`,ok:true,why:'',opts:[[.1,'10%'],[.5,'절반'],[1,'전부']]})}}
     if(!firms.length)add('stock:none','주식','주식 사기','','아직 마을에 회사가 없음');
     // 회사 세우기(상장)
     {const own=S.bldgs.filter(b=>!b.firm&&b.owner===me.id);const has=me.firm&&firmById(me.firm);
-      add('firm:new','회사',own.length?`회사 세우기 (내 건물 ${own.length}채로)`:'회사 세우기',`지분 30%를 투자자에게 팔아 자금을 모음. 투자자가 모자라면 실패`,has?'이미 회사가 있음':(investors(me).length<2?'투자할 사람이 없음':(!own.length&&me.cash<wA*60?'건물이 있거나 현금이 일당 60일치 이상이어야 함':'')))}
+      add('firm:new','회사',own.length?`회사 세우기 (내 건물 ${own.length}채로)`:'회사 세우기',`내 건물을 회사로 만들고 지분 30%를 투자자에게 팔아 자금을 모음. 투자자가 모자라면 실패`,has?'이미 회사가 있음':(!own.length?'회사로 만들 내 건물(가게·공방 등)이 있어야 함':investors(me).length<2?'투자할 사람이 없음':''))}
     // 대출·예금
     for(const m of [10,30,100])add('loan:take:'+m,'돈',`돈 빌리기 ${won(wA*m)}`,`돈놀이꾼·은행 심사(평판·연체 기록). 열흘마다 갚음`,'');
     {const owe=S.loans.filter(l=>l.b===me.id),debt=owe.reduce((t,l)=>t+l.bal,0);if(owe.length)add('loan:repay','돈',`빚 전부 갚기 ${won(debt)}`,`${owe.length}건`,me.cash<debt?'현금이 모자람':'')}
@@ -4640,15 +4644,16 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         S.plotRef=cl(S.plotRef*.7+pr*.3,Math.max(.3,S.wageAvg||1)*15,Math.max(.3,S.wageAvg||1)*1500);pl.owner=me.id;pl.sale=null;log('land',`${josa(nm(me),'이','가')} ${o?nm(o)+'의 ':''}농지를 ${won(pr)}에 샀다`,[me.id,o&&o.id]);dynChron(`${josa(nm(me),'이','가')} 농지를 사다`,[me.id]);return `농지를 ${won(pr)}에 샀다`}
       if(pl.owner!==me.id)throw Error('내 땅이 아닙니다');if(op==='sell'){pl.sale=S.plotRef;return `농지를 ${won(pl.sale)}에 내놓았다`}if(op==='unlist'){pl.sale=null;return '농지 매물을 거두었다'}}
     if(cat==='stock'){const f=firmById(id);if(!f)throw Error('없는 회사입니다');
-      if(op==='buy'){const price=f.price*1.05,budget=Math.max(0,me.cash)*.3;let want=Math.floor(budget/price),got=0;
+      const frac=Math.max(.01,Math.min(1,Number(k.split(':')[3])||.3));
+      if(op==='buy'){const price=f.price*1.05,budget=Math.max(0,me.cash)*frac;let want=Math.floor(budget/price),got=0;if(want<1)return `현금 ${Math.round(frac*100)}%(${won(budget)})로는 1주(${won(price)})도 살 수 없다`;
         const sellers=Object.keys(f.sh).filter(h=>h!==String(me.id)&&h!=='X'&&(f.sh[h]||0)>0).sort((a,b)=>(f.sh[b]||0)-(f.sh[a]||0));
         for(const sid of sellers){if(want<=0)break;const n=tradeStock(f,sid,me.id,Math.min(want,Math.floor((f.sh[sid]||0)*.2)),price);got+=n;want-=n}
-        return got?`${f.name} 주식 ${got.toLocaleString()}주를 1주 ${won(price)}에 샀다`:'팔겠다는 주주가 없어 사지 못했다'}
-      if(op==='sell'){const mine=Math.floor(f.sh[String(me.id)]||0);let want=Math.ceil(mine/2),got=0;const price=f.price*.95;
+        return got?`${f.name} 주식 ${got.toLocaleString()}주를 1주 ${won(price)}에 샀다 · 내 지분 ${((f.sh[String(me.id)]||0)/shareCount(f)*100).toFixed(1)}%`:'팔겠다는 주주가 없어 사지 못했다'}
+      if(op==='sell'){const mine=Math.floor(f.sh[String(me.id)]||0);let want=Math.max(1,Math.round(mine*frac)),got=0;const price=f.price*.95;
         const buyers=S.agents.filter(a=>a!==me&&a.alive&&isAdult(a)&&a.cash>price*10).sort((a,b)=>b.cash-a.cash).slice(0,10);
         for(const b of buyers){if(want<=0)break;const n=tradeStock(f,me.id,b.id,Math.min(want,Math.floor(b.cash*.3/price)),price);got+=n;want-=n}
-        return got?`${f.name} 주식 ${got.toLocaleString()}주를 1주 ${won(price)}에 팔았다`:'살 사람이 없어 팔지 못했다'}}
-    if(cat==='firm'){const own=S.bldgs.filter(b=>!b.firm&&b.owner===me.id);const val=own.length?own.reduce((t,b)=>t+buildingValue(b),0):Math.max(me.cash,wA*60)*1.5;
+        const left=Math.floor(f.sh[String(me.id)]||0);return got?`${f.name} 주식 ${got.toLocaleString()}주를 1주 ${won(price)}에 팔았다${got<Math.max(1,Math.round(mine*frac))?' (살 사람이 모자라 일부만)':''} · 남은 지분 ${(left/shareCount(f)*100).toFixed(1)}%`:'살 사람이 없어 팔지 못했다'}}
+    if(cat==='firm'){const own=S.bldgs.filter(b=>!b.firm&&b.owner===me.id);if(!own.length)throw Error('회사로 만들 건물이 없습니다');const val=own.reduce((t,b)=>t+buildingValue(b),0);
       const f=ipo(me,val,30,own.some(b=>b.fx.includes('fac')),own.map(b=>b.id));if(!f)return '투자자가 모자라 회사를 세우지 못했다';dynChron(`${josa(nm(me),'이','가')} ${josa(f.name,'을','를')} 세우다`,[me.id]);return `${josa(f.name,'을','를')} 세우고 투자금 ${won(f.raised)}을 모았다`}
     if(cat==='loan'){if(op==='take'){const amt=wA*id;const L=lend(me,amt,null,'가계');if(!L)return '돈을 빌려주겠다는 사람이 없었다';const l=S.byId.get(L.l);return `${l?nm(l)+'에게서 ':''}${won(amt)}을 열흘에 ${(L.rate*100).toFixed(1)}% 이자로 빌렸다`}
       if(op==='repay'){let paid=0;for(const L of S.loans.filter(l=>l.b===me.id)){if(me.cash<L.bal)break;const l=S.byId.get(L.l);me.cash-=L.bal;if(l)l.cash+=L.bal;paid+=L.bal;L.paid=(L.paid||0)+L.bal;L.bal=0;closeLoan(L)}return paid?`빚 ${won(paid)}을 갚았다`:'갚을 돈이 모자랐다'}}
@@ -4673,9 +4678,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(ruler||mp)add('law:'+key,'법 바꾸기',`${L.n} 법안 발의`,`${(G.council||[]).length?'의회 표결(과반이면 통과)':'통치자 결정'} · 주민 지지 약 ${sup.y}/${sup.n}명`,dynWait('law'+key));
       else add('pet:'+key,'법 바꾸기',`${L.n} 시위·청원`,`지지하는 주민을 모아 의회를 압박 · 주민 지지 약 ${sup.y}/${sup.n}명${dynHard()?' · 강압적인 체제라 붙잡혀 갇힐 수 있음':''}`,adult||dynWait('pet'+key))}
     if(G&&(G.council||[]).length&&!(G.council||[]).includes(me.id)&&G.chief!==me.id){const f=dynFee('council');add('runCouncil','선거',run.council?'의원 선거 출마 등록됨':'의원 선거 출마',`다음 의원 선거(${Math.max(0,(G.nextCouncil||S.day)-S.day)}일 뒤)에 후보로 나감 · 선거비 ${won(f)}`,run.council?'이미 등록함':dynEligible('council')||(me.cash<f?'선거비가 모자람':''))}
-    if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynEcoActions(me,add);
+    if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynEcoActions(me,add,out);
     return out}
-  function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');const a=dynActions().find(x=>x.k===k);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(!a.ok)throw Error(a.why);
+  function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');const base=/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
     const ad=adultsC();let text='';
     if(k==='council'){D.cool.actcouncil=S.day+YEAR;const pi=posIndex();const yes=councilVotes(ad,pi);
       if(yes<ad.length*.5){text=`마을 회의 안건이 ${yes}/${ad.length}표로 부결됐다`;log('pol',`${josa(nm(me),'이','가')} 마을 회의를 만들자고 했지만 ${yes}/${ad.length}표로 부결됐다`,[me.id]);mile('councilFail',`첫 회의 제안. ${josa(nm(me),'이','가')} 촌장을 뽑자고 했지만 부결됐다`,[me.id])}

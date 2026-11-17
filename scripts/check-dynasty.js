@@ -40,9 +40,9 @@ function main(){
   assert.equal(JSON.stringify(e2.S.dyn),JSON.stringify(e1.S.dyn),'S.dyn 저장 왕복');
   assert.equal(JSON.stringify(e2.S.agents.map(a=>[a.id,a.g,a.q])),JSON.stringify(e1.S.agents.map(a=>[a.id,a.g,a.q])),'g/q 보존');
   assert.equal(JSON.stringify(load(j2).exportState()),j2,'두 번째 저장 왕복 완전 일치');
-  const w4=load(j1);const pk=r=>p=>p.opts[(r=(r*48271)%2147483647)%p.opts.length].k;
-  drive(w2,YEAR*2,pk(777),{kinds:{}});drive(w4,YEAR*2,pk(777),{kinds:{}});
-  assert.equal(JSON.stringify(w4.exportState()),JSON.stringify(w2.exportState()),'복원 후 같은 선택이면 같은 결과');
+  // 엔진의 지도 확장 목록(EXPL·PLOTS)은 모듈 전역이라 한 프로세스에서는 복원본을 하나씩 차례로 돌린다(서버는 Worker당 마을 하나).
+  const pk=r=>p=>p.opts[(r=(r*48271)%2147483647)%p.opts.length].k;const runFrom=()=>{const x=load(j1);drive(x,YEAR*2,pk(777),{kinds:{}});return JSON.stringify(x.exportState())};
+  assert.equal(runFrom(),runFrom(),'복원 후 같은 선택이면 같은 결과');
   // 4. 선택지 직접 확인: 청혼 받음 → 수락하면 부부
   const w3=engine.createWorld(11,120);w3.dynStart();w3.dynChoose(w3.S.dyn.pending[0].id,'go');let accepted=false;
   for(let i=0;i<YEAR*40&&!accepted;i++){for(const p of w3.S.dyn.pending.slice()){
@@ -62,9 +62,15 @@ function main(){
     assert(tried>0);acts.law={tried,passed}}
   // 7. 경제 행동·지출·일
   {const x=engine.createWorld(7,150);x.dynStart();x.dynChoose(x.S.dyn.pending[0].id,'go');for(let i=0;i<900;i++){while(x.S.dyn.pending.length){const p=x.S.dyn.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}x.step()}
-    const me=x.S.byId.get(x.S.dyn.pid);me.cash+=3000;const done=[];for(const a of x.dynActions().filter(a=>/^(house|land|stock|firm|loan|dep):/.test(a.k)&&a.ok)){const before=JSON.stringify([me.cash,x.S.houses.filter(h=>h.owner===me.id).length,x.S.loans.length,x.S.firms.length]);const r=x.dynAct(a.k);done.push(a.k.split(':').slice(0,2).join(':'));assert(r.text)}
+    const me=x.S.byId.get(x.S.dyn.pid);me.cash+=3000;const done=[];for(const a of x.dynActions().filter(a=>/^(house|land|stock|firm|loan|dep):/.test(a.k)&&a.ok)){const before=JSON.stringify([me.cash,x.S.houses.filter(h=>h.owner===me.id).length,x.S.loans.length,x.S.firms.length]);const r=x.dynAct(a.opts?a.k+':'+a.opts[0][0]:a.k);done.push(a.k.split(':').slice(0,2).join(':'));assert(r.text)}
     assert(done.some(k=>k==='house:buy'),'집 사기');assert.throws(()=>x.dynSetBudget({life:'x'}));x.dynSetBudget({life:4,edu:2,save:.2,give:3,debt:1,job:0});const v0=x.S.dyn.vault||0;for(let i=0;i<60;i++){while(x.S.dyn.pending.length){const p=x.S.dyn.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}if(x.S.dyn.over)break;x.step()}
     assert(x.S.dyn.spent,'지출 적용');acts.eco=done}
+  // 8. 내 주식은 엔진이 자동으로 사고팔지 않는다(가), 내 회사는 목록에 항상(나), 양 선택(다)
+  {const x=engine.createWorld(7,150);x.dynStart();x.dynChoose(x.S.dyn.pending[0].id,'go');for(let i=0;i<1800;i++){while(x.S.dyn.pending.length){const p=x.S.dyn.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}x.step()}
+    const me=x.S.byId.get(x.S.dyn.pid);const b=x.S.bldgs.find(b=>!b.firm&&b.owner&&b.owner!==me.id);b.owner=me.id;me.cash+=500;x.dynAct('firm:new');const f=x.S.firms.find(f=>f.ceo===me.id);assert(f,'회사 세우기');
+    const b0=f.sh[String(me.id)];for(let i=0;i<120;i++){while(x.S.dyn.pending.length){const p=x.S.dyn.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}x.step()}
+    assert.equal(f.sh[String(me.id)],b0,'엔진 자동 거래 없음');const sell=x.dynActions().find(a=>a.k==='stock:sell:'+f.id);assert(sell&&sell.opts.length===3&&/경영권/.test(sell.hint));
+    assert.throws(()=>x.dynAct('stock:sell:'+f.id),/양/);assert(/팔았다/.test(x.dynAct('stock:sell:'+f.id+':0.1').text));acts.stock=true}
   console.log(JSON.stringify({dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,acts,ms:Date.now()-t0}));
 
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
