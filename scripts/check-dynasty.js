@@ -71,7 +71,28 @@ function main(){
     const b0=f.sh[String(me.id)];for(let i=0;i<120;i++){while(x.S.dyn.pending.length){const p=x.S.dyn.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}x.step()}
     assert.equal(f.sh[String(me.id)],b0,'엔진 자동 거래 없음');const sell=x.dynActions().find(a=>a.k==='stock:sell:'+f.id);assert(sell&&sell.opts.length===3&&/경영권/.test(sell.hint));
     assert.throws(()=>x.dynAct('stock:sell:'+f.id),/양/);assert(/팔았다/.test(x.dynAct('stock:sell:'+f.id+':0.1').text));acts.stock=true}
-  console.log(JSON.stringify({dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,acts,ms:Date.now()-t0}));
+  // 9. 사건 선택지(7-2): 상황을 만들어 선택지가 뜨고 고른 대로 반영되는지
+  const evs={};
+  {const x=engine.createWorld(7,150);x.dynStart();x.dynChoose(x.S.dyn.pending[0].id,'go');for(let i=0;i<10;i++)x.step();try{x.dynAct('council')}catch(e){}
+    const S2=x.S,D2=S2.dyn,me=()=>S2.byId.get(D2.pid);for(let i=0;i<YEAR*8&&!D2.over;i++){while(D2.pending.length){const p=D2.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}x.step()}assert(!D2.over,'사건 검사용 가문 유지');const clear=()=>{let g=0;while(D2.pending.length){assert(++g<50);const p=D2.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}};
+    const until=(kind,days)=>{for(let i=0;i<days;i++){x.step();const p=D2.pending.find(p=>p.kind===kind);if(p)return p;clear();if(D2.over)return null}return null};
+    clear();D2.cool={};const other=()=>S2.agents.find(a=>a.alive&&x.isAdult(a)&&a.id!==D2.pid&&a.id!==me().partner);
+    me().health=30;let p=until('sick',2);assert(p,'병 선택지');let h0=me().health;x.dynChoose(p.id,'bear');assert(me().health>h0,'버티면 조금 회복');evs.sick=p.opts.map(o=>o.k).join('/');clear();
+    const th=other();D2.rob={by:th.id,amt:50,d:S2.day+1,v:0};p=until('robbed',1);assert(p,'도둑 피해 선택지');x.dynChoose(p.id,'bear');evs.robbed=p.opts.map(o=>o.k).join('/');clear();
+    me().soldier='army';me().drafted=1;me().armyUntil=S2.day+YEAR*2;p=until('draft',1);assert(p,'징병 영장 선택지');x.dynChoose(p.id,'evade');assert(!me().soldier,'회피하면 군인이 아님');evs.draft=p.opts.map(o=>o.k).join('/');clear();
+    {const sp=me().partner&&S2.byId.get(me().partner);if(sp){const l=other();sp.affair=l.id;l.affair=sp.id;sp.affairOut=1;p=until('affair',1);assert(p,'외도 발각 선택지');x.dynChoose(p.id,'forgive');assert.equal(sp.affair,null,'용서하면 외도 정리');evs.affair=p.opts.map(o=>o.k).join('/');clear()}}
+    if(me().home){const h=S2.houses.find(h=>h.id===me().home);h.burned=S2.day+1;p=until('fire',1);assert(p,'화재 선택지');x.dynChoose(p.id,'family');evs.fire=1;clear()}
+    if(S2.gov){const G=S2.gov;G.cases.unshift({t:'tax',who:D2.pid,amt:5,ev:.8,d:S2.day});p=until('caught',12);
+      if(p){x.dynChoose(p.id,'confess');const c=G.cases.find(c=>c.who===D2.pid&&c.t==='tax');assert(c&&c.conf===1&&c.dyn==='conf','자백 표시');for(let i=0;i<12&&G.cases.includes(c);i++){x.step();clear()}assert(!G.cases.includes(c),'자백 뒤 재판 진행');evs.caught=G.caseLog.slice(-6).map(r=>r.r).find(r=>/유죄|무죄|불기소|무혐의|종결/.test(r))||'처리됨'}
+      else evs.caught='수사관 없음';clear()}
+    {const t=other(),h=S2.houses.find(h=>h.id!==me().home&&h.id!==t.home);if(h){if(t.home){const o=S2.houses.find(x=>x.id===t.home);if(o&&o.occ===t.id)o.occ=null}h.owner=D2.pid;h.occ=t.id;t.home=h.id;h.tenantRent=1e6;h.sale=null;h.deposit=0;t.cash=0;p=until('rentLate',10);assert(p,'월세 체납 선택지');x.dynChoose(p.id,'wait');assert(h.dynGrace>S2.day,'기다려 주기');evs.rentLate=1;clear()}}
+    {const o=other(),h=S2.houses.find(h=>h.owner===o.id)||S2.houses.find(h=>h.id!==me().home);h.owner=o.id;h.deposit=200;h.depTenant=D2.pid;h.depEnd=S2.day+1;o.g.cheat=3;p=until('deposit',2);assert(p,'전세금 미반환 선택지');x.dynChoose(p.id,'give');evs.deposit=1;clear()}
+    {const b=S2.bldgs.find(b=>!b.firm&&b.owner&&b.owner!==D2.pid);if(b&&!me().firm){b.owner=D2.pid;me().cash+=500;const r=x.dynAct('firm:new');const f=S2.firms.find(f=>f.ceo===D2.pid);if(f){f.cash=0;p=null;for(let i=0;i<16&&!p;i++){x.step();p=D2.pending.find(p=>p.kind==='firmCrisis');if(!p)clear()}assert(p,'사업 위기 선택지');x.dynChoose(p.id,'close');assert(!S2.firms.includes(f)&&b.owner===D2.pid,'정리하면 건물은 내 것');evs.firmCrisis=1;clear()}else evs.firmCrisis=r.text}}
+    if(S2.gov&&!(S2.gov.chief===D2.pid||S2.gov.king===D2.pid)&&!['mil','com','msoc'].includes(S2.gov.regime)){S2.gov.coup=true;p=until('regime',1);assert(p,'체제 변화 선택지');x.dynChoose(p.id,'hide');evs.regime=p.opts.map(o=>o.k).join('/');clear()}
+    if(!S2.war&&!(S2.gov&&(S2.gov.chief===D2.pid||S2.gov.king===D2.pid))){S2.war={t:'너른들',d:S2.day+1,score:0,cas:0,civ:0};p=until('war',1);if(p){x.dynChoose(p.id,'avoid');evs.war=1}clear()}
+    const ex=x.exportState(),jx=JSON.stringify(ex);assert.equal(JSON.stringify(load(jx).exportState().S.dyn),JSON.stringify(ex.S.dyn),'사건 뒤 S.dyn 저장 왕복')}
+  {const kinds=Object.keys(stat.kinds).filter(k=>!['start','notice','death','arrange','kidMatch','proposeIn','proposeOut'].includes(k));assert(kinds.length>=6,'자동 플레이에서 사건 선택지 여러 종류: '+kinds.join(','));evs.auto=kinds}
+  console.log(JSON.stringify({events:evs,dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,acts,ms:Date.now()-t0}));
 
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dyn-base-'));const baseFile=path.join(tmp,'engine.js');
