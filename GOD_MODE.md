@@ -400,3 +400,23 @@ S.dyn = {
 - 사실상 화면 전체가 새로 바뀜.
 - 선택지는 최대한 다, 이름 "가문 모드", 시작 캐릭터 = 정치력 최고(이름은 시작 때 변경), 선택지 뜨면 멈춤.
 - 병·사고로 죽을 수 있음, 후계자 없으면 넓게 찾고 없으면 단절·새 가문.
+
+---
+
+## 12. 진행 기록
+### 2026-11-17 1차 1단계(서버 분리) 완료
+- `server.js`: 월드 관리자. 한 번에 Worker 1개(`active`), 전환은 Promise 체인으로 직렬화하고 **저장 완료(suspend) 뒤에만** 이전 Worker를 내린다. 저장이 실패하면 이전 마을을 내리지 않는다. 의도적으로 내린 Worker는 서버 종료로 취급하지 않는다.
+  - 경로: `/` 원래 마을 페이지, `/god` 가문 모드 페이지, `/api/...` → village, `/god/api/...` → dynasty. `/god/api/import`는 없음(404).
+  - `/api/view`·`/god/api/view`는 전환 중이면 기다리지 않고 503(`preparing:true`). cmd/panel/resident는 전환을 기다린 뒤 처리.
+  - 최소 유지 시간 `WORLD_SWITCH_MIN_MS`(기본 15초): 두 탭이 번갈아 요청해도 전환이 계속 반복되지 않는다. 그동안 다른 마을 요청은 503.
+  - 뷰 ETag에 마을 이름·Worker 세대를 넣어 전환 뒤 잘못된 304가 나지 않게 했다.
+  - `/health`에 `world`, `worldReady`, `switching`, `workers` 추가. `ready`는 "서버 부팅 완료·중지 중 아님" 의미로 유지(진입점 Lambda 호환).
+  - EC2 자동 중지·서버 종료 시 **현재 활성 마을**을 저장.
+  - 환경변수: `DYNASTY_POPULATION`(기본 100), `DYNASTY_SEED`(기본 20261117).
+- `sim-worker.js`: `workerData.name`(`village`|`dynasty`). dynasty는 `save/god.json.gz`, 인구 100, 새로 만들 때 `world.dynStart()`가 있으면 호출(2단계에서 엔진에 추가). dynasty는 `new` 명령에서 인구를 100으로 고정, 기존 저장 가져오기 없음(`canImport:false`).
+- `remote-client.js`: `window.API_BASE` 접두어. `/god`는 당분간 원래 화면을 그대로 쓴다(확인용). 503이면 "마을 준비 중…" 표시.
+- `ui2.html`: 저장 줄에 "가문 모드" / "원래 마을로" 링크(서버 모드에서만 보임). `index.html` 재생성.
+- `engine.js`는 손대지 않았다 → 원래 마을 결과 불변.
+- 검사: 새 `scripts/check-worlds.js`(300/100명, 전환 4회 왕복, 각 마을 날짜 유지, 가문 모드 진행이 원래 마을 저장 파일을 바꾸지 않음, 동시 Worker ≤1, 종료 시 활성 마을 저장, 최소 유지 시간, 재시작 후 이어하기) 통과. 기존 check-lifecycle/client/migration/http/server 통과.
+- 이 PC 측정(5,000명 원래 마을): `/`→`/god` 약 0.2초, `/god`→`/` 약 0.6초(3일차 마을). 가문 모드만 켜졌을 때 RSS 약 140MB, 원래 마을 약 240~260MB. 장기 진행 마을은 복원이 더 오래 걸린다.
+- AWS 반영은 아직(서비스 재시작 필요).

@@ -1,13 +1,16 @@
 // 서버 모드: 폰에서는 step/createWorld/importState를 호출하지 않는다.
 function initRemote(){
+  const API=window.API_BASE||'';
+  // 원래 마을('/')과 가문 모드('/god')를 오가는 링크. 서버 모드에서만 보인다.
+  const mode=$('#modeLink');if(mode){mode.hidden=false;mode.href=API?'/':'/god';mode.textContent=API?'원래 마을로':'가문 모드';}
   const sessionId=Array.from({length:4},()=>Math.random().toString(36).slice(2)).join('');
   const isVisible=()=>document.visibilityState!=='hidden';
   function session(active){
     const body=JSON.stringify({id:sessionId,active});
     if(!active&&typeof navigator!=='undefined'&&navigator.sendBeacon){
-      navigator.sendBeacon('/api/session',new Blob([body],{type:'application/json'}));return;
+      navigator.sendBeacon(API+'/api/session',new Blob([body],{type:'application/json'}));return;
     }
-    fetch('/api/session',{method:'POST',headers:{'content-type':'application/json'},body,keepalive:true}).catch(()=>{});
+    fetch(API+'/api/session',{method:'POST',headers:{'content-type':'application/json'},body,keepalive:true}).catch(()=>{});
   }
   document.addEventListener('visibilitychange',()=>{session(isVisible());if(isVisible())poll()});
   window.addEventListener('pagehide',()=>session(false));
@@ -20,7 +23,7 @@ function initRemote(){
   const api=async(url,options)=>{const r=await fetch(url,options);if(!r.ok){const e=await r.json().catch(()=>({error:r.statusText}));throw Error(e.error||'서버 요청 실패')}return r.json()};
   const send=async command=>{
     if(commandBusy)return;commandBusy=true;
-    try{await api('/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(command)});etag='';await poll();}
+    try{await api(API+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(command)});etag='';await poll();}
     catch(e){setSave('err',e.message)}finally{commandBusy=false}
   };
   async function migrateLocal(){
@@ -29,14 +32,14 @@ function initRemote(){
     store.kind=db&&uid?'db':'local';store.db=db;store.uid=uid;
     let blob=await SV.read(false).catch(()=>null);if(!blob)blob=await SV.legacy();if(!blob)return;
     const saved=await unpack(blob);setSave('busy','기존 마을을 서버로 옮기는 중…');
-    await api('/api/import',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(saved)});etag='';
+    await api(API+'/api/import',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(saved)});etag='';
   }
   W0={isAdult:a=>a.age>=ADULT,season:()=>view?.season||0,grpById:id=>(S.groups||[]).find(g=>g.id===id),houseById:id=>S.houses.find(h=>h.id===id),bName:b=>b.name||'건물'};
   select=id=>{sel=id;$('#card').hidden=false;lastCard='';renderCard();if(tab==='rich'){lastPanel='';renderPanel()}};
   renderPanel=async()=>{
     if(!view)return;const key=[seed,S.day,tab,logF,tab==='rich'?sel:''].join(':');if(key===lastPanel)return;
     const token=++panelToken;const wanted=tab;
-    try{const o=await api('/api/panel?'+new URLSearchParams({tab,filter:logF,selected:sel||''}));if(token!==panelToken||wanted!==tab)return;
+    try{const o=await api(API+'/api/panel?'+new URLSearchParams({tab,filter:logF,selected:sel||''}));if(token!==panelToken||wanted!==tab)return;
       $('#panel').innerHTML=o.html;lastPanel=key;postPanel($('#panel'));
       $('#panel').querySelectorAll('.row[data-id]').forEach(r=>r.onclick=()=>select(+r.dataset.id));
       $('#panel').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{logF=b.dataset.f;lastPanel='';renderPanel()});
@@ -44,7 +47,7 @@ function initRemote(){
   };
   renderCard=async()=>{
     if(!view||!sel)return;const key=[seed,S.day,sel].join(':');if(key===lastCard)return;const token=++cardToken,id=sel;
-    try{const o=await api('/api/resident/'+id);if(token!==cardToken||sel!==id)return;$('#card').innerHTML=o.html;lastCard=key;
+    try{const o=await api(API+'/api/resident/'+id);if(token!==cardToken||sel!==id)return;$('#card').innerHTML=o.html;lastCard=key;
       $('#card').querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>select(+b.dataset.person));
       $('#cx').onclick=()=>{sel=null;++cardToken;$('#card').hidden=true;lastPanel='';renderPanel()};
     }catch(e){if(token===cardToken)setSave('err',e.message)}
@@ -61,7 +64,7 @@ function initRemote(){
     renderPanel();if(sel)renderCard();
   };
   async function poll(){if(pollBusy||!isVisible())return;pollBusy=true;
-    try{const r=await fetch('/api/view',{headers:etag?{'if-none-match':etag}:{},cache:'no-store'});if(r.status===304)return;if(!r.ok)throw Error('서버에서 마을을 준비 중입니다');
+    try{const r=await fetch(API+'/api/view',{headers:etag?{'if-none-match':etag}:{},cache:'no-store'});if(r.status===304)return;if(!r.ok){if(r.status===503){setSave('busy','마을 준비 중…');return}throw Error('서버 요청 실패')}
       const o=await r.json();etag=r.headers.get('etag')||'';const changed=seed!==o.seed;seed=o.seed;view=o;S=o.map;
       S.byId=new Map(S.agents.map(a=>[a.id,a]));S.miles=o.hud.miles;S.events=[];
       setMap(!!o.geometry.mapBig);restoreGeo(o.geometry.geo);PLOTS.length=0;PLOTS.push(...o.geometry.plots);EXPL.length=0;EXPL.push(...o.geometry.expl);
