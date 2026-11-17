@@ -11,7 +11,7 @@ const PORT = Math.max(1, Number(process.env.PORT) || 80);
 // 두 마을: 원래 자유방임 마을('/')과 가문 모드 마을('/god'). 1GB 서버를 위해 한 번에 한 Worker만 메모리에 둔다.
 const WORLDS = {
   village:{ seed:Number(process.env.SEED)||20261116, population:Number(process.env.POPULATION)||5000 },
-  dynasty:{ seed:Number(process.env.DYNASTY_SEED)||20261117, population:Number(process.env.DYNASTY_POPULATION)||100 },
+  dynasty:{ seed:Number(process.env.DYNASTY_SEED)||0, population:Number(process.env.DYNASTY_POPULATION)||100 },
 };
 const SWITCH_MIN_MS = Math.max(0, Number(process.env.WORLD_SWITCH_MIN_MS ?? 15000));
 let active = null;          // {name, worker, gen, latestView, ready, waiting:Map, intended}

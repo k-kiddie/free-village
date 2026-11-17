@@ -3,6 +3,7 @@ const { parentPort, workerData } = require('node:worker_threads');
 const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
+const crypto = require('node:crypto');
 const { createWorld, YEAR } = require('./engine.js');
 const engine = require('./engine.js');
 const {writeSnapshot}=require('./server-storage');
@@ -18,7 +19,9 @@ const worldName = workerData.name === 'dynasty' ? 'dynasty' : 'village';
 const isDynasty = worldName === 'dynasty';
 const saveFile = path.join(saveDir, isDynasty ? 'god.json.gz' : 'village.json.gz');
 const defaultPopulation = isDynasty ? (workerData.population || 100) : (workerData.population || 5000);
-let seed = workerData.seed || 20261116;
+// 가문 모드는 DYNASTY_SEED를 따로 주지 않으면 새 마을마다 무작위 시드로 만든다(매번 같은 시작 인물 방지).
+const randomSeed = () => crypto.randomInt(1, 2147483647);
+let seed = workerData.seed || (isDynasty ? randomSeed() : 20261116);
 let population = defaultPopulation;
 let world, running = false, speed = 1, pendingDays = 0, busySave = false;
 let clockAt = Date.now(), dayFraction = 0;
@@ -186,7 +189,7 @@ async function handleMessage(msg) {
       else if(c.action==='speed') speed=Math.max(1,Math.min(100,Math.floor(Number(c.value)||1)));
       else if(c.action==='autostop'){if(!['none','mile','season','year'].includes(c.value))throw Error('알 수 없는 멈춤 기준');autoStop=c.value;markStop();}
       else if(c.action==='advance') { if(!Number.isFinite(c.days)||c.days<1||c.days>3650)throw Error('건너뛸 날짜가 올바르지 않습니다');running=false;pendingDays=Math.floor(c.days);jumpTotal=pendingDays;stopped=null; }
-      else if(c.action==='new') { running=false;pendingDays=0;dayFraction=0;seed=Number(c.seed)||((seed*7919+13)%99991+1);population=isDynasty?defaultPopulation:Math.max(1,Math.min(10000,Math.floor(Number(c.population)||5000)));world=newWorld();lastViewDay=-1;lastSavedDay=-1;panelDay=-1;panelCache.clear();await save();sendView(true); }
+      else if(c.action==='new') { running=false;pendingDays=0;dayFraction=0;seed=Number(c.seed)||(isDynasty?randomSeed():((seed*7919+13)%99991+1));population=isDynasty?defaultPopulation:Math.max(1,Math.min(10000,Math.floor(Number(c.population)||5000)));world=newWorld();lastViewDay=-1;lastSavedDay=-1;panelDay=-1;panelCache.clear();await save();sendView(true); }
       else if(c.action==='save') await save();
       else if(isDynasty&&c.action==='choose'){const r=world.dynChoose(c.id,String(c.k||''));lastSavedDay=-1;clockAt=Date.now();lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
       else if(isDynasty&&c.action==='act'){const r=world.dynAct(String(c.k||''));lastSavedDay=-1;panelDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
