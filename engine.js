@@ -3056,6 +3056,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     for(const a of S.agents)if(a.gen>=3){mile('gen3',`3세대 주민 ${nm(a)} 탄생`,[a.id]);break}
     if(S.day%YEAR===0)yearly();
     if(S.fx.length>60)S.fx.splice(0,S.fx.length-60);
+    if(S.dyn)dynTick();
   }
 
   function steal(a){
@@ -3823,6 +3824,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(!pool.length)return;
     const lk=(x,by)=>(x.looks??.5)*(.6+(by.g.vain??.4)*2)*(by.sex==='M'?1.3:.7);let b=null,bs=-1e9;for(let i=0;i<6;i++){const c=pick(pool);const s=attract(c)+lk(c,a)+(a.faith&&c.faith===a.faith?a.g.faith*1.5:a.faith&&c.faith&&c.faith!==a.faith?-a.g.faith:0)-Math.abs(ideoOf(a)-ideoOf(c))*.3;if(s>bs){bs=s;b=c}}
     const p=.25+.5*(1-b.g.picky)*Math.min(1,(attract(a)+lk(a,b))/Math.max(.1,attract(b)+lk(b,a)));
+    if(S.dyn&&(a.id===S.dyn.pid||b.id===S.dyn.pid)){dynMate(a,b,p);return}
     // 중매: 보수적인 마을일수록 부모가 재산·가문을 보고 짝을 정한다 (이성 커플만)
     const nrmT=S.norm??.4;const par=a.parents.map(id=>S.byId.get(id)).find(x=>x&&x.alive&&x.cash>5*PL());let arr=false;
     if(par&&a.sex!==b.sex&&R()<(1-nrmT)*.7){let bb=b;for(let i=0;i<5;i++){const c=pick(pool);if(c.sex!==a.sex&&(W(c)>W(bb)||bb.sex===a.sex))bb=c}if(bb.sex!==a.sex){b=bb;arr=true}}
@@ -4202,6 +4204,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     for(const a of S.agents){add(a.partner);add(a.emp);add(a.lastModel);a.parents.forEach(add);a.kids.forEach(add)}
     const ev=S.events.slice(-150);ev.forEach(e=>e.ids.forEach(add));S.miles.forEach(m=>m.ids.forEach(add));add(S.leader);
     if(S.gov){for(const key of['chief','king','regent','designatedHeir','lastMonarch'])add(S.gov[key]);for(const item of S.gov.royalHistory||[])add(item.id)}
+    if(S.dyn){add(S.dyn.pid);add(S.dyn.founder);add(S.dyn.heir);for(const c of S.dyn.chron)c.ids.forEach(add)}
     for(let generation=0;generation<2;generation++)for(const id of [...keep]){const a=S.byId.get(id);if(a){for(const parent of a.parents||[])add(parent);for(const child of a.kids||[])add(child)}}
     const dead=[];for(const id of keep){const a=S.byId.get(id);if(a&&!a.alive)dead.push({id:a.id,sur:a.sur,given:a.given,alive:false,age:a.age,cause:a.cause,estate:a.estate||0,
       family:a.family,gen:a.gen,parents:a.parents,kids:a.kids,diedAt:a.diedAt,peak:a.peak,crimes:a.crimes,caught:a.caught,exiled:!!a.exiled})}
@@ -4245,7 +4248,78 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     S.nextFirm=Math.max(S.nextFirm||1,...S.firms.map(f=>f.id+1));
     currencyState();
     for(const f of S.firms.slice()){f.bld=f.bld||[];f.hist=f.hist||[];f.cash=f.cash||0;migrateShares(f);cleanupShares(f);splitFirmLines(f);consolidateBuildings(f)}}
+
+  // ===================== 가문 모드 (S.dyn이 있을 때만 쓰인다. 원래 마을에서는 호출되지 않는다) =====================
+  const DYN_LIFE=['궁핍','검소','보통','여유','사치'],DYN_EDU=['없음','기본','사교육','유학'];
+  function dynScore(a){return a.g.boss*.5+a.g.civic*.4+Math.log10((W(a)||0)+10)*.15+(a.grp?.2:0)}
+  function dynMe(){return S.dyn&&S.byId.get(S.dyn.pid)}
+  function dynChron(text,ids){const D=S.dyn;D.chron.push({d:S.day,gen:D.gen,text,ids:ids||[]});if(D.chron.length>400)D.chron.splice(0,D.chron.length-400)}
+  function dynCool(kind,days){const D=S.dyn;if((D.cool[kind]||0)>S.day)return false;D.cool[kind]=S.day+days;return true}
+  function dynPush(kind,text,opts,ctx){const D=S.dyn;if(D.pending.some(p=>p.kind===kind&&JSON.stringify(p.ctx)===JSON.stringify(ctx||{})))return null;
+    const p={id:D.nextP++,kind,d:S.day,text,opts,ctx:ctx||{}};D.pending.push(p);return p}
+  function dynStart(){
+    const c=S.agents.filter(a=>a.alive&&isAdult(a)).sort((x,y)=>dynScore(y)-dynScore(x)||x.id-y.id)[0];if(!c)throw Error('성인 주민이 없습니다');
+    S.dyn={v:1,pid:c.id,house:c.sur+'씨 가문',houseAuto:true,founder:c.id,heir:null,gen:1,start:S.day,prestige:0,budget:{life:2,edu:1,save:.1,give:0,debt:0},
+      pending:[],cool:{},chron:[],peak:{w:W(c),title:''},adopted:[],past:[],over:false,watch:false,nextP:1,res:null};
+    dynChron(`${nm(c)}, ${Math.floor(c.age/YEAR)}세. 가문을 일으키다`,[c.id]);
+    dynPush('start',`당신은 ${nm(c)}, ${Math.floor(c.age/YEAR)}세 ${c.sex==='F'?'여성':'남성'}입니다. 마을 어른 가운데 정치력이 가장 높습니다. 이름을 정하고 시작하세요.`,[{k:'go',label:'시작'}]);
+    return S.dyn}
+  function dynRename(sur,given){const D=S.dyn,a=dynMe();if(!D||!a)throw Error('가문 모드가 아닙니다');
+    sur=String(sur??'').trim();given=String(given??'').trim();
+    if(!/^[가-힣]{1,2}$/.test(sur)||!/^[가-힣]{1,3}$/.test(given))throw Error('성은 한글 1~2자, 이름은 한글 1~3자로 적어주세요');
+    const old=nm(a);a.sur=sur;a.given=given;if(D.houseAuto)D.house=sur+'씨 가문';
+    if(old!==nm(a))dynChron(`${old}, 이름을 ${josa(nm(a),'으로','로')} 바꾸다`,[a.id]);return {name:nm(a),house:D.house}}
+  // 결혼 처리(mate()의 혼인 부분과 같은 기록을 남긴다)
+  function dynWed(a,b){a.partner=b.id;b.partner=a.id;a.wedD=b.wedD=S.day;S.yr.marr=(S.yr.marr||0)+1;S.yr.mAge=(S.yr.mAge||0)+(a.age+b.age)/2;
+    setRel(a,b,.55+.2*a.g.roma-.15*Math.abs(ideoOf(a)-ideoOf(b))+(a.faith&&a.faith===b.faith?.1:0)+gauss()*.1);
+    if(!a.home&&b.home){const h=houseById(b.home);if(h&&(h.owner===b.id||h.occ===b.id))a.home=b.home}else if(!b.home&&a.home)b.home=a.home;
+    log('love',`${josa(nm(a),'과','와')} ${josa(nm(b),'이','가')} 부부가 됐다`,[a.id,b.id])}
+  const dynSingle=x=>x&&x.alive&&!x.partner&&isAdult(x);
+  // mate()에서 플레이어가 끼면 엔진 대신 선택지를 띄운다. p = 엔진이 계산한 성사 확률
+  function dynMate(a,b,p){const me=dynMe();if(!me)return;
+    if(a===me){if(!dynCool('mateOut',YEAR/2))return;
+      dynPush('proposeOut',`${nm(b)}(${Math.floor(b.age/YEAR)}세, 재산 ${won(W(b))})에게 마음이 갑니다. 청혼할까요?`,[{k:'yes',label:'청혼한다',hint:`성사 가능성 약 ${Math.round(Math.min(1,p)*100)}%`},{k:'no',label:'그만둔다'}],{to:b.id,p})}
+    else if(b===me){if(!dynCool('mateIn',YEAR/2))return;
+      dynPush('proposeIn',`${nm(a)}(${Math.floor(a.age/YEAR)}세, 재산 ${won(W(a))})의 청혼이 들어왔습니다.`,[{k:'yes',label:'수락'},{k:'no',label:'거절'}],{from:a.id})}}
+  const DYN_H={
+    start(){return '가문의 역사가 시작됩니다'},
+    proposeOut(c,k,me){const b=S.byId.get(c.to);if(k!=='yes')return '청혼하지 않았다';
+      if(!dynSingle(me)||!dynSingle(b))return '이미 늦었다. 상대가 혼인할 수 없는 처지다';
+      if(R()<c.p){dynWed(me,b);dynChron(`${josa(nm(me),'이','가')} ${josa(nm(b),'과','와')} 혼인하다`,[me.id,b.id]);return `${josa(nm(b),'이','가')} 청혼을 받아들였다`}
+      return `${josa(nm(b),'이','가')} 청혼을 거절했다`},
+    proposeIn(c,k,me){const a=S.byId.get(c.from);if(k!=='yes')return `${nm(a)}의 청혼을 거절했다`;
+      if(!dynSingle(me)||!dynSingle(a))return '이미 늦었다. 상대가 혼인할 수 없는 처지다';
+      dynWed(a,me);dynChron(`${josa(nm(me),'이','가')} ${josa(nm(a),'과','와')} 혼인하다`,[me.id,a.id]);return `${josa(nm(a),'과','와')} 부부가 됐다`},
+    death(){return S.dyn.over?'가문이 끊어졌습니다':'새 가장이 가문을 잇습니다'},
+  };
+  function dynChoose(id,k){const D=S.dyn;if(!D)throw Error('가문 모드가 아닙니다');
+    const i=D.pending.findIndex(p=>p.id===Number(id));if(i<0)throw Error('이미 처리된 선택지입니다');
+    const p=D.pending[i];if(!p.opts.some(o=>o.k===k))throw Error('없는 선택입니다');
+    D.pending.splice(i,1);const me=dynMe();const text=DYN_H[p.kind](p.ctx,k,me);D.res={d:S.day,kind:p.kind,text};return D.res}
+  // 내 캐릭터의 사망은 매일 끝에 확인한다(상속 규칙 전체는 3단계에서 넓힌다).
+  function dynHeir(dead){const D=S.dyn,ok=x=>x&&x.alive;const h=D.heir&&S.byId.get(D.heir);if(ok(h)&&h.id!==dead.id)return h;
+    return dead.kids.map(id=>S.byId.get(id)).filter(ok).sort((x,y)=>y.age-x.age||x.id-y.id)[0]||null}
+  function dynTick(){const D=S.dyn;if(D.over)return;const me=dynMe();
+    if(me&&W(me)>D.peak.w)D.peak.w=W(me);
+    if(me&&me.alive)return;
+    const dead=me,age=dead?Math.floor(dead.age/YEAR):0,cause=dead?.cause||'알 수 없는 이유';const h=dead&&dynHeir(dead);
+    if(h){D.pid=h.id;D.gen++;if(D.heir===h.id)D.heir=null;
+      const t=`${nm(dead)}, ${age}세, ${josa(cause,'으로','로')} 사망 → ${josa(nm(h),'이','가')} 가문을 잇습니다`;dynChron(t,[dead.id,h.id]);dynPush('death',t,[{k:'ok',label:'확인'}],{dead:dead.id,heir:h.id})}
+    else{D.over=true;const t=`${dead?nm(dead):'가장'}, ${age}세, ${josa(cause,'으로','로')} 사망. 이을 사람이 없어 ${josa(D.house,'이','가')} 끊어졌습니다`;dynChron(t,dead?[dead.id]:[]);dynPush('death',t,[{k:'ok',label:'확인'}],{dead:dead?.id||null})}}
+  function dynRank(){const D=S.dyn,a=dynMe();if(!a)return 0;if(D.watch)return 5;const G=S.gov;
+    if(G&&(G.chief===a.id||G.king===a.id))return 4;
+    if(G&&((G.council||[]).includes(a.id)||G.regent===a.id))return 3;
+    if(a.grp){const g=grpById(a.grp);if(g&&g.leader===a.id)return 2}
+    const ws=S.agents.filter(x=>x.alive&&isAdult(x)).map(x=>x.w||0).sort((x,y)=>y-x);if((a.w||0)>=(ws[Math.floor(ws.length*.1)]||0)||S.firms.some(f=>f.ceo===a.id))return 1;
+    return 0}
+  const DYN_RANK=['평민','부자·사업가','조직 간부','의원·귀족','최고 권력자','관전'];
+  function dynView(){const D=S.dyn;if(!D)return null;const a=S.byId.get(D.pid);const pn=a&&a.partner&&S.byId.get(a.partner);const r=dynRank();
+    return {house:D.house,gen:D.gen,start:D.start,over:D.over,watch:D.watch,rank:r,rankName:DYN_RANK[r],budget:D.budget,heir:D.heir,res:D.res,peak:D.peak,
+      me:a?{id:a.id,name:nm(a),sur:a.sur,given:a.given,alive:a.alive,age:Math.floor(a.age/YEAR),sex:a.sex,health:a.health,hunger:a.hunger,happy:a.happy,rep:a.rep,cash:a.cash,w:W(a),
+        edu:a.edu||0,occ:a.occ||null,grp:a.grp||null,home:a.home||null,partner:pn?{id:pn.id,name:nm(pn),age:Math.floor(pn.age/YEAR)}:null,
+        kids:a.kids.map(id=>S.byId.get(id)).filter(k=>k&&k.alive).map(k=>({id:k.id,name:nm(k),age:Math.floor(k.age/YEAR),sex:k.sex}))}:null,
+      pending:D.pending.map(p=>({id:p.id,kind:p.kind,d:p.d,text:p.text,opts:p.opts})),chron:D.chron.slice(-30)}}
   currencyState();
-  return{rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
+  return{dynStart,dynRename,dynChoose,dynView,dynRank,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
 }
 if(typeof module!=='undefined')module.exports={GAME_VERSION,SHARE_COUNT,shareCount,votingShares,marketCap,formatMoney,REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};

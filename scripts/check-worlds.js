@@ -38,7 +38,17 @@ async function main(){
     assert(fs.existsSync(villageFile),'전환 전에 원래 마을 저장');
     const savedVillage=JSON.parse(zlib.gunzipSync(fs.readFileSync(villageFile)));assert.equal(savedVillage.state.S.day,30);assert.equal(savedVillage.population,300);
     const villageHash=hash(villageFile);
-    await cmd('/god',{action:'advance',days:20});({v}=await view('/god',20));
+    // 가문 모드: 시작 선택지가 떠 있으면 재생해도 날짜가 가지 않는다.
+    assert(v.dyn&&v.waiting&&v.dyn.pending[0].kind==='start','시작 선택지 대기');
+    await cmd('/god',{action:'advance',days:5});await cmd('/god',{action:'play'});await sleep(1500);
+    ({v}=await view('/god'));assert.equal(v.day,0,'대기 중에는 진행 안 함');await cmd('/god',{action:'pause'});
+    const rn=await cmd('/god',{action:'rename',sur:'홍',given:'길동'});assert.equal(rn.result.name,'홍길동');
+    assert.equal((await fetch(base+'/god/api/cmd',{method:'POST',body:JSON.stringify({action:'rename',sur:'x',given:''})})).status,500);
+    await cmd('/god',{action:'choose',id:v.dyn.pending[0].id,k:'go'});
+    for(let i=0;i<100;i++){({v}=await view('/god'));if(v.day>=20)break;
+      if(v.waiting){const p=v.dyn.pending[0];await cmd('/god',{action:'choose',id:p.id,k:p.opts.at(-1).k});continue}
+      if(!v.jump)await cmd('/god',{action:'advance',days:20-v.day});await sleep(100)}
+    assert.equal(v.day,20);assert.equal(v.dyn.me.sur==='홍'||v.dyn.gen>1,true);
     const resident=await(await fetch(base+'/god/api/resident/1')).json();assert(resident.resident.g&&resident.resident.q&&resident.html);
     const panel=await(await fetch(base+'/god/api/panel?tab=sum')).json();assert(panel.html.length>0);
     assert.equal((await fetch(base+'/god/api/import',{method:'POST',body:'{}'})).status,404,'가문 모드에는 기존 저장 가져오기 없음');
