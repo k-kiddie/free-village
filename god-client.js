@@ -3,7 +3,10 @@
 let dynNoteT=0,dynView=null,dynTab='me',dynSend=null,dynApi=null,dynApiBase='',dynShownRes='',dynModalId=null;
 const DYN_FULL_GROUPS=GROUPS.map(g=>[g[0],g[1].slice()]);
 const dynEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const DYN_TABS=[['me','나'],['fam','가문'],['asset','재산'],['net','인맥'],['news','소식'],['power','권력+']];
+const DYN_TABS=[['me','👤','인물'],['fam','🏠','가문'],['asset','💰','영지'],['dip','🌍','외교'],['plot','🗡️','음모'],['law','⚖️','정치'],['news','📰','소식'],['power','📊','통계']];
+// 메뉴별 행동 묶음(서버 행동의 group). 목록에 없는 묶음은 인물 메뉴에 나온다.
+const DYN_TAB_G={me:['건강','인맥'],fam:['가족','상속','자녀 교육'],asset:['집·땅','주식','회사','돈'],dip:['외교'],plot:['첩보','어두운 길','평판 싸움'],law:['정부 세우기','조직','선거','법 바꾸기','권력']};
+const dynTabOfGroup=g=>Object.keys(DYN_TAB_G).find(k=>DYN_TAB_G[k].includes(g))||'me';
 function initDyn(send,api,base){
   dynSend=send;dynApi=api;dynApiBase=base;document.body.classList.add('dyn');
   const css=document.createElement('style');css.textContent=`
@@ -46,13 +49,14 @@ body.dyn #card #cx{position:sticky;top:0;z-index:2}
   const tabs=document.createElement('nav');tabs.id='dynTabs';tabs.className='dyntabs';
   const panel=document.createElement('div');panel.id='dynPanel';panel.className='panel dynpanel';
   $('#tabsTop').before(tabs);$('#tabsTop').before(panel);
-  tabs.innerHTML=DYN_TABS.map(([k,l])=>`<button data-dt="${k}">${l}</button>`).join('');
-  tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{dynTab=b.dataset.dt;try{localStorage.setItem('v-dyntab',dynTab)}catch(e){}dynRender();if(dynTab==='power'){buildNav();renderPanel()}});
+  tabs.innerHTML=DYN_TABS.filter(t=>t[0]!=='power').map(([k,i,l])=>`<button data-dt="${k}"><span class="ic">${i}</span><span class="lb">${l}</span><i class="cnt" hidden></i></button>`).join('');
+  tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{dynTab=b.dataset.dt;if(dynTab==='dip'&&dynView?.world?.known)dynSetMap('world');$('#dynSheet')&&($('#dynSheet').scrollTop=0);try{localStorage.setItem('v-dyntab',dynTab)}catch(e){}dynRender();if(dynTab==='power'){buildNav();renderPanel()}});
   try{const t=localStorage.getItem('v-dyntab');if(DYN_TABS.some(x=>x[0]===t))dynTab=t}catch(e){}
   const modal=document.createElement('div');modal.id='dynModal';modal.className='dynmodal';modal.hidden=true;document.body.appendChild(modal);
   // 권력+ 탭이 아닐 때는 기존 탭 내용을 서버에 요청하지 않는다.
   const rp=renderPanel;renderPanel=(...a)=>{if(dynTab==='power')return rp(...a)};
   dynInitWorld();
+  dynAppLayout();
 }
 // 지위에 맞는 기존 탭만 남긴다(서버도 같은 규칙으로 막는다).
 function dynFilterTabs(allowed){
@@ -70,7 +74,7 @@ function dynHook(o){
 const dynAge=x=>x?`${x.age}세`:'';
 const dynPerson=x=>x?`<span class="pp${x.alive?'':' dead'}" data-person="${x.id}">${dynEsc(x.name)}</span>${x.alive?` (${x.age}세${x.sex?x.sex==='F'?'·여':'·남':''})`:` (${x.cause||'사망'})`}`:'-';
 function dynRender(){
-  const v=dynView;if(!v)return;const m=v.me;if(dynMapMode==='world'&&v.world&&$('#dynWInfo'))dynWInfo(v.world);
+  const v=dynView;if(!v)return;const m=v.me;dynAppRender(v);
   $('header.top h1').textContent=v.house;
   $('#dynBar').innerHTML=m?`<span class="who" data-person="${m.id}">👤 ${dynEsc(m.name)}(${m.age})</span><small>${m.occ?OCC_L[m.occ]:'정해진 업종 없음'} · ${dynEsc(v.house)} ${v.gen}대</small>
     <span>💰 <b>${money(v.assets?.w||0)}</b></span><span>⭐ 평판 <b>${Math.round((m.rep??1)*100)}</b></span><span>🏅 ${v.rankName}</span>${v.over?'<span>⚰️ 가문 단절</span>':''}`:'';
@@ -85,6 +89,8 @@ function dynRender(){
   const P=$('#dynPanel');const ae=document.activeElement;if(ae&&P.contains(ae)&&ae.tagName==='SELECT')return;// 고르는 중에는 다시 그리지 않음
   const html=dynPanelHTML(v);if(P._html===html)return;P._html=html;P.innerHTML=html;
   P.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>select(+b.dataset.person));dynBindActions(P);dynBindBudget(P);
+  P.querySelectorAll('[data-wback]').forEach(b=>b.onclick=()=>{dynWSel=null;dynRender();if(dynMapMode==='world')dynDrawWorld()});
+  P.querySelectorAll('[data-realm]').forEach(b=>b.onclick=()=>{dynWSel=b.dataset.realm;dynSetMap('world');dynRender();$('#dynSheet').scrollTop=0});
 }
 function dynKV(rows){return `<div class="kv">${rows.filter(Boolean).map(([k,val])=>`<div><span>${k}</span><b>${val}</b></div>`).join('')}</div>`}
 function dynPanelHTML(v){
@@ -95,19 +101,23 @@ function dynPanelHTML(v){
       <button data-person="${m.id}">자세한 인물 카드</button></div>
       <div class="sec"><h4>일</h4><label class="bud">하고 싶은 일 <select data-bud="job"><option value="-1" ${v.budget.job==null||v.budget.job<0?'selected':''}>성향대로(자동)</option>${(v.jobs||[]).map(j=>`<option value="${j.k}" ${v.budget.job===j.k?'selected':''}>${dynEsc(j.n)}</option>`).join('')}</select>
         <small>${dynEsc(((v.jobs||[]).find(j=>j.k===v.budget.job)||{}).h||'매일 할 일을 엔진이 성향과 벌이로 고릅니다. 고르면 그 일을 우선하되, 조건이 안 되면 다른 일을 합니다.')} · 오늘: ${dynEsc(DYN_ACT_N[v.act]??'-')}</small></label></div>
-      ${dynActionsHTML(v)}`;
+      ${dynActionsHTML(v,'me')}${dynNetHTML(v)}`;
   if(dynTab==='fam'){const f=v.family;const list=(t,a)=>`<div class="sec"><h4>${t}</h4>${a.length?`<ul>${a.map(x=>`<li>${dynPerson(x)}</li>`).join('')}</ul>`:'<p class="muted">없음</p>'}</div>`;
     return `<div class="sec"><h4>${dynEsc(v.house)} · ${v.gen}대째</h4>${dynKV([['가문 시작',fmtD(v.start)],['최고 재산',money(v.peak.w)],['현재 지위',v.rankName],v.world&&['우리 땅',`${dynEsc(v.world.us.name)} · 인구 ${(v.world.us.effPop||v.world.us.pop).toLocaleString()}명(속령 포함)`]])}</div>
       <div class="sec"><h4>상속 순서</h4>${v.heirs.length?`<ol>${v.heirs.map(x=>`<li>${dynPerson(x)} · ${x.why}</li>`).join('')}</ol>`:'<p class="dynnote">⚠️ 상속자가 없습니다. 이대로 죽으면 가문이 끊깁니다.</p>'}${v.regent?`<p class="dynnote">👤 섭정: ${dynPerson(v.regent)} (16세가 될 때까지 · 재산을 가로챌 수 있음)</p>`:''}</div>
       ${list('부모',f.parents)}${list('배우자',f.partner?[f.partner]:[])}${list('자녀',f.kids)}${f.grand.length?list('손자·손녀',f.grand):''}${list('형제자매',f.siblings)}
       ${(v.past||[]).length?`<div class="sec"><h4>끊어진 가문</h4><ul>${v.past.map(x=>`<li>⚰️ ${dynEsc(x.house)} · ${x.gen}대 ${x.years}년 · 최대 재산 ${money(x.peakW)}${x.title?' · '+dynEsc(x.title):''}</li>`).join('')}</ul></div>`:''}
+      ${dynActionsHTML(v,'fam')}
       <div class="sec"><h4>가문 연대기</h4><ul>${v.chron.slice().reverse().map(c=>`<li><small class="muted">${fmtD(c.d)} · ${c.gen}대</small> ${dynEsc(c.text)}</li>`).join('')}</ul></div>`}
   if(dynTab==='asset'){const a=v.assets;const hv=a.houses.reduce((t,h)=>t+h.v,0),sv=a.stocks.reduce((t,s)=>t+s.v,0),bv=a.bld.reduce((t,b)=>t+b.v,0);
     return `<div class="sec"><h4>재산</h4>${dynKV([['💵 현금',money(a.cash)],['📦 물건·도구',money(a.goods)],a.houses.length&&['🏠 집 '+a.houses.length+'채',money(hv)],a.plots&&['🌾 밭 '+a.plots+'필지',money(a.plotV)],
       a.shops&&['🏪 가게 '+a.shops+'곳',money(a.shopV)],a.bld.length&&['🏛️ 건물 '+a.bld.length+'채',money(bv)],a.stocks.length&&['📈 주식',money(sv)],a.dep&&['🏦 예금',money(a.dep)],a.lent&&['🤝 빌려준 돈 '+a.lentN+'건',money(a.lent)],
       a.debt&&['💳 빚 '+a.debtN+'건','-'+money(a.debt)],['순재산',money(a.w)],['하루 평균 소득',money(a.incAvg)],['사는 곳',a.home?(a.houses.some(h=>h.lives)?'내 집':'남의 집(세입자)'):'집 없음']])}</div>
       ${a.stocks.length?`<div class="sec"><h4>주식</h4>${dynKV(a.stocks.map(s=>[dynEsc(s.name),`${s.shares.toLocaleString()}주 · ${(s.pct*100).toFixed(1)}% · ${money(s.v)}`]))}</div>`:''}
-      ${dynActionsHTML(v,true)}${dynBudgetHTML(v)}`}
+      ${dynProvHTML(v)}${dynActionsHTML(v,'asset')}${dynBudgetHTML(v)}`}
+  if(dynTab==='dip')return dynDipHTML(v);
+  if(dynTab==='plot')return `<div class="sec"><h4>음모</h4><p class="muted">뒷조사·첩자·평판 싸움·어두운 길. 들킬 수 있고, 들키면 체제에 따라 스캔들이나 원한이 생깁니다.</p></div>${dynActionsHTML(v,'plot')||'<p class="muted">지금 할 수 있는 음모가 없습니다. 첩보는 의원·귀족 이상부터 열립니다.</p>'}`;
+  if(dynTab==='law')return `<div class="sec"><h4>정치</h4>${dynKV([['체제',dynEsc(v.world?.us.regName||'-')],['통치자',v.world?.us.ruler?`${dynEsc(v.world.us.ruler.title)} ${dynEsc(v.world.us.ruler.name)}`:'없음'],['내 지위',v.rankName+(v.title?' · '+dynEsc(v.title):'')]])}</div>${dynActionsHTML(v,'law')||'<p class="muted">지금 할 수 있는 정치 행동이 없습니다.</p>'}`;
   if(dynTab==='net'){const f=v.family;return `<div class="sec"><h4>인맥</h4>${dynKV([['배우자',f.partner?dynPerson(f.partner):'없음'],['고용주',m.emp?dynPerson(m.emp):'없음'],['고용한 사람',(m.staff||0)+'명'],['소속 조직',m.grp?dynEsc(m.grp.name):'없음'],['신앙',m.faith?'있음':'없음']])}</div>
       <div class="sec"><h4>사돈·가문 관계</h4>${(v.ties||[]).length?dynKV(v.ties.map(t=>[dynEsc(t.name),`${t.v>0?'우호':t.v<0?'적대':'보통'} ${Math.round(t.v*100)} · ${dynEsc(t.why)}`])):'<p class="muted">아직 사돈을 맺은 집안이 없습니다. 혼인으로 다른 집안과 손을 잡을 수 있습니다.</p>'}</div>
       <p class="muted">친구·원수·동업자 관계는 다음 작업에서 보강합니다.</p>`}
@@ -132,8 +142,8 @@ function dynBindBudget(P){P.querySelectorAll('[data-bud]').forEach(el=>el.onchan
     try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'vault',dir,frac:+frac})});await dynSend({action:'save'})}catch(e){alert(e.message)}finally{b.disabled=false}})}
 const DYN_ACT_N=['농사','요리','벌목','집짓기','남의 일','도둑질','쉬기','짝 찾기','경비','장인 일','광산','가르치기','장사'];
 const DYN_ECO_G=['집·땅','주식','회사','돈'];
-function dynActionsHTML(v,eco){const acts=(v.actions||[]).filter(a=>DYN_ECO_G.includes(a.group)===!!eco);if(!acts.length)return '';const groups=[...new Set(acts.map(a=>a.group))];
-  return `<div class="sec"><h4>${eco?'투자·거래':'할 수 있는 일'}</h4><p class="muted">${eco?'값은 마을 시장 시세를 따릅니다. 사기나 대출 거절도 있을 수 있습니다.':'평소에는 성향대로 생활합니다. 아래 행동은 직접 고를 수 있습니다. 결과는 마을 사람들의 판단(투표·가담)에 달려 있습니다.'}</p>
+function dynActionsHTML(v,tk){const eco=tk==='asset';const acts=(v.actions||[]).filter(a=>dynTabOfGroup(a.group)===tk);if(!acts.length)return '';const groups=[...new Set(acts.map(a=>a.group))];
+  return `<div class="sec"><h4>${eco?'투자·거래':tk==='me'?'할 수 있는 일':'행동'}</h4>${tk!=='me'&&!eco?'':`<p class="muted">${eco?'값은 마을 시장 시세를 따릅니다. 사기나 대출 거절도 있을 수 있습니다.':'평소에는 성향대로 생활합니다. 아래 행동은 직접 고를 수 있습니다. 결과는 마을 사람들의 판단(투표·가담)에 달려 있습니다.'}</p>`}
     ${groups.map(g=>`<details class="actgrp" data-g="${dynEsc(g)}" ${dynOpenG.has(g)?'open':''}><summary>${dynEsc(g)}<small>${acts.filter(a=>a.group===g&&a.ok).length}/${acts.filter(a=>a.group===g).length}개 가능</small></summary>${acts.filter(a=>a.group===g).map(a=>(a.opts?`<div class="act multi${a.ok?'':' off'}">${dynEsc(a.label)}<small>${dynEsc(a.ok?a.hint:a.why)}</small><span class="qty">${a.opts.map(([v,l])=>{const k=a.k+':'+v;return `<button data-act="${dynEsc(k)}" class="${k===dynActArm?'arm':''}" ${a.ok?'':'disabled'}>${dynEsc(k===dynActArm?l+' 확인':l)}</button>`}).join('')}</span></div>`
       :`<button class="act${a.ok&&a.k===dynActArm?' arm':''}" data-act="${dynEsc(a.k)}" ${a.ok?'':'disabled'}>${dynEsc(a.label)}<small>${dynEsc(a.ok?(a.k===dynActArm?'한 번 더 누르면 실행합니다':a.hint):a.why)}</small></button>`)).join('')}</details>`).join('')}
     <div class="err" id="dynActErr">${dynEsc(dynActErrText)}</div></div>`}
@@ -186,13 +196,13 @@ function dynInitWorld(){
   bar.querySelectorAll('button').forEach(b=>b.onclick=()=>dynSetMap(b.dataset.mm));
   try{if(localStorage.getItem('v-dynmap')==='world')dynMapMode='world'}catch(e){}
   $('#dynWC').onclick=ev=>{const c=ev.currentTarget,r=c.getBoundingClientRect();const o=dynWOwner((ev.clientX-r.left)/r.width,(ev.clientY-r.top)/r.height);
-    if(o==='us'){dynWSel=null;dynSetMap('town');return}if(o&&o!=='sea'&&o!=='fog'){dynWSel=o;dynDrawWorld()}};
+    if(o==='us'){dynWSel=null;dynSetMap('town');return}if(o&&o!=='sea'&&o!=='fog'){dynWSel=o;dynTab='dip';dynDrawWorld();dynRender();const sh=$('#dynSheet');if(sh)sh.scrollTop=0}};
   new ResizeObserver(()=>{if(dynMapMode==='world')dynDrawWorld()}).observe(box);
   dynSetMap(dynMapMode);
 }
 function dynSetMap(m){dynMapMode=m;try{localStorage.setItem('v-dynmap',m)}catch(e){}
   document.querySelectorAll('#dynMapBar button').forEach(b=>b.classList.toggle('on',b.dataset.mm===m));
-  $('.screen').hidden=m==='world';$('#dynWorld').hidden=m!=='world';if(m==='world')dynDrawWorld()}
+  $('.screen').hidden=m==='world';$('#dynWorld').hidden=m!=='world';document.querySelectorAll('#dMap [data-mm2]').forEach(b=>b.classList.toggle('on',b.dataset.mm2===m));if(m==='world')dynDrawWorld();if(typeof dynFitMap==='function')dynFitMap()}
 // 나라 영역: 각 나라 중심에서 인구에 따른 가중 거리로 가장 가까운 나라. 남동쪽은 바다, 멀리는 미지의 땅.
 function dynWSeeds(){const W=dynView?.world;if(!W)return [];const us=W.us;const s=[{id:'us',x:0,y:0,w:.34+.22*Math.log10(us.pop/100+1)}];
   for(const r of W.realms)s.push({id:r.name,x:r.x,y:r.y,w:.5+.28*Math.log10(r.pop/1000+1)});return s}
@@ -202,11 +212,11 @@ function dynWOwnerXY(x,y,seeds,known){
   const n=(dynWHash(Math.floor((x+2)*14),Math.floor((y+2)*14))-.5)*.08;
   let best=null,bd=9;for(const s of seeds){if(!known&&s.id!=='us')continue;const d=Math.hypot(x-s.x,y-s.y)/s.w+n;if(d<bd){bd=d;best=s.id}}
   if(!known&&bd>1)return 'fog';if(bd>1.45)return 'fog';return best}
-const dynWXY=(fx,fy)=>[(fx-.5)*2.4,(fy-.5)*2.4*.75];
+const DYN_WAR=.68;const dynWXY=(fx,fy)=>[(fx-.5)*2.4,(fy-.5)*2.4*DYN_WAR];
 function dynWOwner(fx,fy){const W=dynView?.world;if(!W)return null;const [x,y]=dynWXY(fx,fy);return dynWOwnerXY(x,y,dynWSeeds(),W.known)}
 function dynDrawWorld(){
   const W=dynView?.world,c=$('#dynWC');if(!c||$('#dynWorld').hidden)return;
-  const cw=c.clientWidth||360,ch=Math.round(cw*.75),d=window.devicePixelRatio||1;
+  const cw=c.clientWidth||360,ch=Math.round(cw*DYN_WAR),d=window.devicePixelRatio||1;
   if(c.width!==Math.round(cw*d)){c.width=Math.round(cw*d);c.height=Math.round(ch*d)}c.style.height=ch+'px';
   const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);
   if(!W){g.fillStyle='#1b2c44';g.fillRect(0,0,cw,ch);return}
@@ -224,7 +234,7 @@ function dynDrawWorld(){
     for(const [di,dj] of [[1,0],[0,1]]){const p=own[j+dj]?.[i+di];if(p==null||p===o)continue;
       const war=(o==='us'&&warN.has(p))||(p==='us'&&warN.has(o));const inner=(o==='us'&&provN.has(p))||(p==='us'&&provN.has(o));g.fillStyle=war?'#ff3b30':inner?'#00000044':p==='sea'||p==='fog'?'#00000088':'#000';
       if(di)g.fillRect((i+1)*cell-1,j*cell,2,cell);else g.fillRect(i*cell,(j+1)*cell-1,cell,2)}}
-  const P=(x,y)=>[(x/2.4+.5)*cw,(y/(2.4*.75)+.5)*ch];
+  const P=(x,y)=>[(x/2.4+.5)*cw,(y/(2.4*DYN_WAR)+.5)*ch];
   g.textAlign='center';g.textBaseline='middle';
   const label=(x,y,t1,t2,mark)=>{const [px,py]=P(x,y);g.font=`bold ${Math.round(cw/24)}px sans-serif`;g.lineWidth=3;g.strokeStyle='#000';g.fillStyle='#fff';
     g.strokeText(t1,px,py);g.fillText(t1,px,py);if(t2){g.font=`${Math.round(cw/34)}px sans-serif`;g.strokeText(t2,px,py+cw/22);g.fillStyle='#f3e6c4';g.fillText(t2,px,py+cw/22)}
@@ -235,8 +245,8 @@ function dynDrawWorld(){
   if(!W.known){const [px,py]=P(0,.55);g.font=`${Math.round(cw/28)}px sans-serif`;g.fillStyle='#ccc';g.fillText('바깥 세상은 아직 모릅니다. 이웃과 장사가 트이면 열립니다.',px,py)}
   dynWInfo(W)}
 function dynWRel(r){return r.rel||(r.war?'전쟁 중':r.fta?'자유무역':r.tension>=60?'적대':r.tension>=35?'긴장':'보통')}
-function dynWInfo(W){
-  const el=$('#dynWInfo');let h='';const r=W.realms.find(x=>x.name===dynWSel);
+function dynWInfo(W){const el=$('#dynWInfo');if(!el)return;const h=dynWInfoHTML(W);if(el._h!==h){el._h=h;el.innerHTML=h;dynBindActions(el)}}
+function dynWInfoHTML(W){let h='';const r=W.realms.find(x=>x.name===dynWSel);
   if(r){const rl=r.ruler;h=`<h4>${dynEsc(r.name)} <small>${dynEsc(r.tag)}</small></h4>${dynKV([['체제',dynEsc(r.regName)],[dynEsc(r.title),`${dynEsc(rl.name)} (${rl.age}세·${rl.sex==='F'?'여':'남'})`],
       ['통치 가문',`${dynEsc(r.house)} · ${r.since>0?fmtD(r.since)+'부터':'우리 마을이 생기기 전부터'}`],r.heir&&['후계자',`${dynEsc(r.heir.name)} (${r.heir.age}세·${r.heir.sex==='F'?'여':'남'})`],['인구',r.pop.toLocaleString()+'명'],
       ['군대',typeof r.mil==='number'?r.mil.toLocaleString():dynEsc(r.mil)],['기술',typeof POWER_L!=='undefined'?POWER_L[r.era]||r.era:r.era],r.prov?['속령',`${fmtD(r.prov.d)}부터 · 거둔 세금 ${money(r.prov.tax)} · 불만 ${r.prov.unrest}${r.prov.unrest>=55?' ⚠️ 독립 위험':''}`]:['우리와의 관계',`${dynWRel(r)} (긴장 ${r.tension})`],r.kin&&['사돈',`${dynEsc(r.kin.name)} ↔ ${dynEsc(r.kin.spouse)}`]])}
@@ -246,8 +256,101 @@ function dynWInfo(W){
   else{const us=W.us;h=`<h4>🏠 ${dynEsc(us.name)}</h4>${dynKV([['체제',dynEsc(us.regName)],us.ruler&&[dynEsc(us.ruler.title),`${dynEsc(us.ruler.name)} (${us.ruler.age}세)`],['인구',us.pop.toLocaleString()+'명'],['군대',us.mil.toLocaleString()]])}
     <p><small>${W.known?'다른 나라를 누르면 통치 가문과 관계가 보입니다. 우리 마을을 누르면 마을 지도로 돌아갑니다.':'이웃과 장사가 트이면 이웃 나라가 지도에 나타납니다.'}</small></p>`}
   if(W.news&&W.news.length)h+=`<b class="muted">세계 소식</b><ul>${W.news.slice(0,8).map(e=>`<li><small>${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul>`;
-  if(el._h!==h){el._h=h;el.innerHTML=h;dynBindActions(el)}}
+  return h}
 // 선택한 나라에 대한 외교 행동(서버가 지위에 맞게 보낸 것만). 나 탭의 행동 목록과 같은 버튼·두 번 눌러 실행.
 function dynWActs(name){const acts=(dynView?.actions||[]).filter(a=>a.group==='외교'&&a.k.split(':')[2]===name);
   if(!acts.length)return (dynView?.rank??0)<3?'<p><small>외교는 의원·귀족 이상이 되어야 할 수 있습니다(전쟁·동맹은 최고 권력자만).</small></p>':'';
   return `<div class="dynpanel"><b class="muted">외교</b>${acts.map(a=>`<button class="act${a.ok&&a.k===dynActArm?' arm':''}" data-act="${dynEsc(a.k)}" ${a.ok?'':'disabled'}>${dynEsc(a.label)}<small>${dynEsc(a.ok?(a.k===dynActArm?'한 번 더 누르면 실행합니다':a.hint):a.why)}</small></button>`).join('')}<div class="err">${dynEsc(dynActErrText)}</div></div>`}
+
+// ===== 한 화면 앱 배치 (/god 전용) =====
+// 페이지 스크롤 없이: 위 상태 줄 · 지도 · 사건 띠 · 메뉴 창(안에서만 스크롤) · 아래 메뉴. 원래 마을 화면(/)은 그대로.
+function dynNetHTML(v){const f=v.family,m=v.me;return `<div class="sec"><h4>인맥</h4>${dynKV([['배우자',f.partner?dynPerson(f.partner):'없음'],['고용주',m.emp?dynPerson(m.emp):'없음'],['고용한 사람',(m.staff||0)+'명'],['소속 조직',m.grp?dynEsc(m.grp.name):'없음']])}</div>
+  <div class="sec"><h4>사돈·가문 관계</h4>${(v.ties||[]).length?dynKV(v.ties.map(t=>[dynEsc(t.name),`${t.v>0?'우호':t.v<0?'적대':'보통'} ${Math.round(t.v*100)} · ${dynEsc(t.why)}`])):'<p class="muted">아직 사돈을 맺은 집안이 없습니다.</p>'}</div>`}
+function dynProvHTML(v){const P=(v.world?.realms||[]).filter(r=>r.prov);if(!P.length)return '';return `<div class="sec"><h4>속령</h4>${dynKV(P.map(r=>[dynEsc(r.name),`인구 ${r.pop.toLocaleString()} · 세금 ${money(r.prov.tax)} · 불만 ${r.prov.unrest}${r.prov.unrest>=55?' ⚠️':''}`]))}</div>`}
+function dynDipHTML(v){const W=v.world;if(W&&W.known&&dynWSel&&W.realms.some(r=>r.name===dynWSel))return `<div class="sec"><button class="act" data-wback="1">← 나라 목록</button></div><div class="dynwinfo">${dynWInfoHTML(W)}</div>`;if(!W||!W.known)return '<div class="sec"><h4>외교</h4><p class="muted">아직 이웃 나라를 모릅니다. 이웃과 장사가 트이면 세계 지도와 외교가 열립니다.</p></div>';
+  return `<div class="sec"><h4>이웃 나라</h4><p class="muted">위 세계 지도에서 나라를 눌러도 됩니다.</p>${W.realms.map(r=>`<button class="act realm" data-realm="${dynEsc(r.name)}">${r.war?'⚔️':r.prov?'🏴':r.ally?'🛡️':r.fta?'🤝':''} ${dynEsc(r.name)} · ${dynEsc(r.regName)}<small>${dynEsc(r.title)} ${dynEsc(r.ruler.name)}(${r.ruler.age}) · 인구 ${r.pop.toLocaleString()} · ${dynEsc(dynWRel(r))}</small></button>`).join('')}</div>
+  ${dynActionsHTML(v,'dip')||'<p class="muted">외교는 의원·귀족 이상이 되어야 할 수 있습니다(전쟁·동맹은 최고 권력자만).</p>'}`}
+function dynAppLayout(){
+  const css=document.createElement('style');css.textContent=`
+body.dyn{overflow:hidden;overscroll-behavior:none}
+body.dyn header.top,body.dyn .caption,body.dyn .legend,body.dyn .stopbox,body.dyn .main>.col>.controls,body.dyn .savebar,body.dyn #dynMapBar{display:none!important}
+#dynApp{position:fixed;inset:0;display:flex;flex-direction:column;max-width:620px;margin:0 auto;background:var(--bg,#0f1020);z-index:20;padding:env(safe-area-inset-top) 0 0}
+#dynApp .dtop{display:flex;align-items:center;gap:6px;padding:6px 8px;background:#14162a;border-bottom:2px solid #000;font-family:var(--f-head);font-size:14px;flex:none}
+#dynApp .dtop .who{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
+#dynApp .dtop .who b{font-weight:400;color:var(--cream,#fff)}#dynApp .dtop .who small{color:var(--muted);margin-left:4px}
+#dynApp .dtop .num{white-space:nowrap;color:var(--gold)}#dynApp .dtop button{padding:5px 8px;font-size:14px;min-width:34px}
+#dynApp .dstat{display:flex;gap:10px;padding:3px 10px;font-size:12.5px;color:var(--muted);background:#14162a;flex:none;white-space:nowrap;overflow-x:auto}
+#dynApp .dstat b{color:var(--cream,#fff);font-weight:400}
+#dynApp .dmap{position:relative;flex:none;background:#000;overflow:hidden;transition:height .2s}
+#dynApp .dmap>.screen,#dynApp .dmap>#dynWorld{position:relative}
+#dynApp .dmap .msz{position:absolute;left:6px;bottom:6px;z-index:5;padding:4px 8px;font-size:12.5px;opacity:.92}
+#dynApp .dmap .screen{margin:0;border-width:0;outline:0;box-shadow:none}
+#dynApp .dmap .dynwmap{margin:0;border:0;outline:0}
+#dynApp .dmap .mapsw{position:absolute;left:6px;top:6px;z-index:5;display:flex;gap:4px}
+#dynApp .dmap .mapsw button{padding:4px 8px;font-size:12.5px;opacity:.92}#dynApp .dmap .mapsw button.on{background:var(--gold);color:#000}
+#dynApp .dmap .bell{position:absolute;right:6px;bottom:6px;z-index:5;padding:5px 9px;font-size:14px;background:#5a4512;animation:dynblink 1.2s ease-in-out infinite alternate}
+#dynApp .dstrip{flex:none;padding:6px 10px;font-size:13px;background:#1d2b22;border-top:2px solid #000;border-bottom:2px solid #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;min-height:1.2em}
+#dynApp .dstrip.wait{background:#3a2f12;color:var(--cream)}
+#dynApp #dynSheet{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 8px 10px;overscroll-behavior:contain}
+#dynApp #dynSheet .panel{margin:0}
+#dynApp #dynWorld .dynwinfo{display:none}
+body.dyn #dynApp .dyntabs{position:static;flex:none;display:flex;flex-wrap:nowrap;gap:2px;margin:0;padding:4px 4px calc(4px + env(safe-area-inset-bottom));background:#14162a;box-shadow:0 -2px 10px #0008}
+body.dyn #dynApp .dyntabs button{flex:1;min-width:0;padding:4px 0;font-size:11.5px;display:flex;flex-direction:column;align-items:center;gap:1px;position:relative}
+body.dyn #dynApp .dyntabs .ic{font-size:17px;line-height:1.1}body.dyn #dynApp .dyntabs .cnt{position:absolute;top:0;right:4px;background:#c0392b;color:#fff;border-radius:8px;font-size:10px;padding:0 4px;font-style:normal}
+body.dyn .dynnote{display:none!important}body.dyn .dyntop{display:none!important}
+body.dyn #card:not([hidden]){max-height:78vh}
+.dynpanel .act.realm{background:var(--panel2)}
+.dynsetbox .row2{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.dynsetbox .row2 button{flex:1;min-width:30%}`;
+  document.head.appendChild(css);
+  const app=document.createElement('div');app.id='dynApp';
+  app.innerHTML=`<div class="dtop"><div class="who" id="dTopWho">불러오는 중…</div><span class="num" id="dTopNum"></span><button id="dPlay">▶</button><button id="dSpeed">×1</button><button id="dMenu">⚙</button></div>
+    <div class="dstat" id="dStat"></div><div class="dmap" id="dMap"><div class="mapsw"><button data-mm2="town">🏘 마을</button><button data-mm2="world">🌍 세계</button></div><button class="bell" id="dBell" hidden>🔔</button><button class="msz" id="dMsz">지도 ▾</button></div>
+    <div class="dstrip" id="dStrip">-</div><div id="dynSheet"></div>`;
+  document.body.appendChild(app);
+  const map=$('#dMap');map.appendChild($('.screen'));map.appendChild($('#dynWorld'));
+  const sheet=$('#dynSheet');for(const q of ['#dynPanel','#tabsTop','#tabs','#panel'])sheet.appendChild($(q));
+  app.appendChild($('#dynTabs'));
+  map.querySelectorAll('[data-mm2]').forEach(b=>b.onclick=()=>dynSetMap(b.dataset.mm2));
+  try{dynMapSize=+(localStorage.getItem('v-dynmsz')??1)}catch(e){}
+  $('#dMsz').onclick=()=>{dynMapSize=(dynMapSize+1)%3;try{localStorage.setItem('v-dynmsz',dynMapSize)}catch(e){}dynFitMap()};
+  new ResizeObserver(()=>dynFitMap()).observe(app);
+  $('#dBell').onclick=$('#dStrip').onclick=()=>{if(dynView?.pending.length)dynOpen(dynView.pending[0],true);else{dynTab='news';dynRender()}};
+  $('#dTopWho').onclick=()=>{if(dynView?.me)select(dynView.me.id)};
+  $('#dPlay').onclick=()=>$('#play').click();
+  const SP=[2,6,30];$('#dSpeed').onclick=async()=>{const i=(SP.indexOf(speed)+1)%SP.length;await dynSend({action:'speed',value:SP[i]});await dynSend({action:'play'})};
+  $('#dMenu').onclick=()=>dynSettings();
+  // 세계 지도 정보 카드는 메뉴 창(외교)으로 옮긴다
+  const wi=$('#dynWInfo');if(wi){wi.classList.add('dynpanel');}
+  addEventListener('resize',()=>{if(dynMapMode==='world')dynDrawWorld()});
+}
+function dynSettings(){const box=$('#dynModal');box.hidden=false;dynModalId='settings';
+  box.innerHTML=`<div class="dynbox dynsetbox"><h3>⚙ 설정</h3><div class="row2"><button data-c="ff1">+1년 건너뛰기</button><button data-c="ff10">+10년 건너뛰기</button></div>
+    <div class="row2"><button data-c="save">지금 저장</button><a class="modelink" href="/" style="flex:1;text-align:center;padding:8px">원래 마을로</a></div>
+    <div class="row2"><button data-c="stats">📊 마을 통계 보기</button></div>
+    <p class="muted" style="font-size:12.5px">${dynEsc($('#saveTxt')?.textContent||'')}</p><div class="row2"><button data-c="new" style="background:#5a1a1a">새 가문 마을 (지금 마을 지움)</button></div>
+    <button class="opt" data-c="close">닫기</button></div>`;
+  box.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const c=b.dataset.c;
+    if(c==='ff1')$('#ff1').click();else if(c==='ff10')$('#ff10').click();else if(c==='save')$('#saveNow').click();
+    else if(c==='stats'){dynTab='power';dynRender();buildNav();renderPanel()}else if(c==='new'){if(!b.dataset.arm){b.dataset.arm=1;b.textContent='정말 지울까요? 한 번 더 누르세요';return}$('#reset').click();$('#reset').click()}
+    box.hidden=true;dynModalId=null})}
+function dynAppRender(v){if(!$('#dynApp'))return;const m=v.me;
+  $('#dTopWho').innerHTML=m?`<b>👤 ${dynEsc(m.name)}</b><small>${m.age}세 · ${dynEsc(v.title||v.rankName)}</small>`:`<b>${dynEsc(v.house)}</b>`;
+  $('#dTopNum').textContent=m?'💰'+money(v.assets?.w||0):'';
+  $('#dPlay').textContent=running?'⏸':'▶';$('#dSpeed').textContent=speed>=30?'×3':speed>=6?'×2':'×1';
+  const W=v.world;$('#dStat').innerHTML=`<span>🏠 <b>${dynEsc(v.house)}</b> ${v.gen}대</span><span>⭐ 평판 <b>${Math.round((m?.rep??1)*100)}</b></span><span>🏅 <b>${dynEsc(v.rankName)}</b></span>${W?`<span>🏰 <b>${dynEsc(W.us.name)}</b> ${(W.us.effPop||W.us.pop).toLocaleString()}명</span><span>🏛️ ${dynEsc(W.us.regName)}</span>`:''}<span>📅 ${fmtD(S.day)}</span>`;
+  const st=$('#dStrip'),bell=$('#dBell');
+  if(v.pending.length){st.className='dstrip wait';st.textContent=`🔔 ${v.pending[0].text.replace(/\n/g,' ')}${v.pending.length>1?` 외 ${v.pending.length-1}건`:''} · 눌러서 선택`;bell.hidden=false;bell.textContent='🔔 '+v.pending.length}
+  else{bell.hidden=true;st.className='dstrip';const r=v.res&&S.day-v.res.d<30?v.res:null;const n=v.news[0];st.textContent=r?'📜 '+r.text:n?`📰 ${fmtD(n.d)} ${n.text}`:'📰 아직 주변에 별일이 없습니다'}
+  document.querySelectorAll('#dMap [data-mm2]').forEach(b=>b.classList.toggle('on',b.dataset.mm2===dynMapMode));
+  // 메뉴별 할 수 있는 행동 개수
+  const cnt={};for(const a of v.actions||[])if(a.ok){const t=dynTabOfGroup(a.group);cnt[t]=(cnt[t]||0)+1}
+  document.querySelectorAll('#dynTabs button').forEach(b=>{const i=b.querySelector('.cnt');const n=cnt[b.dataset.dt]||0;if(i){i.hidden=!n;i.textContent=n}});
+}
+
+// 지도 크기: 0 크게(전체) · 1 보통(가운데 60%) · 2 접기(띠만). 보통일 때는 지도 가운데를 잘라 보여 준다(누르는 위치는 그대로 맞음).
+let dynMapSize=1;
+function dynFitMap(){const box=$('#dMap');if(!box)return;const inner=dynMapMode==='world'?$('#dynWorld'):$('.screen');const full=(inner&&inner.offsetHeight)||Math.round(box.clientWidth*.68);
+  const h=dynMapSize===0?full:dynMapSize===1?Math.round(full*.6):34;box.style.height=h+'px';
+  const off=dynMapSize===1?Math.round((full-h)/2):0;for(const el of [$('.screen'),$('#dynWorld')])if(el)el.style.top=-off+'px';const zu=$('.screen .zoomui');if(zu)zu.style.marginTop=off+'px';
+  const b=$('#dMsz');if(b)b.textContent=dynMapSize===0?'지도 작게 ▴':dynMapSize===1?'지도 접기 ▴':'지도 펴기 ▾';
+  box.querySelectorAll('.mapsw,.zoomui').forEach(e=>e.style.display=dynMapSize===2?'none':'')}
