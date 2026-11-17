@@ -92,7 +92,26 @@ function main(){
     if(!S2.war&&!(S2.gov&&(S2.gov.chief===D2.pid||S2.gov.king===D2.pid))){S2.war={t:'너른들',d:S2.day+1,score:0,cas:0,civ:0};p=until('war',1);if(p){x.dynChoose(p.id,'avoid');evs.war=1}clear()}
     const ex=x.exportState(),jx=JSON.stringify(ex);assert.equal(JSON.stringify(load(jx).exportState().S.dyn),JSON.stringify(ex.S.dyn),'사건 뒤 S.dyn 저장 왕복')}
   {const kinds=Object.keys(stat.kinds).filter(k=>!['start','notice','death','arrange','kidMatch','proposeIn','proposeOut'].includes(k));assert(kinds.length>=6,'자동 플레이에서 사건 선택지 여러 종류: '+kinds.join(','));evs.auto=kinds}
-  console.log(JSON.stringify({events:evs,dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,acts,ms:Date.now()-t0}));
+  // 10. 7-1 남은 행동(가족·상속·인맥·건강·어두운 길·권력)과 3단계(넓은 상속·섭정·단절·새 가문·관전)
+  const st3={};
+  {const x=engine.createWorld(7,150);x.dynStart();const D3=()=>x.S.dyn;x.dynChoose(D3().pending[0].id,'go');for(let i=0;i<10;i++)x.step();try{x.dynAct('council')}catch(e){}
+    const clear=()=>{let g=0;while(D3().pending.length){assert(++g<50);const p=D3().pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}};for(let i=0;i<YEAR*12&&!D3().over;i++){clear();x.step()}clear();assert(!D3().over);
+    const me=x.S.byId.get(D3().pid);me.cash+=5000;const done=[];
+    for(const a of x.dynActions().filter(a=>a.ok&&/^(fam|kin|net|med|dark|pow):/.test(a.k)&&a.k!=='fam:divorce')){const r=x.dynAct(a.k);assert(r.text,a.k);done.push(a.k.split(':').slice(0,2).join(':'))}
+    assert(done.includes('kin:heir')&&done.some(k=>k.startsWith('net:'))&&done.some(k=>k.startsWith('dark:')),'새 행동: '+done.join(','));st3.acts=[...new Set(done)];
+    // 미성년 지정 상속자 → 섭정
+    const kid=x.S.agents.find(a=>a.alive&&a.age<10*YEAR&&a.parents.some(p=>x.S.byId.get(p)?.alive)&&a.id!==D3().pid);assert(kid);x.dynAct('kin:heir:'+kid.id);assert.equal(D3().heir,kid.id);
+    const gen0=D3().gen;me.health=-999;x.step();const pd=D3().pending.find(p=>p.kind==='death');assert(pd&&/섭정/.test(pd.text),'섭정 알림');assert.equal(D3().pid,kid.id);assert.equal(D3().gen,gen0+1);assert(D3().regent,'섭정 지정');clear();
+    for(let i=0;i<30;i++){clear();x.step()}assert(x.dynView().regent,'섭정 표시');st3.regent=true;
+    // 상속 순서: 자녀가 없고 지정도 없으면 형제·조카·배우자·같은 집안까지
+    const h=x.dynView().heirs;st3.heirOrder=h.slice(0,4).map(v=>v.why);
+    // 단절 → 새 가문 후보 선택
+    const m2=x.S.byId.get(D3().pid);D3().heir=null;m2.kids=[];m2.parents=[];m2.partner=null;m2.family=-1;m2.health=-999;x.step();
+    const po=D3().pending.find(p=>p.kind==='death');assert(D3().over&&po,'단절');assert(po.opts.some(o=>o.k==='watch')&&po.opts.some(o=>o.k[0]==='h'),'새 가문·관전 선택');assert.equal(D3().past.length,1,'끊긴 가문 보관');
+    const ex=JSON.stringify(x.exportState());x.dynChoose(po.id,po.opts[0].k);assert(!D3().over&&D3().gen===1&&D3().past.length===1&&D3().pending[0].kind==='start','새 가문 시작');x.dynChoose(D3().pending[0].id,'go');for(let i=0;i<20;i++){clear();x.step()}st3.newHouse=D3().house;
+    // 관전
+    const y=load(ex);const py=y.S.dyn.pending.find(p=>p.kind==='death');y.dynChoose(py.id,'watch');assert(y.S.dyn.watch&&y.dynCanSee(1)&&y.dynCanTab('gov'),'관전은 전체 공개');for(let i=0;i<5;i++)y.step();st3.watch=true}
+  console.log(JSON.stringify({stage3:st3,events:evs,dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,acts,ms:Date.now()-t0}));
 
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dyn-base-'));const baseFile=path.join(tmp,'engine.js');
