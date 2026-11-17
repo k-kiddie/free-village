@@ -575,7 +575,7 @@ S.dyn = {
 동현 요청: 2단계 남은 작업은 새 컨텍스트 윈도우(새 세션)에서 시작한다.
 
 ### 코드 위치
-- 작업 브랜치: `claude/funny-rubin-1e2ynb` (main 미병합). 새 세션은 이 브랜치를 받아 이어서 작업한다(`git fetch origin claude/funny-rubin-1e2ynb` 후 그 위에서 작업). 동현이 main 병합을 원하면 PR을 만든다(요청 전에는 만들지 않음).
+- (옛 기록) 1차 작업 브랜치: `claude/funny-rubin-1e2ynb` — 이후 main 병합됨. 새 세션은 이 브랜치를 받아 이어서 작업한다(`git fetch origin claude/funny-rubin-1e2ynb` 후 그 위에서 작업). 동현이 main 병합을 원하면 PR을 만든다(요청 전에는 만들지 않음).
 - 가문 모드 엔진 코드: `engine.js`의 "가문 모드" 구역(`DYN_LIFE` 정의부터 `return{dynStart,...` 직전까지). 원래 엔진 안의 훅은 모두 `S.dyn` 조건:
   - `mate()`(청혼·자녀 혼인), `step()` 끝 `dynTick()`, 일 고르기 점수(`budget.job`), `voterScore`(사돈 표), `mAppoint`(측근·귀족 후보), `election`/`councilElection`(`dynCandidacy`), 주식 자동 거래 제외(`dynOwnKey`), `exportState`(관련 죽은 인물 보존).
   - 원래 엔진에서 함수로 분리한 것(동작 동일): `councilVotes`, `foundCouncil`, `crownLord`, `revoltRun`, `makeGang`.
@@ -588,7 +588,7 @@ S.dyn = {
 - 엔진이 주민 대신 결정하는 지점에 끼울 때: `if(S.dyn&&a.id===S.dyn.pid)` 분기를 **R()/gauss() 호출 전에** 두거나, 난수 호출 뒤 결과에만 영향을 주게 한다. 원래 마을에서는 `S.dyn`이 없으므로 결과 불변.
 
 ### 남은 일 (2차, 2026-11-17 갱신)
-- 작업 브랜치 `claude/modest-volta-zqs2wm`에 2차 4·5·6·7단계와 9단계 일부가 있다(main 미병합). 남은 것: 8번 소문(상의), 9단계 나머지 [2], 폰 화면 확인(동현), AWS 반영, 1GB 서버에서 속령 이주 후 인구·메모리 측정(`DYN_POP_CAP` 조정).
+- 2차 4·5·6·7단계, 9단계 일부, 한 화면 UI, 가게·고용·법안 전체, 이야기 사건은 **2026-11-17 밤 main에 병합**(동현 요청, 작업 브랜치 `claude/modest-volta-zqs2wm`). 전체 정리는 `HANDOFF.md`. 남은 것: 8번 소문(상의), 9단계 나머지 [2], 폰 화면 확인(동현), AWS 반영, 1GB 서버에서 속령 이주 후 인구·메모리 측정(`DYN_POP_CAP` 조정).
 - 2차 엔진 코드 위치: `engine.js` 가문 모드 구역의 `REALM_POS`부터 `dynWorldView`까지(세계·외교·첩보·성장·[2] 행동), 사건 처리는 `DYN_H` 앞부분(invaded·conquest·claim·dirt·intel·fspy·ispy·fwed·assn·prince). 원래 엔진 훅: 군사력 `dynMilAdj`, 쿠데타 두 곳 `dynCoupBlock`, 왕자의 난 `dynPrince` — 모두 `S.dyn` 조건.
 
 ### 남은 일 (1차)
