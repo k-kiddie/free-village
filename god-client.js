@@ -164,7 +164,7 @@ function dynBindActions(P){
 function dynOpen(p,force){
   const box=$('#dynModal');dynModalId=p.id;box.hidden=false;
   const start=p.kind==='start',m=dynView?.me;
-  box.innerHTML=`<div class="dynbox"><h3>${start?'가문 모드 시작':p.kind==='death'?(dynView&&dynView.over?'⚰️ 가문 단절':'⚰️ 가장의 죽음'):'🔔 선택'}</h3><p style="white-space:pre-line">${dynEsc(p.text)}</p>
+  box.innerHTML=`<div class="dynbox"><h3>${start?'가문 모드 시작':p.kind==='death'?(dynView&&dynView.over?'⚰️ 가문 단절':'⚰️ 가장의 죽음'):p.title?dynEsc(p.title):'🔔 선택'}</h3><p style="white-space:pre-line">${dynEsc(p.text)}</p>
     ${start&&m?`<label>성 <input id="dynSur" maxlength="2" value="${dynEsc(m.sur)}"></label><label>이름 <input id="dynGiven" maxlength="3" value="${dynEsc(m.given)}"></label>`:''}
     <div class="err" id="dynErr"></div>
     ${p.opts.map(o=>`<button class="opt" data-k="${dynEsc(o.k)}">${dynEsc(o.label)}${o.hint?`<small>${dynEsc(o.hint)}</small>`:''}</button>`).join('')}
@@ -301,7 +301,7 @@ body.dyn #dynApp .dyntabs .ic{font-size:17px;line-height:1.1}body.dyn #dynApp .d
 body.dyn .dynnote{display:none!important}body.dyn .dyntop{display:none!important}
 body.dyn #card:not([hidden]){max-height:78vh}
 .dynpanel .act.realm{background:var(--panel2)}
-.dynsetbox .row2{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.dynsetbox .row2 button{flex:1;min-width:30%}`;
+.dynsetbox .row2{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.dynsetbox .row2 button{flex:1;min-width:30%}.dynsetbox .row2 button.on{background:var(--gold);color:#000}`;
   document.head.appendChild(css);
   const app=document.createElement('div');app.id='dynApp';
   app.innerHTML=`<div class="dtop"><div class="who" id="dTopWho">불러오는 중…</div><span class="num" id="dTopNum"></span><button id="dPlay">▶</button><button id="dSpeed">×1</button><button id="dMenu">⚙</button></div>
@@ -329,8 +329,10 @@ function dynSettings(){const box=$('#dynModal');box.hidden=false;dynModalId='set
   box.innerHTML=`<div class="dynbox dynsetbox"><h3>⚙ 설정</h3><div class="row2"><button data-c="ff1">+1년 건너뛰기</button><button data-c="ff10">+10년 건너뛰기</button></div>
     <div class="row2"><button data-c="save">지금 저장</button><a class="modelink" href="/" style="flex:1;text-align:center;padding:8px">원래 마을로</a></div>
     <div class="row2"><button data-c="stats">📊 마을 통계 보기</button></div>
+    <p class="muted" style="margin:6px 0 0;font-size:12.5px">이야기 사건 빈도 (지금까지 ${dynView?.story?.n||0}번)</p><div class="row2">${[[0,'끄기'],[1,'적게 (10~14일)'],[2,'보통 (5~7일)'],[3,'많이 (3~4일)']].map(([f,l])=>`<button data-sf="${f}" class="${(dynView?.story?.freq??2)===f?'on':''}">${l}</button>`).join('')}</div>
     <p class="muted" style="font-size:12.5px">${dynEsc($('#saveTxt')?.textContent||'')}</p><div class="row2"><button data-c="new" style="background:#5a1a1a">새 가문 마을 (지금 마을 지움)</button></div>
     <button class="opt" data-c="close">닫기</button></div>`;
+  box.querySelectorAll('[data-sf]').forEach(b=>b.onclick=async()=>{try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'story',freq:+b.dataset.sf})});await dynSend({action:'save'})}catch(e){}box.hidden=true;dynModalId=null});
   box.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const c=b.dataset.c;
     if(c==='ff1')$('#ff1').click();else if(c==='ff10')$('#ff10').click();else if(c==='save')$('#saveNow').click();
     else if(c==='stats'){dynTab='power';dynRender();buildNav();renderPanel()}else if(c==='new'){if(!b.dataset.arm){b.dataset.arm=1;b.textContent='정말 지울까요? 한 번 더 누르세요';return}$('#reset').click();$('#reset').click()}
@@ -341,7 +343,7 @@ function dynAppRender(v){if(!$('#dynApp'))return;const m=v.me;dynTrackNew(v);
   $('#dPlay').textContent=running?'⏸':'▶';$('#dSpeed').textContent=speed>=30?'×3':speed>=6?'×2':'×1';
   const W=v.world;$('#dStat').innerHTML=`<span>🏠 <b>${dynEsc(v.house)}</b> ${v.gen}대</span><span>⭐ 평판 <b>${Math.round((m?.rep??1)*100)}</b></span><span>🏅 <b>${dynEsc(v.rankName)}</b></span>${W?`<span>🏰 <b>${dynEsc(W.us.name)}</b> ${(W.us.effPop||W.us.pop).toLocaleString()}명</span><span>🏛️ ${dynEsc(W.us.regName)}</span>`:''}<span>📅 ${fmtD(S.day)}</span>`;
   const st=$('#dStrip'),bell=$('#dBell');
-  if(v.pending.length){st.className='dstrip wait';st.textContent=`🔔 ${v.pending[0].text.replace(/\n/g,' ')}${v.pending.length>1?` 외 ${v.pending.length-1}건`:''} · 눌러서 선택`;bell.hidden=false;bell.textContent='🔔 '+v.pending.length}
+  if(v.pending.length){st.className='dstrip wait';st.textContent=`🔔 ${v.pending[0].title?v.pending[0].title+' · ':''}${v.pending[0].text.replace(/\n/g,' ')}${v.pending.length>1?` 외 ${v.pending.length-1}건`:''} · 눌러서 선택`;bell.hidden=false;bell.textContent='🔔 '+v.pending.length}
   else{bell.hidden=true;st.className='dstrip';const r=v.res&&S.day-v.res.d<30?v.res:null;const n=v.news[0];st.textContent=r?'📜 '+r.text:n?`📰 ${fmtD(n.d)} ${n.text}`:'📰 아직 주변에 별일이 없습니다'}
   document.querySelectorAll('#dMap [data-mm2]').forEach(b=>b.classList.toggle('on',b.dataset.mm2===dynMapMode));
   // 메뉴별 할 수 있는 행동 개수

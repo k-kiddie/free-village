@@ -192,6 +192,7 @@ async function handleMessage(msg) {
       else if(c.action==='new') { running=false;pendingDays=0;dayFraction=0;seed=Number(c.seed)||(isDynasty?randomSeed():((seed*7919+13)%99991+1));population=isDynasty?defaultPopulation:Math.max(1,Math.min(10000,Math.floor(Number(c.population)||5000)));world=newWorld();lastViewDay=-1;lastSavedDay=-1;panelDay=-1;panelCache.clear();await save();sendView(true); }
       else if(c.action==='save') await save();
       else if(isDynasty&&c.action==='choose'){const r=world.dynChoose(c.id,String(c.k||''));lastSavedDay=-1;clockAt=Date.now();lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
+      else if(isDynasty&&c.action==='story'){const r=world.dynSetStory(c.freq);lastSavedDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
       else if(isDynasty&&c.action==='targets'){const id=Number(c.id);const r=world.dynCanSee(id)?world.dynTargetActions(id):[];answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
       else if(isDynasty&&c.action==='act'){const r=world.dynAct(String(c.k||''));lastSavedDay=-1;panelDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
       else if(isDynasty&&c.action==='budget'){const r=world.dynSetBudget(c.budget||{});lastSavedDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}

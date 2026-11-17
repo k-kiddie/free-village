@@ -3,7 +3,9 @@
 // 사용: node scripts/check-dynasty.js [기준 git 커밋(기본 origin/main)] [--quick]
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os'),{execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
-const engine=require('../engine.js');const {YEAR}=engine;
+const engine=require('../engine.js');
+// 이야기 사건(15번)은 무작위로 마을을 바꾸므로, 그 전 검사들은 사건을 끈 채로 돌린다.
+{const cw=engine.createWorld;engine.createWorld=(s,n)=>{const w=cw(s,n);const ds=w.dynStart;w.dynStart=(...a)=>{const r=ds(...a);if(!engine.keepStory&&w.dynSetStory)w.dynSetStory(0);return r};return w}}const {YEAR}=engine;
 const args=process.argv.slice(2),quick=args.includes('--quick'),base=args.find(a=>!a.startsWith('--'))||'origin/main';
 
 // 선택지가 뜨면 멈추고 답한 뒤 진행하는 Worker 흐름을 흉내 낸다.
@@ -56,7 +58,7 @@ function main(){
   {const x=fresh(7);const r=x.dynAct('council');assert(x.S.gov||/부결/.test(r.text));acts.council=r.text;if(x.S.gov){assert(['rep','olig'].includes(x.S.gov.regime));assert(x.S.gov.history.length>=1,'첫 선거');assert(x.S.gov.history[0].cands.some(c=>c.id===x.S.dyn.pid)||/참정권|자격/.test(r.text),'내가 후보(또는 자격 없음 안내)')}
     assert.throws(()=>x.dynAct('council'),'정부가 생기면 회의 제안 없음')}
   {const x=fresh(11);const r=x.dynAct('revolt');acts.revolt=r.text;if(/성공/.test(r.text)){assert.equal(x.S.gov.regime,'com');assert.equal(x.S.gov.chief,x.S.dyn.pid);assert.equal(x.dynView().rank,4)}}
-  {const x=fresh(5);assert.throws(()=>x.dynAct('lord'));x.S.byId.get(x.S.dyn.pid).cash+=1e5;const r=x.dynAct('lord');acts.lord=r.text;assert.equal(x.S.gov.regime,'mon');assert.equal(x.S.gov.chief,x.S.dyn.pid);x.step();assert.equal(x.S.dyn.pending.length,0,'행동 직후 중복 알림 없음')}
+  {const x=fresh(5);assert.throws(()=>x.dynAct('lord'));x.S.byId.get(x.S.dyn.pid).cash+=1e5;const r=x.dynAct('lord');acts.lord=r.text;assert.equal(x.S.gov.regime,'mon');assert.equal(x.S.gov.chief,x.S.dyn.pid);x.step();assert.equal(x.S.dyn.pending.filter(p=>p.kind!=='story').length,0,'행동 직후 중복 알림 없음')}
   {const x=fresh(9);const me=x.S.byId.get(x.S.dyn.pid);me.cash+=1e5;if(!me.grp){x.dynAct('gang');assert(me.grp);acts.gang=true}}
   // 6. 법 바꾸기: 시위·청원/발의 → 의회 표결 또는 통치자 결정
   {let passed=0,tried=0;for(const seed of [7,11,17]){const x=fresh(seed);x.dynAct('council');if(!x.S.gov)continue;for(const t of x.dynActions().filter(a=>/^(pet|law):/.test(a.k)&&a.ok)){const r=x.dynAct(t.k);tried++;const key=t.k.split(':')[1];assert.equal(/통과/.test(r.text)&&!/부결|거부|갇혔/.test(r.text),x.S.gov.policy[key]===true,r.text);if(x.S.gov.policy[key]===true)passed++;assert.throws(()=>x.dynAct(t.k))}}
@@ -187,6 +189,17 @@ function main(){
     const bl=laws.find(a=>typeof X.gov.policy[a.k.split(':')[1]]==='boolean');const k2=bl.k.split(':')[1];const b2=X.gov.policy[k2];x.dynAct(bl.k+':'+bl.opts[0][0]);assert(X.gov.policy[k2]===!b2,'시행/폐지');
     out.laws=laws.length;return out})();
   console.log(JSON.stringify({ui3}));
+  // 15. 이야기 사건: 표의 모든 사건·선택지가 오류 없이 실행되고, 자동 플레이에서 5~7일에 하나꼴로 뜬다
+  engine.keepStory=true;
+  const story=(()=>{const x=engine.createWorld(11,100),X=x.S;x.dynStart();const st={kinds:{}};drive(x,500,p=>(p.opts.find(o=>['take','annex'].includes(o.k))||p.opts[0]).k,st);
+    const me=X.byId.get(X.dyn.pid);if(!X.gov){me.cash+=1e6;x.dynAct('lord')}else X.gov.chief=me.id;me.cash+=1e6;const {SE,sCtx,sRealm}=x._story;let n=0;
+    for(const id in SE){const e=SE[id];for(const o of e.o){const ctx={sid:id,title:e.title};const t=sRealm();if(t)ctx.t=t.name;let p=null;try{p=e.who?e.who(sCtx(me,ctx)):null}catch(er){}
+      p=p||X.agents.find(a=>a.alive&&a.id!==me.id&&isA(a));ctx.x=p.id;ctx.y=X.agents.find(a=>a.alive&&a.id!==me.id&&a.id!==p.id&&isA(a)).id;ctx.amt=100;
+      const c=sCtx(me,ctx);assert.equal(typeof e.text(c),'string',id);if(typeof o[2]==='function')o[2](c);assert.equal(typeof o[3](sCtx(me,ctx)),'string',id+':'+o[0]);n++}if(!me.alive)break}
+    const y=engine.createWorld(3,100),Y=y.S;y.dynStart();const s2={kinds:{}};drive(y,1200,p=>p.opts[p.id%p.opts.length].k,s2);const cnt=s2.kinds.story||0;
+    assert(cnt>=1200/9&&cnt<=1200/4,'사건 빈도 '+cnt);const z=engine.createWorld(3,100);z.importState(JSON.parse(JSON.stringify(y.exportState())));assert.deepEqual(z.S.dyn.story,Y.dyn.story,'사건 상태 저장 왕복');
+    return {options:n,events:Object.keys(SE).length,in1200days:cnt}})();
+  console.log(JSON.stringify({story}));
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dyn-base-'));const baseFile=path.join(tmp,'engine.js');
   fs.writeFileSync(baseFile,execFileSync('git',['show',base+':engine.js'],{cwd:root}));
