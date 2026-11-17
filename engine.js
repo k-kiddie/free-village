@@ -1869,7 +1869,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 체제별 인재 풀
     if(r==='mil'){const off=pool.filter(a=>a.officer||a.served);if(off.length&&(MINI[m.k].grp==='sec'||MINI[m.k].grp==='jus'||R()<.6)){pool=off;note='군 출신'}}
     else if(r==='com'){const pm=pool.filter(a=>chG&&a.grp===chG);if(pm.length)pool=pm;note='당원'}
-    else if(r==='mon'||r==='cmon'){const king=G.king&&S.byId.get(G.king);const ws=pool.slice().sort((x,y)=>(y.w||0)-(x.w||0));const nob=new Set(ws.slice(0,Math.max(5,ws.length*.05|0)));if(king)for(const a of pool)if(a.family===king.family)nob.add(a);if(r==='mon'||R()<.5){pool=pool.filter(a=>nob.has(a));note='귀족'}}
+    else if(r==='mon'||r==='cmon'){const king=G.king&&S.byId.get(G.king);const ws=pool.slice().sort((x,y)=>(y.w||0)-(x.w||0));const nob=new Set(ws.slice(0,Math.max(5,ws.length*.05|0)));if(king)for(const a of pool)if(a.family===king.family||(S.dyn&&dynTieOf(king.family)>.3&&dynKin().has(a.id)))nob.add(a);if(r==='mon'||R()<.5){pool=pool.filter(a=>nob.has(a));note='귀족'}}
     else if(r==='theo'){const cl=pool.filter(a=>a.major==='theo'||a.g.faith>.75);if(cl.length){pool=cl;note='성직자'}}
     if(!pool.length)pool=pool0.filter(a=>a!==ch);
     // 청장은 소속 부 장관이 추천
@@ -1877,7 +1877,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 연정: 촌장 당이 의회 과반이 아니면 부 장관 자리 일부를 다른 당에 내준다
     let coalPick=false;if(m.tier===0&&coal&&['rep','msoc','olig','cmon'].includes(r)&&R()<.35){const other=pool.filter(a=>a.grp&&a.grp!==chG&&mem.some(x=>x.grp===a.grp));if(other.length){pool=other;coalPick=true}}
     const crony=boss&&boss.g.cheat>.35&&R()<.5&&!coalPick;
-    const order=crony?pool.filter(a=>(boss.grp&&a.grp===boss.grp)||a.family===boss.family||a.partner===boss.id).sort((x,y)=>y.cash-x.cash):pool.slice().sort((x,y)=>sk(y)-sk(x));if(!order.length)order.push(...pool.slice().sort((x,y)=>sk(y)-sk(x)));
+    const order=crony?pool.filter(a=>(boss.grp&&a.grp===boss.grp)||a.family===boss.family||a.partner===boss.id||(S.dyn&&dynTieOf(boss.family)>.3&&dynKin().has(a.id))).sort((x,y)=>y.cash-x.cash):pool.slice().sort((x,y)=>sk(y)-sk(x));if(!order.length)order.push(...pool.slice().sort((x,y)=>sk(y)-sk(x)));
     // 청문회: 민주 계열 체제의 부 장관, 그리고 치안·보안 청장
     const hearing=['rep','msoc','olig','cmon'].includes(r)&&(m.tier===0||['police','sec'].includes(m.k))&&mem.length>=3;
     for(const c of order.slice(0,4)){if(!hearing){m.crony=!!crony;if(crony)mile('minCrony',`측근 기용. ${josa(nm(boss),'이','가')} 자기 사람 ${josa(nm(c),'을','를')} ${m.name} ${mTitle(m)} 자리에 앉혔다`,[boss.id,c.id]);if(recommender)mile('minRecom',`청장 추천. ${parM.name} ${mTitle(parM)} ${josa(nm(recommender),'이','가')} ${josa(nm(c),'을','를')} ${m.name} ${mTitle(m)}${josa(mTitle(m),'으로','로').slice(mTitle(m).length)} 추천했다`,[recommender.id,c.id]);if(note&&R()<.5)mile('minNote_'+r,`${note} ${mTitle(m)}. ${josa(nm(c),'이','가')} ${m.name} ${mTitle(m)}${josa(mTitle(m),'이','가').slice(mTitle(m).length)} 됐다`,[c.id]);if(coalPick){X('minCoal');mile('minCoal',`연립 내각. 의회 과반이 없는 촌장이 다른 당 ${josa(nm(c),'을','를')} ${m.name} ${mTitle(m)}에 앉혔다`,[c.id])}return c}
@@ -3598,6 +3598,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(v.faith&&c.faith===v.faith)s+=v.g.faith*1.5;else if(v.faith&&c.faith&&c.faith!==v.faith)s-=v.g.faith*.6;
     s-=Math.abs(ideoOf(v)-ideoOf(c))*(.6+v.g.civic*.6);s-=rumorOf(c)*3;{const pn=((pl.divorceLaw?1:0)+(pl.contraLaw?1:0)+(pl.sexEd?1:0)+(pl.censor?0:1)+(pl.sameSex?1:0)+(pl.abortLaw||0)/2)/5.5;s-=Math.abs(nrmOf(v)-pn)*.8;if(v.sex==='F'&&!S.gov.policy.womenVote&&pl.womenVote)s+=1.5}
     if(v.parents.includes(c.id)||v.kids.includes(c.id))s+=v.g.kin*1.5;
+    if(S.dyn&&dynKin().has(c.id))s+=dynTieOf(v.family)*1.5;
     if(c.prom){for(const r of c.prom.add)s+=impact(v,r)*.8;for(const id of c.prom.del){const r=S.gov.rules.find(x=>x.id===id);if(r)s-=impact(v,r)*.8}}
     const G=S.gov;if(G&&(c.id===G.chief||(G.chief&&c.grp&&c.grp===S.byId.get(G.chief)?.grp))){const half=c.id===G.chief?1:.5;const w0=v.wAE??(v.w||0);
       s+=half*v.g.memory*(Math.max(-1,Math.min(1,((v.w||0)-w0)/Math.max(20,Math.abs(w0))))*1.2-(G.termBroken||0)*.2-(G.crisis&&S.day-G.crisis<YEAR*3?1.2:0)-Math.min(1.5,Math.max(0,(S.cpi||1)/(G.cpiAE||1)-1.15)*2))}
@@ -3824,7 +3825,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(!pool.length)return;
     const lk=(x,by)=>(x.looks??.5)*(.6+(by.g.vain??.4)*2)*(by.sex==='M'?1.3:.7);let b=null,bs=-1e9;for(let i=0;i<6;i++){const c=pick(pool);const s=attract(c)+lk(c,a)+(a.faith&&c.faith===a.faith?a.g.faith*1.5:a.faith&&c.faith&&c.faith!==a.faith?-a.g.faith:0)-Math.abs(ideoOf(a)-ideoOf(c))*.3;if(s>bs){bs=s;b=c}}
     const p=.25+.5*(1-b.g.picky)*Math.min(1,(attract(a)+lk(a,b))/Math.max(.1,attract(b)+lk(b,a)));
-    if(S.dyn&&(a.id===S.dyn.pid||b.id===S.dyn.pid)){dynMate(a,b,p);return}
+    if(S.dyn&&(a.id===S.dyn.pid||b.id===S.dyn.pid||dynKidOf(a)||dynKidOf(b))){dynMate(a,b,p);return}
     // 중매: 보수적인 마을일수록 부모가 재산·가문을 보고 짝을 정한다 (이성 커플만)
     const nrmT=S.norm??.4;const par=a.parents.map(id=>S.byId.get(id)).find(x=>x&&x.alive&&x.cash>5*PL());let arr=false;
     if(par&&a.sex!==b.sex&&R()<(1-nrmT)*.7){let bb=b;for(let i=0;i<5;i++){const c=pick(pool);if(c.sex!==a.sex&&(W(c)>W(bb)||bb.sex===a.sex))bb=c}if(bb.sex!==a.sex){b=bb;arr=true}}
@@ -4275,21 +4276,80 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(!a.home&&b.home){const h=houseById(b.home);if(h&&(h.owner===b.id||h.occ===b.id))a.home=b.home}else if(!b.home&&a.home)b.home=a.home;
     log('love',`${josa(nm(a),'과','와')} ${josa(nm(b),'이','가')} 부부가 됐다`,[a.id,b.id])}
   const dynSingle=x=>x&&x.alive&&!x.partner&&isAdult(x);
-  // mate()에서 플레이어가 끼면 엔진 대신 선택지를 띄운다. p = 엔진이 계산한 성사 확률
+  // 여러 쿨다운을 한꺼번에: 모두 비었을 때만 잡는다.
+  function dynCools(list){const D=S.dyn;if(list.some(([k])=>(D.cool[k]||0)>S.day))return false;for(const [k,d] of list)D.cool[k]=S.day+d;return true}
+  // ---- 가문 사이 관계(사돈 관계). 집안 = 엔진의 family(시조 id) ----
+  let dynKinD=-1,dynKinSet=null;
+  function dynKin(){if(dynKinD===S.day&&dynKinSet)return dynKinSet;const a=dynMe(),s=new Set();if(a){const f=dynFamily(a);s.add(a.id);for(const x of [...f.parents,...f.siblings,...f.kids,...f.grand,f.partner])if(x&&x.alive)s.add(x.id)}dynKinD=S.day;dynKinSet=s;return s}
+  function dynTieOf(fam){const t=S.dyn&&S.dyn.ties&&S.dyn.ties[fam];return t?t.v:0}
+  // 같은 성이라도 시조가 다르면 다른 집안이다: 시조 이름으로 부른다.
+  function dynFamName(fam,x){const f=S.byId.get(fam);return f&&f.sur?`${nm(f)}네 집안`:`${(x&&x.sur)||'?'}씨 집안`}
+  function dynTie(fam,dv,why,x){const D=S.dyn;if(!D.ties)D.ties={};const me=dynMe();if(!fam||(me&&fam===me.family))return;
+    const t=D.ties[fam]||(D.ties[fam]={v:0,name:dynFamName(fam,x),d:S.day,why:''});t.v=cl(t.v+dv,-1,1);t.d=S.day;t.why=why;t.name=dynFamName(fam,x)}
+  // 우리 집안 사람(나·부모·형제·자녀·손주)의 혼인·이혼을 보고 사돈 관계를 바꾼다.
+  function dynScanTies(){const D=S.dyn;if(!D.wed)D.wed={};const kin=dynKin();
+    for(const id of kin){const x=S.byId.get(id),p=x&&x.partner&&S.byId.get(x.partner);if(!p||!p.alive||p.partner!==x.id||kin.has(p.id)&&p.family===x.family)continue;
+      const key=Math.min(x.id,p.id)+'-'+Math.max(x.id,p.id);if(D.wed[key])continue;D.wed[key]=p.family;
+      if(p.family!==x.family){dynTie(p.family,.5,`${josa(nm(x),'과','와')} ${nm(p)}의 혼인`,p);dynChron(`${dynFamName(p.family,p)}과 사돈을 맺다 (${nm(x)} ♥ ${nm(p)})`,[x.id,p.id])}}
+    for(const key of Object.keys(D.wed)){const [i,j]=key.split('-').map(Number);const x=S.byId.get(i),y=S.byId.get(j);
+      if(x&&y&&x.alive&&y.alive&&x.partner!==y.id&&y.partner!==x.id){const fam=D.wed[key];dynTie(fam,-.5,`${josa(nm(x),'과','와')} ${nm(y)}의 이혼`);dynChron(`${josa(dynFamName(fam),'과','와')}의 혼인이 깨지다 (${nm(x)}·${nm(y)} 이혼)`,[i,j]);delete D.wed[key]}
+      else if(!x||!y||!x.alive||!y.alive)delete D.wed[key]}}
+  // 그 사람(또는 부모)의 지위. 정략결혼 후보 설명과 효과 판단에 쓴다.
+  function dynStatus(x){if(!x)return '';const G=S.gov;
+    if(G&&G.king===x.id)return '왕';if(G&&G.chief===x.id)return chiefTitle?chiefTitle():'촌장';if(G&&G.regent===x.id)return '섭정';
+    if(G&&(G.council||[]).includes(x.id))return '의원';const g=S.groups.find(g=>g.leader===x.id);if(g)return g.name+' 우두머리';
+    const f=S.firms.find(f=>f.ceo===x.id);if(f)return f.name+' 사장';return ''}
+  function dynElder(x){const ps=(x.parents||[]).map(id=>S.byId.get(id)).filter(p=>p&&p.alive);return ps.map(p=>({p,st:dynStatus(p)})).sort((u,v)=>(!!v.st-!!u.st)||W(v.p)-W(u.p))[0]||null}
+  // 이 혼인으로 얻는 것: 체제마다 다르다.
+  function dynGain(b){const r=regime(),G=S.gov,el=dynElder(b),st=(el&&el.st)||dynStatus(b),out=[];
+    const king=G&&G.king&&S.byId.get(G.king);
+    if((r==='mon'||r==='cmon')&&king&&b.family===king.family)out.push('왕실과 혼인: 자손이 왕위 계승 순서에 들 수 있음');
+    if((r==='mon'||r==='cmon')&&(st||(king&&b.family===king.family)))out.push('귀족 연줄: 관직 추천에 끼기 쉬움');
+    else if(r==='mon'||r==='cmon')out.push('평범한 집안: 큰 연줄은 없음');
+    else if(r==='com'||r==='msoc'||r==='mil')out.push(r==='mil'?'군 인맥: 사돈 쪽 권력자의 관직 추천':'당 인맥: 사돈 쪽 권력자의 관직 추천');
+    else out.push('사돈 집안의 표·지지(선거)');
+    if(el&&el.st&&/사장$/.test(el.st))out.push('회사 지분 교환(재벌가 혼사)');
+    if(el&&el.st&&/우두머리$/.test(el.st))out.push('정당·조직 연대');
+    return {st,text:out.join(' · ')}}
+  function dynCandidates(t,n){const kin=x=>x.parents.some(p=>t.parents.includes(p))||t.parents.includes(x.id)||x.parents.includes(t.id)||dynKin().has(x.id);
+    const pool=S.agents.filter(x=>x!==t&&x.alive&&!x.partner&&x.age>=18*YEAR&&x.age<55*YEAR&&Math.abs(x.age-t.age)<15*YEAR&&likes(t,x)&&likes(x,t)&&!kin(x)&&!x.jail);
+    const sc=x=>{const el=dynElder(x);return (el&&el.st?3:0)+(dynStatus(x)?2:0)+Math.log10(Math.max(W(x),el?W(el.p):0)+10)+dynTieOf(x.family)*2};
+    const seen=new Set(),out=[];for(const x of pool.sort((u,v)=>sc(v)-sc(u)||u.id-v.id)){if(seen.has(x.family))continue;seen.add(x.family);out.push(x);if(out.length>=n)break}return out}
+  const dynKidOf=x=>{const me=dynMe();return me&&x&&me.kids.includes(x.id)};
+  // 성사 확률: 엔진 mate()의 식 + 사돈 관계 + 우리 집안 지위
+  function dynAccept(t,b){const me=dynMe();return cl(.25+.5*(1-b.g.picky)*Math.min(1,attract(t)/Math.max(.1,attract(b)))+.25*dynTieOf(b.family)+(dynStatus(me)?.15:0),0,1)}
+  function dynArrangeOffer(t){const c=dynCandidates(t,3);if(!c.length)return;const me=dynMe(),self=t===me;
+    dynPush('arrange',self?`혼처를 알아볼 때가 됐습니다. ${dynSingle(me)?'어느 집안과 손을 잡을까요?':''}`:`${josa(nm(t),'이','가')} ${Math.floor(t.age/YEAR)}세가 됐습니다. 어느 집안과 혼사를 추진할까요?`,
+      [...c.map(b=>{const g=dynGain(b),el=dynElder(b);return {k:'c'+b.id,label:`${nm(b)} (${Math.floor(b.age/YEAR)}세) · ${dynFamName(b.family,b)}${g.st?' · '+(el&&el.st?'부모가 ':'')+g.st:''}`,hint:`재산 ${won(Math.max(W(b),el?W(el.p):0))} · 성사 약 ${Math.round(dynAccept(t,b)*100)}% · 얻는 것: ${g.text}`}}),
+        {k:'free',label:self?'혼처는 인연에 맡긴다':`${nm(t)}의 뜻에 맡긴다`}],{who:t.id,cand:c.map(b=>b.id)})}
+  function dynArrangedWed(t,b){dynWed(t,b);t.arr=b.arr=1;S.yr.arr=(S.yr.arr||0)+1;setRel(t,b,t.rel-.15);polMarriage(t,b);dynScanTies()}
+  // mate()에서 플레이어나 플레이어의 자녀가 끼면 엔진 대신 선택지를 띄운다. p = 엔진이 계산한 성사 확률
   function dynMate(a,b,p){const me=dynMe();if(!me)return;
-    if(a===me){if(!dynCool('mateOut',YEAR/2))return;
-      dynPush('proposeOut',`${nm(b)}(${Math.floor(b.age/YEAR)}세, 재산 ${won(W(b))})에게 마음이 갑니다. 청혼할까요?`,[{k:'yes',label:'청혼한다',hint:`성사 가능성 약 ${Math.round(Math.min(1,p)*100)}%`},{k:'no',label:'그만둔다'}],{to:b.id,p})}
-    else if(b===me){if(!dynCool('mateIn',YEAR/2))return;
-      dynPush('proposeIn',`${nm(a)}(${Math.floor(a.age/YEAR)}세, 재산 ${won(W(a))})의 청혼이 들어왔습니다.`,[{k:'yes',label:'수락'},{k:'no',label:'거절'}],{from:a.id})}}
+    if(a===me){if(!dynCools([['mateOut',YEAR/4],['mOut'+b.id,YEAR]]))return;
+      dynPush('proposeOut',`${nm(b)}(${Math.floor(b.age/YEAR)}세, ${dynFamName(b.family,b)}, 재산 ${won(W(b))})에게 마음이 갑니다. 청혼할까요?`,[{k:'yes',label:'청혼한다',hint:`성사 가능성 약 ${Math.round(Math.min(1,p+.25*dynTieOf(b.family))*100)}% · 얻는 것: ${dynGain(b).text}`},{k:'no',label:'그만둔다'}],{to:b.id,p})}
+    else if(b===me){if(!dynCools([['mateIn',YEAR/4],['mIn'+a.id,YEAR]]))return;
+      dynPush('proposeIn',`${nm(a)}(${Math.floor(a.age/YEAR)}세, ${dynFamName(a.family,a)}, 재산 ${won(W(a))})의 청혼이 들어왔습니다.`,[{k:'yes',label:'수락',hint:'얻는 것: '+dynGain(a).text},{k:'no',label:'거절'}],{from:a.id})}
+    else{const kid=dynKidOf(a)?a:b,o=kid===a?b:a;if(!dynCools([['kid'+kid.id,YEAR/4],['kidO'+o.id,YEAR]]))return;const el=dynElder(o);
+      dynPush('kidMatch',`자녀 ${josa(nm(kid),'이','가')} ${nm(o)}(${Math.floor(o.age/YEAR)}세, ${dynFamName(o.family,o)}${el&&el.st?', 부모가 '+el.st:''}, 재산 ${won(Math.max(W(o),el?W(el.p):0))})${o===a?'의 구애를 받고 있습니다':'와 혼인하고 싶어 합니다'}.`,
+        [{k:'yes',label:'허락한다',hint:'얻는 것: '+dynGain(o).text},{k:'no',label:'반대한다',hint:`낭만적인 자녀는 반대를 무릅쓰고 혼인할 수 있음`}],{kid:kid.id,other:o.id,p})}}
   const DYN_H={
     start(){return '가문의 역사가 시작됩니다'},
     proposeOut(c,k,me){const b=S.byId.get(c.to);if(k!=='yes')return '청혼하지 않았다';
       if(!dynSingle(me)||!dynSingle(b))return '이미 늦었다. 상대가 혼인할 수 없는 처지다';
-      if(R()<c.p){dynWed(me,b);dynChron(`${josa(nm(me),'이','가')} ${josa(nm(b),'과','와')} 혼인하다`,[me.id,b.id]);return `${josa(nm(b),'이','가')} 청혼을 받아들였다`}
+      if(R()<c.p+.25*dynTieOf(b.family)){dynWed(me,b);dynScanTies();dynChron(`${josa(nm(me),'이','가')} ${josa(nm(b),'과','와')} 혼인하다`,[me.id,b.id]);return `${josa(nm(b),'이','가')} 청혼을 받아들였다`}
       return `${josa(nm(b),'이','가')} 청혼을 거절했다`},
     proposeIn(c,k,me){const a=S.byId.get(c.from);if(k!=='yes')return `${nm(a)}의 청혼을 거절했다`;
       if(!dynSingle(me)||!dynSingle(a))return '이미 늦었다. 상대가 혼인할 수 없는 처지다';
-      dynWed(a,me);dynChron(`${josa(nm(me),'이','가')} ${josa(nm(a),'과','와')} 혼인하다`,[me.id,a.id]);return `${josa(nm(a),'과','와')} 부부가 됐다`},
+      dynWed(a,me);dynScanTies();dynChron(`${josa(nm(me),'이','가')} ${josa(nm(a),'과','와')} 혼인하다`,[me.id,a.id]);return `${josa(nm(a),'과','와')} 부부가 됐다`},
+    arrange(c,k,me){const t=S.byId.get(c.who);if(k==='free')return t===me?'혼처를 인연에 맡겼다':`${nm(t)}의 혼사를 본인 뜻에 맡겼다`;
+      const b=S.byId.get(Number(k.slice(1)));if(!dynSingle(t)||!dynSingle(b))return '이미 늦었다. 어느 한쪽이 혼인할 수 없는 처지다';
+      if(t!==me&&t.g.roma>.6&&R()<t.g.roma-.5){t.happy=cl((t.happy??.6)-.1,0,1);dynChron(`${josa(nm(t),'이','가')} 정해 준 혼처(${nm(b)})를 거부하다`,[t.id,b.id]);return `${josa(nm(t),'이','가')} 원치 않는 혼인이라며 거부했다`}
+      if(R()>=dynAccept(t,b)){dynTie(b.family,-.1,'혼담 거절',b);return `${dynFamName(b.family,b)}에서 혼담을 거절했다`}
+      dynArrangedWed(t,b);dynChron(`정략결혼: ${josa(nm(t),'이','가')} ${dynFamName(b.family,b)}의 ${josa(nm(b),'과','와')} 혼인하다`,[t.id,b.id]);return `${josa(dynFamName(b.family,b),'과','와')} 혼사가 성사됐다`},
+    kidMatch(c,k,me){const kid=S.byId.get(c.kid),o=S.byId.get(c.other);if(!dynSingle(kid)||!dynSingle(o))return '이미 늦었다. 어느 한쪽이 혼인할 수 없는 처지다';
+      if(k==='yes'){if(R()<Math.max(c.p,.5)){dynWed(kid,o);dynScanTies();dynChron(`${josa(nm(kid),'이','가')} ${josa(nm(o),'과','와')} 혼인하다`,[kid.id,o.id]);return `${josa(nm(kid),'과','와')} ${josa(nm(o),'이','가')} 부부가 됐다`}return '허락했지만 두 사람이 끝내 맺어지지 않았다'}
+      if(kid.g.roma>.65&&R()<.35){dynWed(kid,o);kid.happy=cl((kid.happy??.6)+.05,0,1);setRel(kid,o,kid.rel+.1);dynScanTies();dynChron(`${josa(nm(kid),'이','가')} 부모의 반대를 무릅쓰고 ${josa(nm(o),'과','와')} 혼인하다`,[kid.id,o.id]);return `${josa(nm(kid),'이','가')} 반대를 무릅쓰고 ${josa(nm(o),'과','와')} 혼인했다`}
+      kid.happy=cl((kid.happy??.6)-.08,0,1);return `${nm(kid)}의 혼인을 막았다`},
     death(){return S.dyn.over?'가문이 끊어졌습니다':'새 가장이 가문을 잇습니다'},
   };
   function dynChoose(id,k){const D=S.dyn;if(!D)throw Error('가문 모드가 아닙니다');
@@ -4301,11 +4361,13 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     return dead.kids.map(id=>S.byId.get(id)).filter(ok).sort((x,y)=>y.age-x.age||x.id-y.id)[0]||null}
   function dynTick(){const D=S.dyn;if(D.over)return;const me=dynMe();
     if(me&&W(me)>D.peak.w)D.peak.w=W(me);
-    if(me&&me.alive)return;
+    if(me&&me.alive){if(S.day%15===0){dynScanTies();
+        for(const t of [me,...me.kids.map(id=>S.byId.get(id))])if(dynSingle(t)&&t.age>=18*YEAR&&t.age<45*YEAR&&dynCool('arr'+t.id,YEAR))dynArrangeOffer(t)}return}
     const dead=me,age=dead?Math.floor(dead.age/YEAR):0,cause=dead?.cause||'알 수 없는 이유';const h=dead&&dynHeir(dead);
+    const gone=['추방','이민','피난','귀국'].includes(cause),how=gone?`${josa(cause,'으로','로')} 마을을 떠남`:`${josa(cause,'으로','로')} 사망`;
     if(h){D.pid=h.id;D.gen++;if(D.heir===h.id)D.heir=null;
-      const t=`${nm(dead)}, ${age}세, ${josa(cause,'으로','로')} 사망 → ${josa(nm(h),'이','가')} 가문을 잇습니다`;dynChron(t,[dead.id,h.id]);dynPush('death',t,[{k:'ok',label:'확인'}],{dead:dead.id,heir:h.id})}
-    else{D.over=true;const t=`${dead?nm(dead):'가장'}, ${age}세, ${josa(cause,'으로','로')} 사망. 이을 사람이 없어 ${josa(D.house,'이','가')} 끊어졌습니다`;dynChron(t,dead?[dead.id]:[]);dynPush('death',t,[{k:'ok',label:'확인'}],{dead:dead?.id||null})}}
+      const t=`${nm(dead)}, ${age}세, ${how} → ${josa(nm(h),'이','가')} 가문을 잇습니다`;dynChron(t,[dead.id,h.id]);dynPush('death',t,[{k:'ok',label:'확인'}],{dead:dead.id,heir:h.id})}
+    else{D.over=true;const t=`${dead?nm(dead):'가장'}, ${age}세, ${how}. 이을 사람이 없어 ${josa(D.house,'이','가')} 끊어졌습니다`;dynChron(t,dead?[dead.id]:[]);dynPush('death',t,[{k:'ok',label:'확인'}],{dead:dead?.id||null})}}
   function dynRank(){const D=S.dyn,a=dynMe();if(!a)return 0;if(D.watch)return 5;const G=S.gov;
     if(G&&(G.chief===a.id||G.king===a.id))return 4;
     if(G&&((G.council||[]).includes(a.id)||G.regent===a.id))return 3;
@@ -4345,7 +4407,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     out.me={...dynP(a),sur:a.sur,given:a.given,health:a.health,hunger:a.hunger,happy:a.happy,rep:a.rep,edu:a.edu||0,occ:a.occ||null,faith:a.faith||null,
       grp:g?{id:g.id,name:g.name,leader:g.leader===a.id}:null,emp:dynP(emp),staff:S.agents.filter(x=>x.alive&&x.emp===a.id).length,crimes:a.crimes||0,caught:a.caught||0,jail:!!a.jail};
     out.family={parents:f.parents.map(dynP),siblings:f.siblings.map(dynP),partner:dynP(f.partner),kids:f.kids.map(dynP),grand:f.grand.map(dynP)};
-    out.heirs=dynHeirs();out.assets=dynAssets(a);
+    out.heirs=dynHeirs();out.assets=dynAssets(a);out.ties=Object.entries(D.ties||{}).map(([fam,t])=>({fam:+fam,...t})).sort((x,y)=>y.v-x.v);
     const circle=dynCircle();out.news=S.events.filter(e=>e.type!=='mile'&&e.ids.some(i=>circle.has(i))).slice(-25).reverse();
     return out}
   currencyState();

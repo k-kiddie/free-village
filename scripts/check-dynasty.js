@@ -30,6 +30,8 @@ function main(){
   drive(w,YEAR*years,pick,stat);
   const v=w.dynView();assert(v.me&&v.house==='홍씨 가문');
   const married=D.chron.some(c=>c.text.includes('혼인하다'));
+  assert(stat.kinds.arrange>0,'정략결혼(혼처 고르기) 선택지');assert(Object.keys(D.ties||{}).length>0,'사돈 관계 형성');
+  for(const t of Object.values(D.ties))assert(t.v>=-1&&t.v<=1&&t.name);
   // 대기 중에는 Worker가 step을 부르지 않는다: 여기서는 선택지를 넣고 엔진 상태가 그대로인지 확인
   // 3. 저장 → 복원 → 저장 JSON 완전 일치, 이후 같은 선택이면 같은 결과
   // (기존 엔진은 복원 때 건물 필드를 보정하므로 첫 왕복 대신 S.dyn·g/q 일치와 두 번째 왕복 완전 일치를 본다)
@@ -47,7 +49,7 @@ function main(){
       if(p.kind==='proposeIn'){const me=w3.S.byId.get(w3.S.dyn.pid);w3.dynChoose(p.id,'yes');if(me.partner===p.ctx.from){accepted=true;assert.equal(w3.S.byId.get(p.ctx.from).partner,me.id)}}
       else w3.dynChoose(p.id,p.opts.at(-1).k)}
     if(w3.S.dyn.over)break;w3.step()}
-  console.log(JSON.stringify({dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,ms:Date.now()-t0}));
+  console.log(JSON.stringify({dynasty:{years,day:S.day,gen:D.gen,over:D.over,me:v.me.name,age:v.me.age,pop:S.agents.length,choices:stat.kinds,married,ties:Object.keys(D.ties||{}).length,chron:D.chron.length},roundTrip:true,resumeSame:true,proposeInAccepted:accepted,ms:Date.now()-t0}));
 
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dyn-base-'));const baseFile=path.join(tmp,'engine.js');
