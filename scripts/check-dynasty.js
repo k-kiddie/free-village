@@ -189,6 +189,45 @@ function main(){
     const bl=laws.find(a=>typeof X.gov.policy[a.k.split(':')[1]]==='boolean');const k2=bl.k.split(':')[1];const b2=X.gov.policy[k2];x.dynAct(bl.k+':'+bl.opts[0][0]);assert(X.gov.policy[k2]===!b2,'시행/폐지');
     out.laws=laws.length;return out})();
   console.log(JSON.stringify({ui3}));
+  // 성향 사건은 자녀 외 인물도 이어받고, 선택 수치와 가문 목표는 저장에 남는다.
+  {
+    const w=engine.createWorld(21,120),S=w.S;w.dynStart();w.dynSetStory(2);
+    const D=S.dyn,me=S.byId.get(D.pid);
+    while(D.pending.length){const p=D.pending[0];w.dynChoose(p.id,p.opts[0].k)}
+    const others=S.agents.filter(a=>a!==me&&a.alive&&a.age>=18*YEAR);
+    const witness=others[0];
+    for(const a of others)a.g.cheat=.9;
+    witness.g.cheat=me.g.cheat=.1;me.partner=witness.id;witness.partner=me.id;
+    assert(!me.kids.includes(witness.id),'자녀 외 증인');
+    const {SE,sCtx}=w._story;
+    assert.equal(SE.honestLedger.who(sCtx(me,{})),witness);
+    const put=(sid,ctx)=>{
+      ctx={...ctx,sid};
+      const e=SE[sid],id=D.nextP++;
+      D.pending.push({id,kind:'story',d:S.day,ctx,text:e.text(sCtx(me,ctx)),opts:e.o.map(([k,label])=>({k,label}))});
+      return id
+    };
+    const p=put('honestLedger',{x:witness.id});
+    const stress=w.dynView().pending[0].opts.find(o=>o.k==='cover').stress.points;
+    assert(stress>0);
+    const result=w.dynChoose(p,'cover');
+    assert(result.changes.some(c=>c.key==='stress'&&c.amount===stress));
+    assert(result.changes.some(c=>c.key==='rep'&&c.amount===-4));
+    for(const [sid,k] of [['honestWitness','hear'],['honestPressure','promise'],['honestReview','publish']]){
+      const q=D.story.q.shift();assert.equal(q.id,sid);assert.equal(q.ctx.x,witness.id);
+      w.dynChoose(put(sid,q.ctx),k)
+    }
+    assert.equal(D.story.q[0].id,'honestLegacy');
+    me.cash+=1e8;w.dynAct('goal:rich');
+    assert(w.dynView().goals.find(g=>g.key==='rich').ready);
+    w.dynAct('goal:claim:rich');
+    assert.throws(()=>w.dynAct('goal:claim:rich'));
+    const y=engine.createWorld(22,120);y.importState(JSON.parse(JSON.stringify(w.exportState())));
+    assert.deepEqual(y.S.dyn.story.q,D.story.q);
+    assert.equal(y.dynView().stress,stress);
+    assert(y.dynView().goals.find(g=>g.key==='rich').claimed);
+    console.log(JSON.stringify({personalityStory:true,goalReward:true}))
+  }
   // 15. 이야기 사건: 표의 모든 사건·선택지가 오류 없이 실행되고, 자동 플레이에서 5~7일에 하나꼴로 뜬다
   engine.keepStory=true;
   const story=(()=>{const x=engine.createWorld(11,100),X=x.S;x.dynStart();const st={kinds:{}};drive(x,500,p=>(p.opts.find(o=>['take','annex'].includes(o.k))||p.opts[0]).k,st);
@@ -202,7 +241,7 @@ function main(){
   console.log(JSON.stringify({story}));
   // 5. 원래 마을 불변: 기준 커밋 엔진과 같은 시드·인구로 돌린 exportState가 완전히 같아야 한다.
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dyn-base-'));const baseFile=path.join(tmp,'engine.js');
-  fs.writeFileSync(baseFile,execFileSync('git',['show',base+':engine.js'],{cwd:root}));
+  fs.writeFileSync(baseFile,execFileSync('git',['show',base+':engine.js'],{cwd:root,maxBuffer:8*1024*1024}));
   const old=require(baseFile);
   const cases=quick?[[7,300,600]]:[[7,300,3000],[20261116,5000,50]];
   for(const [seed,n,days] of cases){const t=Date.now();
