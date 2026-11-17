@@ -97,7 +97,7 @@ function main(){
   {const x=engine.createWorld(7,150);x.dynStart();const D3=()=>x.S.dyn;x.dynChoose(D3().pending[0].id,'go');for(let i=0;i<10;i++)x.step();try{x.dynAct('council')}catch(e){}
     const clear=()=>{let g=0;while(D3().pending.length){assert(++g<50);const p=D3().pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}};for(let i=0;i<YEAR*12&&!D3().over;i++){clear();x.step()}clear();assert(!D3().over);
     const me=x.S.byId.get(D3().pid);me.cash+=5000;const done=[];
-    for(const a of x.dynActions().filter(a=>a.ok&&/^(fam|kin|net|med|dark|pow):/.test(a.k)&&a.k!=='fam:divorce')){const r=x.dynAct(a.k);assert(r.text,a.k);done.push(a.k.split(':').slice(0,2).join(':'))}
+    for(const a0 of x.dynActions().filter(a=>a.ok&&/^(fam|kin|net|med|dark|pow):/.test(a.k)&&a.k!=='fam:divorce')){const a=x.dynActions().find(y=>y.k===a0.k);if(!a||!a.ok)continue;const r=x.dynAct(a.k);assert(r.text,a.k);done.push(a.k.split(':').slice(0,2).join(':'))}
     assert(done.includes('kin:heir')&&done.some(k=>k.startsWith('net:'))&&done.some(k=>k.startsWith('dark:')),'새 행동: '+done.join(','));st3.acts=[...new Set(done)];
     // 미성년 지정 상속자 → 섭정
     const kid=x.S.agents.find(a=>a.alive&&a.age<10*YEAR&&a.parents.some(p=>x.S.byId.get(p)?.alive)&&a.id!==D3().pid);assert(kid);x.dynAct('kin:heir:'+kid.id);assert.equal(D3().heir,kid.id);
