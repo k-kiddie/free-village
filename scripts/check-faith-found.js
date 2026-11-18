@@ -10,7 +10,7 @@ const wr0=createWorld(702,120);wr0.dynStart();wr0.dynConfigureStart({background:
 
 // 2) 종교 창시
 me.cash=1e6;const found=w.dynActions().find(a=>a.k==='extra:found');assert(found&&found.ok&&found.faithSpec.docs.filter(d=>!d.x).length===12&&found.faithSpec.docs.filter(d=>d.x).length===21,'창시 행동과 교리 12개+이단 21개');
-assert.throws(()=>w.dynAct('extra:found:charity:'),/2~3개/);assert.throws(()=>w.dynAct('extra:found:charity+equal+honest+work:'),/2~3개/);
+assert.throws(()=>w.dynAct('extra:found:charity:'),/2개 이상/);
 assert.throws(()=>w.dynAct('extra:found:celibate+poly:'),/하나만/);assert.throws(()=>w.dynAct('extra:found:charity+equal:abc'),/한글/);
 const msg=w.dynAct('extra:found:charity+equal:새빛');const fa=w.S.faiths.find(f=>f.name==='새빛교');
 assert(fa&&fa.leader===me.id&&fa.prophet===me.id&&me.faith===fa.id,'교단 창시·교주');assert.deepEqual(fa.doc,['charity','equal']);assert(/열었다/.test(msg.text||msg));
