@@ -20,6 +20,10 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     const fb=page.locator('#dFeedback button');if(await fb.isVisible())await fb.click();
     assert(await page.locator('.statusgrid').innerText().then(t=>['수배 열기','재판관 공백','정인','먼 나라 전쟁','용병 회사'].every(x=>t.includes(x))));
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'가로 스크롤 없음');
+    for(const selector of ['#dStrip','.statusgrid button:last-child','#dynQ','.quick-favs summary']){
+      const element=await page.locator(selector).boundingBox(),sheet=await page.locator('#dynSheet').boundingBox();
+      assert(element.y+element.height<=sheet.y+sheet.height,'첫 화면에서 스크롤 없이 '+selector);
+    }
     await page.screenshot({path:path.join(artifacts,`free-village-home-${size.width}.png`)});
     await page.locator('.statusgrid button').filter({hasText:'수배 열기'}).click();assert.equal(await page.locator('.sheethead h2').textContent(),'음모');assert(await page.locator('details[data-g="어두운 길 · 범죄"]').getAttribute('open')!==null,'상태→관련 묶음');
     await page.locator('#dynTabs [data-dt="asset"]').click();await page.locator('[data-ready-filter]').click();assert.equal(await page.locator('.action-section .act.off').count(),0,'실행 가능 필터');await page.locator('[data-ready-filter]').click();
@@ -28,10 +32,15 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     const scroll=await page.evaluate(()=>{const e=document.querySelector('#dynSheet');e.scrollTop=300;return e.scrollTop});await page.locator('#dynTabs [data-dt="me"]').click();await page.locator('#dynTabs [data-dt="asset"]').click();assert(Math.abs((await page.evaluate(()=>document.querySelector('#dynSheet').scrollTop))-scroll)<3,'탭별 스크롤 위치 기억');await page.locator('[data-fold-actions]').click();assert.equal(await page.locator('details.actgrp[open],details.subgrp[open]').count(),0,'하위 묶음까지 모두 접기');
     await page.locator('.sheethead [data-find]').click();await page.locator('#dynQ').fill('동현 무역');await page.waitForSelector('#dynQR [data-company-name]');
     const fav=page.locator(`#dynQR [data-fav="co:rename:${regular.id}"]`);await fav.click();assert(await page.evaluate(key=>JSON.parse(localStorage.getItem('v-dynfav')).includes(key),'co:rename:'+regular.id),'즐겨찾기 저장');
-    await page.locator('#dynTabs [data-dt="dip"]').click();await page.locator('#dMsz').click();await page.waitForFunction(()=>{const e=document.querySelector('#dMap');return Math.abs(e.getBoundingClientRect().height-parseFloat(e.style.height))<1&&e.getBoundingClientRect().height>150});if(await fb.isVisible())await fb.click();await page.waitForFunction(()=>typeof dynWorldLabelHits!=='undefined'&&dynWorldLabelHits.length>5);
+    await page.locator('#dynQ').clear();
+    await page.locator(`[data-fav-open="co:rename:${regular.id}"]`).click();
+    assert(await page.locator('.quick-favs [data-company-name]').isVisible(),'즐겨찾기에서 회사 이름 입력 열림');
+    await page.locator('#dynTabs [data-dt="dip"]').click();await page.waitForFunction(()=>{const e=document.querySelector('#dMap');return Math.abs(e.getBoundingClientRect().height-parseFloat(e.style.height))<1&&e.getBoundingClientRect().height>150});if(await fb.isVisible())await fb.click();await page.waitForFunction(()=>typeof dynWorldLabelHits!=='undefined'&&dynWorldLabelHits.length>5);
     const collisions=await page.evaluate(()=>dynWorldLabelHits.flatMap((a,i)=>dynWorldLabelHits.slice(i+1).filter(b=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y)).length);assert.equal(collisions,0,'세계 지도 이름표 겹침 없음');
     await page.screenshot({path:path.join(artifacts,`free-village-world-${size.width}.png`)});
     const hit=await page.evaluate(()=>{const b=dynWorldLabelHits.find(x=>x.id!=='us');return {id:b.id,x:b.x+b.w/2,y:b.y+b.h/2}});const box=await page.locator('#dynWC').boundingBox();await page.mouse.click(box.x+hit.x,box.y+hit.y);assert.equal(await page.evaluate(()=>dynWSel),hit.id,'이동한 이름표 클릭');
+    await page.locator('#dynTabs [data-dt="home"]').click();
+    assert.equal(await page.locator('#dMap').getAttribute('data-collapsed'),'true','외교를 나가면 접힌 지도 복원');
     assert.deepEqual(errors,[],'브라우저 실행 오류');await context.close();
   }
   console.log('390·380·820px 실제 서버 UI: 주요 상태·메뉴 이동·필터·회사 개명·검색·즐겨찾기·지도 배치/클릭·가로 넘침 검사 완료');
