@@ -6,7 +6,7 @@ function cult(seed,docs,n=150,frac=.7){const w=createWorld(seed,n);w.dynStart();
 const run=(w,d)=>{for(let i=0;i<d;i++){w.step();for(const p of w.S.dyn.pending.slice())try{w.dynChoose(p.id,p.opts[0].k)}catch(e){}}};
 // 1) 창시: 이단 교리 목록·충돌 규칙
 {const w=createWorld(1201,100);w.dynStart();w.dynConfigureStart({age:30});const me=w.S.byId.get(w.S.dyn.pid);me.cash=1e6;
-  const spec=w.dynActions().find(a=>a.k==='extra:found').faithSpec;assert.equal(spec.docs.filter(d=>d.x).length,8,'이단 교리 8개');
+  const spec=w.dynActions().find(a=>a.k==='extra:found').faithSpec;assert.equal(spec.docs.filter(d=>d.x).length,21,'이단 교리 21개');assert.throws(()=>w.dynAct('extra:found:nude+mirror:'),/함께 고를 수 없습니다/);
   assert.throws(()=>w.dynAct('extra:found:celibate+breed:'),/함께 고를 수 없습니다/);assert.throws(()=>w.dynAct('extra:found:lust+freelove:'),/하나만/);
   w.dynAct('extra:found:doom+chosen:');const fa=w.S.faiths.find(f=>f.leader===me.id);assert(fa.doomD>w.S.day,'종말 날짜');assert(/종말교$/.test(fa.name),'이단 교리 이름');
   assert(w.dynView().faithInfo.heresy.length===2,'화면에 이단 표시')}
@@ -24,7 +24,13 @@ const run=(w,d)=>{for(let i=0;i<d;i++){w.step();for(const p of w.S.dyn.pending.s
 {const {w,S,fa}=cult(1206,'ladder+work');run(w,95);assert((fa.ladder||0)>0,'계단 헌금 누적');fa.ladderShaky=S.day;w.dynSetStory(2);S.dyn.story.next=S.day+999;let p=null;for(let i=0;i<20&&!p;i++){w.step();p=S.dyn.pending.find(x=>x.ctx&&x.ctx.sid==='xLadderCollapse');if(!p)for(const q of S.dyn.pending.slice())try{w.dynChoose(q.id,q.opts[0].k)}catch(e){}}
   assert(p,'계단 붕괴 사건');w.dynChoose(p.id,'bail');assert(!fa.ladderShaky,'수습')}
 // 7) 선민·피의 보복: 폭력 사건이 쌓임
-{const {w,S,fa}=cult(1207,'chosen+vendetta');run(w,400);assert((fa.feud||0)>0,'피의 보복 발생')}
+{let feud=0;for(const sd of [1207,1307,1407]){const {w,fa}=cult(sd,'chosen+vendetta');run(w,400);feud+=fa.feud||0;if(feud)break}assert(feud>0,'피의 보복 발생')}
 // 8) 저장 복원
 {const {w,fa}=cult(1208,'doom+ladder');run(w,40);const b=createWorld(1,1);b.importState(JSON.parse(JSON.stringify(w.exportState())));const f2=b.S.faiths.find(f=>f.id===fa.id);assert(f2.doomD===fa.doomD&&f2.doc.includes('ladder'),'이단 교단 저장 복원')}
-console.log('이단 교리 8개: 창시 규칙·번영·향락·다산·종말·계단·선민/보복·저장 복원 확인 완료');
+// 9) 2차 교리: 현인신 지지율·꿈 계시·공유 분배·맨몸 겨울·주사위 선택지
+{const {w,S,me,fa}=cult(1209,'godking+obey');me.cash=1e7;w.dynAct('lord');run(w,35);assert((S.gov.approval??0)>=.45,'현인신 지지율 하한');}
+{const {w,fa}=cult(1210,'dream+work');run(w,35);assert(fa.dreamRev&&w.dynView().faithInfo.dream,'이달의 계시')}
+{const {w,S,fa}=cult(1211,'commune+work');const ms=()=>ad(w).filter(a=>a.faith===fa.id);for(const a of ms())a.cash=0;ms()[0].cash=1000;run(w,35);const cs=ms().map(a=>a.cash);assert(Math.max(...cs)<1000,'공유교 재산 분배')}
+{const {w,S,fa}=cult(1212,'nude+equal');const h0=ad(w).filter(a=>a.faith===fa.id).reduce((t,a)=>t+a.health,0);while(S.day%60<48)w.step();run(w,10);assert(ad(w).filter(a=>a.faith===fa.id).reduce((t,a)=>t+a.health,0)<h0,'맨몸 겨울 건강 피해')}
+{const {w,S,me}=cult(1213,'dice+work');w.dynSetStory(3);let p=null;for(let i=0;i<80&&!p;i++){for(const q of S.dyn.pending.slice())if(q.kind!=='story')try{w.dynChoose(q.id,q.opts[0].k)}catch(e){}w.step();p=S.dyn.pending.find(x=>x.kind==='story');}assert(p&&p.opts.some(o=>o.k==='__dice'),'주사위 선택지');const r=w.dynChoose(p.id,'__dice');assert(/🎲/.test(r.text),'주사위 결과')}
+console.log('이단 교리 21개: 창시 규칙·번영·향락·다산·종말·계단·선민/보복·저장 복원 확인 완료');
