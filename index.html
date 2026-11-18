@@ -4949,11 +4949,11 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(op==='wage'){cool('wage',30);if(arg==='bonus'){const n=staff.length*wA*3;pay(0);if((f.cash||0)<n)throw Error('회사 현금이 모자랍니다');for(const x of staff){f.cash-=wA*3;x.cash+=wA*3}o.morale=cl(o.morale+.15,0,1);text=`직원 ${staff.length}명에게 성과급 ${won(n)}을 줬다. 사기가 올랐다`}
       else{const m=arg==='up'?1.1:.9;for(const x of staff)if(x.ct)x.ct.w=Math.max(.3,(x.ct.w||wA)*m);o.wage=cl(o.wage*m,.5,2);o.morale=cl(o.morale+(arg==='up'?.08:-.12),0,1);text=arg==='up'?`${f.name} 직원 임금을 10% 올렸다`:`${f.name} 직원 임금을 10% 깎았다. 직원들이 수군거린다`}}
     else if(op==='line'){const [kind,l]=arg.split('_'),lines=firmLines(f);if(!LINE_L[l]||lines.includes(l))throw Error('고를 수 없는 분야입니다');cool('line',60);
-      if(kind==='add'){if(lines.length>=lineCap(f))throw Error('일꾼이 더 있어야 분야를 늘릴 수 있습니다');pay(wA*20);f.lines=[...lines,l];text=`${f.name}이(가) ${LINE_L[l]} 분야를 새로 열었다`}
-      else{pay(wA*12);if(lines.length<=1)f.lines=[l];else f.lines=[...lines.slice(0,-1),l];text=`${f.name}의 생산 품목을 ${LINE_L[l]}(으)로 바꿨다`}}
+      if(kind==='add'){if(lines.length>=lineCap(f))throw Error('일꾼이 더 있어야 분야를 늘릴 수 있습니다');pay(wA*20);f.lines=[...lines,l];text=`${josa(f.name,'이','가')} ${LINE_L[l]} 분야를 새로 열었다`}
+      else{pay(wA*12);if(lines.length<=1)f.lines=[l];else f.lines=[...lines.slice(0,-1),l];text=`${f.name}의 생산 품목을 ${josa(LINE_L[l],'으로','로')} 바꿨다`}}
     else if(op==='fac'){if(o.fac>=5)throw Error('설비가 최고 단계입니다');pay(hr*(.6+.4*o.fac));o.fac++;cool('fac',60);text=`${f.name} 설비를 ${o.fac}단계로 늘렸다`}
     else if(op==='rd'){pay(wA*15);cool('rd',30);o.rd+=1+(S.power||0)*.2+wr()+(o.exec.length*.2);const need=4+coPats(f).length*2;
-      if(o.rd>=need&&wr()<.6){const n=CO_PAT[Math.floor(wr()*CO_PAT.length)];o.pat=(o.pat||[]).filter(p=>p.until>S.day).concat({n,d:S.day,until:S.day+YEAR*3});o.rd=0;if(S.rp!=null)S.rp+=3;text=`연구 끝에 '${n}' 특허를 따냈다. 3년 동안 독점이다`;dynChron(`${f.name}이(가) '${n}' 특허를 따내다`,[me.id])}
+      if(o.rd>=need&&wr()<.6){const n=CO_PAT[Math.floor(wr()*CO_PAT.length)];o.pat=(o.pat||[]).filter(p=>p.until>S.day).concat({n,d:S.day,until:S.day+YEAR*3});o.rd=0;if(S.rp!=null)S.rp+=3;text=`연구 끝에 '${n}' 특허를 따냈다. 3년 동안 독점이다`;dynChron(`${josa(f.name,'이','가')} '${n}' 특허를 따내다`,[me.id])}
       else text=`연구를 계속했다 (진척 ${Math.round(o.rd*10)/10}/${need})`}
     else if(op==='ad'){const big=arg==='big';pay(big?wA*25:wA*8);o.ad=big?.3:.12;o.adUntil=S.day+60;cool('ad',30);if(big)me.rep=cl((me.rep??1)+.01,0,1);text=big?`마을 곳곳에 ${f.name} 광고를 크게 냈다`:`${f.name} 전단을 돌렸다`}
     else if(op==='wel'){cool('wel',30);o.wel=o.wel?0:1;text=o.wel?`${f.name} 직원 복지를 늘렸다`:`${f.name} 직원 복지를 줄였다`;if(!o.wel)o.morale=cl(o.morale-.08,0,1)}
@@ -4961,7 +4961,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     else if(op==='branch'){if(o.br>=6)throw Error('지점이 최대입니다');pay(hr*1.2*(o.br+1));o.br++;cool('branch',60);text=`${f.name} ${o.br}호 지점을 열었다`}
     else if(op==='ipo'){const ex=S.exch;if(!ex||ex.closed||f.listed)throw Error('상장할 수 없습니다');cool('ipo',YEAR);const q=Math.min(Math.floor(shareCount(f)*.25),Math.floor((f.sh[String(me.id)]||0)*.4));const inv=investors(me),lot=Math.max(1,Math.floor(q/Math.min(1500,inv.length||1)));let sold=0,raised=0;
       for(const a of inv){if(sold>=q)break;const pr=f.price*1.1,n=Math.min(q-sold,lot,Math.floor(a.cash*.15/pr));if(n<1)continue;a.cash-=n*pr;SP(a,'stock',n*pr);setShares(f,a.id,(f.sh[a.id]||0)+n);setShares(f,me.id,(f.sh[String(me.id)]||0)-n);sold+=n;raised+=n*pr}
-      if(sold<shareCount(f)*.02){text='공모에 참여한 투자자가 너무 적어 상장이 무산됐다'}else{f.cash+=raised*.7;me.cash+=raised*.3;f.listed=S.day;f.ipoP=f.price;X('ipo');text=`${f.name}이(가) 거래소에 상장했다. ${sold.toLocaleString()}주를 팔아 ${won(raised)}을 모았다`;log('econ',text,[me.id]);dynChron(text,[me.id])}}
+      if(sold<shareCount(f)*.02){text='공모에 참여한 투자자가 너무 적어 상장이 무산됐다'}else{f.cash+=raised*.7;me.cash+=raised*.3;f.listed=S.day;f.ipoP=f.price;X('ipo');text=`${josa(f.name,'이','가')} 거래소에 상장했다. ${sold.toLocaleString()}주를 팔아 ${won(raised)}을 모았다`;log('econ',text,[me.id]);dynChron(text,[me.id])}}
     else if(op==='mna'){const hostile=arg[0]==='h',tg=firmById(Number(arg.slice(1)));if(!tg||tg===f||tg.ceo===me.id)throw Error('인수할 수 없는 회사입니다');cool('mna',90);
       const pr=tg.price*(hostile?1.45:1.25),vs=votingShares(tg);let stake=tg.sh['F'+f.id]||0;
       for(const [id,n] of persons(tg).sort((x,y)=>x[1]-y[1])){if(stake>vs*.5)break;if(dynOwnKey(String(id)))continue;if(+id===tg.ceo&&wr()<(hostile?.7:.6))continue;const x=S.byId.get(+id);if(!x||wr()>(hostile?.85:.7))continue;const q=Math.min(n,Math.ceil(vs*.51)-stake,Math.floor((f.cash||0)/pr));if(q<1)break;f.cash-=q*pr;x.cash+=q*pr;x.src.stock=(x.src.stock||0)+q*pr;setShares(tg,id,tg.sh[id]-q);stake+=q;setShares(tg,'F'+f.id,stake)}
@@ -4969,9 +4969,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       else text=`${tg.name} 주식을 ${(stake/vs*100).toFixed(1)}%까지 사들였지만 과반에 못 미쳤다`;
       if(hostile&&old){dynFamTie(old,-.4,'적대적 인수');me.rep=cl((me.rep??1)-.03,0,1)}}
     else if(op==='heir'){const id=Number(arg.slice(1)),x=S.byId.get(id);if(!x||!x.alive||!isAdult(x))throw Error('고를 수 없는 사람입니다');cool('heir',60);
-      if(arg[0]==='e'){if(!o.exec.includes(id))o.exec=o.exec.concat(id).slice(-4);text=`${nm(x)}을(를) ${f.name} 임원으로 앉혔다`}
+      if(arg[0]==='e'){if(!o.exec.includes(id))o.exec=o.exec.concat(id).slice(-4);text=`${josa(nm(x),'을','를')} ${f.name} 임원으로 앉혔다`}
       else{o.heir=id;setCeo(f,id);text=`${f.name} 사장 자리를 ${nm(x)}에게 물려줬다. 지분은 그대로 내 것이다`;dynChron(text,[me.id,id]);const kids=dynFamily(me).kids.filter(k=>k.alive&&isAdult(k)&&k.id!==id);if(kids.length)D.mem={...D.mem,coFeud:{v:id,d:S.day,gen:D.gen,ids:[id,...kids.map(k=>k.id)]}}}}
-    else if(op==='sell'){cool('sell',30);if(arg==='close'){if(coStake(me,f)<.5)throw Error('지분 50% 이상이어야 청산할 수 있습니다');for(const x of staff){endCt(x,'close');x.emp=null}for(const id of f.bld){const b=buildingById(id);if(b){b.firm=null;b.owner=me.id}}f.bld=[];settleClosedFirm(f);S.firms=S.firms.filter(x=>x!==f);if(me.firm===f.id)me.firm=null;text=`${f.name}을(를) 청산했다. 건물은 내 것으로 돌아왔고 남은 현금은 주주들에게 나눴다`;log('econ',text,[me.id]);dynChron(text,[me.id])}
+    else if(op==='sell'){cool('sell',30);if(arg==='close'){if(coStake(me,f)<.5)throw Error('지분 50% 이상이어야 청산할 수 있습니다');for(const x of staff){endCt(x,'close');x.emp=null}for(const id of f.bld){const b=buildingById(id);if(b){b.firm=null;b.owner=me.id}}f.bld=[];settleClosedFirm(f);S.firms=S.firms.filter(x=>x!==f);if(me.firm===f.id)me.firm=null;text=`${josa(f.name,'을','를')} 청산했다. 건물은 내 것으로 돌아왔고 남은 현금은 주주들에게 나눴다`;log('econ',text,[me.id]);dynChron(text,[me.id])}
       else{const mine=f.sh[String(me.id)]||0;if(!mine)throw Error('팔 지분이 없습니다');const val=mine*f.price*.95;
         const buyer=[...adultsC().filter(a=>a.id!==me.id&&!dynOwnKey(String(a.id))),...[]].sort((x,y)=>y.cash-x.cash)[0];const bf=S.firms.filter(x=>x!==f&&x.ceo!==me.id).sort((x,y)=>(y.cash||0)-(x.cash||0))[0];
         const useF=bf&&(bf.cash||0)>(buyer?.cash||0);const can=useF?(bf.cash||0)*.8:(buyer?.cash||0)*.8;if(can<val*.3)throw Error('살 사람이 없습니다');const n=Math.min(mine,Math.floor(Math.min(val,can)/(f.price*.95)));const paid=n*f.price*.95;
@@ -5300,7 +5300,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(agency&&(!secMinistry||agency.exposed))add('spyorg:disband','첩보','비밀 정보조직 해산','조직을 없애고 요원들을 돌려보냄');
     }
     if(!((me.jailUntil||0)>S.day))dynMoreActions(me,add);
-    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r);dynMore2Actions(me,add,r);dynBizActions(me,add);dynLaw2Actions(me,add);dynExtraActions(me,add);dynFaithActions(me,add);dynFaithDeedActions(me,add);dynRoyalActions(me,add);coActions(me,add)}
+    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r);dynMore2Actions(me,add,r);dynBizActions(me,add);dynLaw2Actions(me,add);dynExtraActions(me,add);dynFaithActions(me,add);dynFaithDeedActions(me,add);dynRoyalActions(me,add);coActions(me,add);farActions(me,add)}
     if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynEcoActions(me,add,out);
     if(isAdult(me)&&!((me.jailUntil||0)>S.day)){
       if(D.gig)add('gig:quit','일자리','계약을 그만둔다',`${D.gig.label} · ${Math.max(0,D.gig.end-S.day)}일 남음 · 실제 일한 날만 임금 지급`);
@@ -5341,6 +5341,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     else if(/^(fgood|fdark):/.test(k))text=dynFaithDeed(me,k);
     else if(/^royal:/.test(k))text=dynRoyalAct(me,k);
     else if(/^co:/.test(k))text=coAct(me,k);
+    else if(/^far:/.test(k))text=farAct(me,k);
     else if(k==='runChief'||k==='runCouncil'){const kind=k==='runChief'?'chief':'council',f=dynFee(kind);me.cash-=f;SP(me,'bribe',f);D.run={...(D.run||{}),[kind]:true};text=`${kind==='chief'?chiefTitle():'의원'} 선거에 출마 등록했다(선거비 ${won(f)})`}
     D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}
   // 선거 후보 명단에 출마 등록한 플레이어를 넣는다(당락은 엔진 투표).
@@ -6354,7 +6355,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       ['family','가족에게 새 주식을 찍어 준다','지분 희석 · 주가 하락',c=>{const f=coF(c);const n=Math.floor(shareCount(f)*.1);f.totalShares=shareCount(f)+n;setShares(f,c.me.id,(f.sh[String(c.me.id)]||0)+n);f.price*=.9;return '새 주식을 찍어 경영권을 지켰다. 다른 주주들이 화났다'},{trait:'honesty'}],
       ['let','내버려 둔다','경영권을 잃을 수 있음',c=>{const f=coF(c),sh=firmById(c.ctx.shark);if(sh&&c.roll(.4)){const old=c.me.id;setCeo(f,sh.ceo);f.parent=sh.id;c.chron(`${f.name} 경영권을 ${sh.name}에 빼앗기다`);return `${f.name} 경영권을 빼앗겼다`}return '상대가 결국 손을 뗐다'}]]});
   E('coFeud',{cat:'회사',need:c=>c.mem.has('coFeud')&&c.mem.since('coFeud')<YEAR*3&&coHas(c),who:c=>{const ids=S.dyn.mem.coFeud.ids||[];return ids.slice(1).map(sBy).find(x=>x&&x.alive)},cd:YEAR,title:'👑 후계 다툼',text:c=>{const h=sBy(c.mem.get('coFeud'));return `${josa(c.n(c.x),'이','가')} "왜 ${c.n(h)}만 회사를 물려받느냐"며 대들었습니다. 형제가 등을 돌렸습니다.`},
-    o:[['split','회사를 나눠 준다','지점·계열사 하나를 떼어 줌',c=>{const f=coF(c);const sub=S.firms.find(x=>x.parent===f.id&&x.ceo===c.me.id);if(sub&&c.x){setCeo(sub,c.x.id);return `${sub.name}을(를) ${c.n(c.x)}에게 맡겼다`}if(c.x){c.x.cash+=c.wA*20;c.cash(-c.wA*20)}return '대신 목돈을 떼어 줬다'}],
+    o:[['split','회사를 나눠 준다','지점·계열사 하나를 떼어 줌',c=>{const f=coF(c);const sub=S.firms.find(x=>x.parent===f.id&&x.ceo===c.me.id);if(sub&&c.x){setCeo(sub,c.x.id);return `${josa(sub.name,'을','를')} ${c.n(c.x)}에게 맡겼다`}if(c.x){c.x.cash+=c.wA*20;c.cash(-c.wA*20)}return '대신 목돈을 떼어 줬다'}],
       ['firm','결정을 지킨다','형제 사이가 틀어짐',c=>{c.tie(c.x,-.3,'후계 다툼');c.happy(-.05);if(c.roll(.3))c.later('coFeud2',30,90);return '결정을 번복하지 않았다'}],['exec','임원 자리를 준다','',c=>{const f=coF(c);if(c.x){const o=coOf(f);if(!o.exec.includes(c.x.id))o.exec=o.exec.concat(c.x.id).slice(-4)}return '임원 자리로 달랬다'}]]});
   E('coFeud2',{cat:'회사',chain:1,title:'🗡️ 형제의 반격',text:c=>`${josa(c.n(c.x),'이','가')} 주주들을 몰래 만나 형제를 사장 자리에서 끌어내리려 합니다.`,
     o:[['reconcile','둘을 불러 화해시킨다','반반',c=>{if(c.roll(.5)){c.happy(.05);return '형제가 술잔을 나눴다'}c.happy(-.05);return '화해 자리가 싸움판이 됐다'}],['cut','상속에서 뺀다고 경고한다','',c=>{c.tie(c.x,-.4,'상속 경고');return '반격이 멈췄지만 원한이 깊어졌다'}]]});
@@ -6382,6 +6383,30 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     o:[['save','직원들과 불을 끈다','건강 위험',c=>{const f=coF(c);c.health(-8);coMor(c,.08);if(coOf(f).fac>=2||c.roll(.5))return '함께 불을 꺼 피해를 줄였다';coCash(c,-coBase(f)*.4);return '불길이 너무 거셌다'}],['insure','손해를 감수한다','',c=>{coCash(c,-coBase(coF(c))*(.6-coOf(coF(c)).fac*.08));return '창고 물건을 잃었다'}]]});
   E('coPatentSuit',{cat:'회사',need:c=>coHas(c,f=>coPats(f).length>0&&coRivals(f).length>0),cd:YEAR,title:'⚖️ 특허 도용',text:c=>{const f=coF(c);return `${coRivals(f)[0].name}가 우리 특허 '${coPats(f)[0].n}'를 몰래 베껴 팔고 있습니다.`},
     o:[['sue','손해를 물어내라고 다툰다','반반',c=>{const f=coF(c),r=coRivals(f)[0];if(c.roll(.55)){const t=Math.min(r.cash||0,coBase(f));r.cash-=t;f.cash+=t;return `배상금 ${won(t)}을 받아 냈다`}c.cash(-c.wA*5);return '다툼에서 졌다'}],['license','사용료를 받고 허락한다','',c=>{const f=coF(c),r=coRivals(f)[0];const t=Math.min(r.cash||0,c.wA*10);r.cash-=t;f.cash+=t;return `사용료 ${won(t)}을 받기로 했다`}]]});
+  // ===== 먼 나라 사건 (가문 모드) =====
+  const fN=c=>{const D=S.dyn;if(!D.far)return null;if(c.ctx.fn){const F=farBy(c.ctx.fn);if(F&&F.alive)return F}const L=farAlive();const F=L[Math.floor(wr()*L.length)];if(F)c.ctx.fn=F.name;return F||null};
+  const fNear=c=>!!S.dyn.far&&!!(S.trade&&S.trade.on);
+  const fRel=(c,d)=>{const F=fN(c);if(F)F.rel=cl((F.rel||0)+d,-1,1)};
+  E('farEnvoyVisit',{cat:'외교',need:c=>fNear(c)&&dynRank()>=2&&!!fN(c),cd:YEAR,title:'🐫 먼 나라의 사절',text:c=>`바다 건너 ${fN(c).name}에서 사절단이 낯선 짐승과 선물을 끌고 찾아왔습니다. ${fN(c).regName||REALM_REG[fN(c).regime]||''}의 ${REALM_TITLE[fN(c).regime]||'통치자'}이 보낸 인사라고 합니다.`,
+    o:[['feast','성대하게 맞이한다',c=>`약 ${won(c.wA*8)}`,c=>{c.cash(-c.wA*8);fRel(c,.2);c.rep(.03);return `${josa(fN(c).name,'과','와')} 사이가 가까워졌다`}],['gift','선물만 받고 돌려보낸다','',c=>{c.cash(c.wA*5);fRel(c,.05);return '진귀한 선물을 챙겼다'}],
+      ['tribute','조공을 바치라고 요구한다','관계 크게 악화 · 성공하면 큰돈',c=>{if(c.roll(.3)){c.cash(c.wA*25);fRel(c,-.2);return '겁먹은 사절이 금붙이를 내놓았다'}fRel(c,-.4);return '사절이 모욕을 당했다며 돌아갔다'},{trait:'care'}]]});
+  E('farExile',{cat:'외교',need:c=>fNear(c)&&dynRank()>=2&&!!fN(c),cd:YEAR*2,title:'🏃 망명객',text:c=>`${fN(c).name}의 정변에서 쫓겨난 귀족 일가가 우리에게 숨겨 달라고 매달립니다. 금붙이를 잔뜩 들고 왔습니다.`,
+    o:[['shelter','받아 준다','평판↑ · 그 나라와 관계↓',c=>{c.rep(.05);c.cash(c.wA*6);fRel(c,-.2);c.mem.set('farExile',fN(c).name);if(c.roll(.3))c.later('farExileHunt',30,120);return '망명객을 받아 주었다'}],
+      ['handover','붙잡아 넘겨준다','관계↑ · 평판↓',c=>{fRel(c,.3);c.rep(-.04);return '망명객을 묶어 돌려보냈다'},{trait:'care'}],['rob','재물만 빼앗고 내쫓는다',c=>`현금 +${won(c.wA*15)}`,c=>{c.cash(c.wA*15);c.rep(-.06);return '금붙이를 빼앗았다'},{trait:'honesty'}]]});
+  E('farExileHunt',{cat:'외교',chain:1,title:'🗡️ 망명객을 쫓는 자객',text:c=>`${c.mem.get('farExile')||'먼 나라'}에서 보낸 자객이 망명객을 노리고 마을에 숨어들었습니다.`,
+    o:[['guard','경비를 붙인다',c=>`약 ${won(c.wA*6)}`,c=>{c.cash(-c.wA*6);return c.roll(.7)?'자객을 붙잡았다':'경비를 뚫고 망명객이 살해당했다'}],['give','망명객을 내준다','',c=>{c.rep(-.05);return '망명객을 자객에게 넘겼다'},{trait:'care'}]]});
+  E('farRoyalMatch',{cat:'외교',need:c=>fNear(c)&&dynRank()>=3&&!!fN(c)&&dynFamily(c.me).kids.some(k=>k.alive&&isAdult(k)&&!k.partner),who:c=>dynFamily(c.me).kids.find(k=>k.alive&&isAdult(k)&&!k.partner),cd:YEAR*2,title:'💍 먼 나라의 혼담',text:c=>`${fN(c).name} ${REALM_TITLE[fN(c).regime]||'통치자'}의 집안이 ${c.n(c.x)}에게 혼담을 넣었습니다. 받아들이면 ${c.n(c.x)}는 바다를 건너야 합니다.`,
+    o:[['yes','받아들인다','관계 크게↑ · 지참금',c=>{fRel(c,.45);c.cash(c.wA*20);c.chron(`${josa(c.n(c.x),'이','가')} ${fN(c).name} 왕실과 혼인하다`);c.mem.set('farKin',fN(c).name,[c.x?.id].filter(Boolean));return '혼인 동맹이 맺어졌다'}],['no','정중히 거절한다','',c=>{fRel(c,-.1);return '혼담을 물렸다'}]]});
+  E('farRefugee',{cat:'외교',need:c=>fNear(c)&&farAlive().some(F=>F.war),cd:YEAR,title:'⛵ 전쟁 난민',text:c=>{const F=farAlive().find(F=>F.war);c.ctx.fn=F.name;return `${F.name}의 전쟁을 피해 배 몇 척이 우리 바닷가에 닿았습니다. 굶주린 사람들이 가득합니다.`},
+    o:[['take','받아들이고 먹인다',c=>`약 ${won(c.wA*10)}`,c=>{c.cash(-c.wA*10);c.rep(.06);fRel(c,.15);return '난민들이 고마워하며 정착했다'}],['work','받아 주되 품삯 없이 부린다','',c=>{c.cash(c.wA*8);c.rep(-.04);return '난민들을 일꾼으로 부렸다'},{trait:'care'}],['push','배를 돌려보낸다','',c=>{c.rep(-.03);return '난민선이 다시 바다로 떠났다'},{trait:'care'}]]});
+  E('farMerchant',{cat:'외교',need:c=>fNear(c)&&!!fN(c),cd:YEAR,title:'💎 먼 나라 상인',text:c=>`${fN(c).name}에서 온 상인이 처음 보는 향료와 보석을 펼쳐 놓았습니다.`,
+    o:[['buy','사서 되판다',c=>`약 ${won(c.wA*10)}`,c=>{c.cash(-c.wA*10);if(c.roll(.55)){c.cash(c.wA*22);return '두 배 넘게 남겼다'}return '가짜가 섞여 있어 손해를 봤다'}],['keep','집안 보물로 들인다',c=>`약 ${won(c.wA*6)}`,c=>{c.cash(-c.wA*6);c.happy(.06);c.rep(.02);return '집안의 자랑거리가 생겼다'}],['no','구경만 한다','',()=>'흥정만 하고 보냈다']]});
+  E('farFall',{cat:'외교',trig:c=>fNear(c)&&(S.dyn.wnews||[]).some(n=>n.far&&/무너뜨리고/.test(n.text)&&S.day-n.d<60),cd:YEAR,title:'🏚️ 한 나라가 사라졌다',text:c=>{const n=(S.dyn.wnews||[]).filter(n=>n.far&&/무너뜨리고/.test(n.text)).at(-1);return `소식이 바다를 건너왔습니다. ${n?n.text:'먼 나라 하나가 무너졌다'}. 무너진 나라의 유민과 보물이 떠돌고 있습니다.`},
+    o:[['people','유민을 받아들인다',c=>`약 ${won(c.wA*8)}`,c=>{c.cash(-c.wA*8);c.rep(.05);return '기술 좋은 유민들이 정착했다'}],['loot','헐값에 보물을 사들인다',c=>`약 ${won(c.wA*12)}`,c=>{c.cash(-c.wA*12);c.cash(c.wA*(c.roll(.5)?30:8));return '보물을 챙겼다'}],['watch','지켜본다','',()=>'남의 일로 여겼다']]});
+  E('farSpy',{cat:'외교',need:c=>fNear(c)&&dynRank()>=3&&!!fN(c),cd:YEAR*2,title:'🕵️ 먼 나라 첩자',text:c=>`항구에서 ${fN(c).name} 말투를 쓰는 자가 우리 사정을 캐다 붙잡혔습니다.`,
+    o:[['execute','본보기로 처형한다','관계 크게↓',c=>{fRel(c,-.35);c.rep(.02);return '첩자를 처형했다'},{trait:'care'}],['turn','이중 첩자로 만든다','반반',c=>{if(c.roll(.5)){c.mem.set('farMole',fN(c).name);fRel(c,-.05);return `${fN(c).name} 궁정 소식을 빼내기 시작했다`}return '첩자가 도망쳤다'}],['free','풀어 주며 선물을 들려 보낸다','',c=>{fRel(c,.15);return '뜻밖의 관대함에 상대 궁정이 놀랐다'}]]});
+  E('farPlague',{cat:'외교',need:c=>fNear(c)&&!!fN(c),cd:YEAR*3,title:'🦠 바다 건너 역병',text:c=>`${fN(c).name}에 역병이 돈다는 소문입니다. 그쪽 배가 곧 들어옵니다.`,
+    o:[['close','항구를 막는다','장사 손해',c=>{c.cash(-c.wA*4);fRel(c,-.1);return '배를 돌려보냈다. 역병은 들어오지 않았다'}],['open','그대로 받는다','건강 위험',c=>{if(c.roll(.35)){c.health(-15);return '역병이 마을에 번져 나도 앓아누웠다'}return '다행히 별일 없었다'}],['quarantine','격리해서 받는다',c=>`약 ${won(c.wA*6)}`,c=>{c.cash(-c.wA*6);c.rep(.03);return '격리 끝에 무사히 받아들였다'}]]});
   const FOLLOW={};function F(id,k,list){(FOLLOW[id+':'+k]=FOLLOW[id+':'+k]||[]).push(...list)}
   const sOk=re=>(c,r)=>re.test(r),sNok=re=>(c,r)=>!re.test(r);
   // A. 형제 다툼 → 분가 → 가문 내전 / 독살 음모
@@ -7186,7 +7211,59 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function dynWorldTick(){const D=S.dyn,T=S.trade;if(!T||!T.towns||!T.towns.length)return;D.realms=D.realms||{};
     for(const t of T.towns){const R0=D.realms[t.name];if(!R0){D.realms[t.name]=realmInit(t);continue}if(R0.prov){t.tension=0;t.fta=true;if(S.day%15===0)dynProvTick(t,R0);continue}if(S.day%15===0)realmTick(t,R0);if(R0.ally&&S.day%15===0)t.tension=Math.max(0,(t.tension||0)-.01)}
     if(T.on)dynWarWatch();
-    if(T.on&&!D.wknown){D.wknown=S.day;dynChron('이웃 나라들을 알게 되다. 세계 지도가 열렸다',[])}}
+    if(T.on&&!D.wknown){D.wknown=S.day;dynChron('이웃 나라들을 알게 되다. 세계 지도가 열렸다',[])}
+    if(T.on&&D.realms){if(!D.far){farInit();dynChron(`바다 건너 먼 나라 ${D.far.length}곳의 소문이 들려오다`,[])}farTick()}}
+  // ===== 먼 나라들 (가문 모드 전용 · 원래 마을의 이웃 3나라·무역과 따로) =====
+  const FAR_CONT=[[1.58,-.72,.5,.4],[-1.6,.42,.42,.5],[1.22,.98,.56,.3],[-1.3,-.95,.4,.3]];
+  const FAR_NAMES=['바람골','흰모래','검은숲','달빛항','붉은재','구름성','은물결','푸른언덕','눈마루','황금벌','돌바다','안개섬','해오름','별무리','갈대섬','서리벌','불꽃산','맑은내'];
+  const FAR_SUR=['한','서','류','남궁','제갈','모','탁','위','진','표','하','국','봉','설'],FAR_GIV=['무열','가온','세린','도윤','휘','란','명','서하','태경','유리','진우','아라','결','하람'];
+  const FAR_REGS=['mon','mon','olig','rep','theo','mil','cmon'];
+  function farRuler(roll){return {sur:FAR_SUR[Math.floor(roll()*FAR_SUR.length)],given:FAR_GIV[Math.floor(roll()*FAR_GIV.length)],sex:roll()<.25?'F':'M',age:Math.floor((25+roll()*30)*YEAR),g:{war:roll(),boss:roll()}}}
+  function farLog(F,text,big){F.hist=(F.hist||[]).concat({d:S.day,text}).slice(-10);const D=S.dyn;D.wnews=D.wnews||[];D.wnews.push({d:S.day,t:F.name,text,big:!!big,far:1});if(D.wnews.length>30)D.wnews.shift()}
+  function farInit(){const D=S.dyn,seed=(S.seed||0)>>>0;let k=0;const roll=()=>mapSeedRoll(seed,'far'+(k++));const n=6+Math.floor(roll()*4),names=FAR_NAMES.slice();const out=[];
+    const per=FAR_CONT.map((_,ci)=>Math.floor(n/FAR_CONT.length)+(ci<n%FAR_CONT.length?1:0)),rot=FAR_CONT.map(()=>roll()*Math.PI*2);
+    for(let i=0;i<n;i++){const ci=i%FAR_CONT.length,c=FAR_CONT[ci],m=per[ci],slot=Math.floor(i/FAR_CONT.length),a=rot[ci]+slot*Math.PI*2/m+(roll()-.5)*.4,r=m===1?roll()*.2:.55+roll()*.12;const name=names.splice(Math.floor(roll()*names.length),1)[0];
+      out.push({name,x:+(c[0]+Math.cos(a)*c[2]*r).toFixed(3),y:+(c[1]+Math.sin(a)*c[3]*r).toFixed(3),w:.34+roll()*.16,pop:Math.round(800+roll()*4000),mil:0,era:Math.floor(roll()*3),regime:FAR_REGS[Math.floor(roll()*FAR_REGS.length)],ruler:farRuler(roll),since:S.day,alive:true,owner:null,ally:[],war:null,rel:0,envoy:0,hist:[]})}
+    for(const F of out)F.mil=Math.round(F.pop*.02*(1+F.era*.2));D.far=out;D.farSpare=names}
+  const farAlive=()=>(S.dyn.far||[]).filter(F=>F.alive);
+  const farBy=n=>(S.dyn.far||[]).find(F=>F.name===n);
+  const farRoot=F=>{let x=F,g=0;while(x&&!x.alive&&x.owner&&g++<20)x=farBy(x.owner);return x};
+  function farTick(){const D=S.dyn;if(!D.far||S.day%30!==20)return;const L=farAlive();
+    for(const F of L){F.pop=Math.max(200,Math.round(F.pop*(1+(wr()-.45)*.03)));const land=1+D.far.filter(x=>!x.alive&&farRoot(x)===F).length;
+      F.mil=Math.round(F.mil*.85+F.pop*.02*(1+F.era*.2)*(F.war?1.3:1)*.15);if(F.era<5&&wr()<.004){F.era++;farLog(F,`${F.name}: 기술이 한 단계 발전했다`)}
+      F.ruler.age+=30;const r=F.ruler;
+      if(r.age>60*YEAR&&wr()<.012*(r.age/YEAR-58)){const old=rName(r);F.ruler=farRuler(wr);F.since=S.day;if(wr()<.15){F.regime=FAR_REGS[Math.floor(wr()*FAR_REGS.length)];farLog(F,`${F.name}: ${josa(old,'이','가')} 죽고 혼란 끝에 ${REALM_REG[F.regime]}이 들어섰다`,true)}else farLog(F,`${F.name}: ${josa(old,'이','가')} 죽고 ${josa(rName(F.ruler),'이','가')} 뒤를 이었다`)}
+      else if(wr()<.004){F.ruler=farRuler(wr);F.since=S.day;F.regime=wr()<.5?'mil':FAR_REGS[Math.floor(wr()*FAR_REGS.length)];farLog(F,`${F.name}: 정변이 일어나 ${josa(rName(F.ruler),'이','가')} 권력을 잡았다 (${REALM_REG[F.regime]})`,true)}
+      F.land=land}
+    // 전쟁 진행
+    for(const F of L){const W0=F.war;if(!W0||!W0.att)continue;const E=farBy(W0.vs);if(!E||!E.alive){F.war=null;continue}
+      W0.score+=(F.mil-E.mil)/Math.max(1,F.mil+E.mil)*.5+(wr()-.5)*.8;F.mil=Math.round(F.mil*.96);E.mil=Math.round(E.mil*.95);
+      const dur=S.day-W0.d;if(Math.abs(W0.score)>1.6||dur>YEAR*2){const win=W0.score>0?F:E,lose=win===F?E:F;F.war=null;E.war=null;
+        const loseLand=1+D.far.filter(x=>!x.alive&&farRoot(x)===lose).length;
+        if(Math.abs(W0.score)>1.6&&(win.mil>lose.mil*1.5||wr()<.5)&&farAlive().length>4&&loseLand<=2){lose.alive=false;lose.owner=win.name;lose.ally=[];for(const x of farAlive())x.ally=x.ally.filter(n=>n!==lose.name);for(const x of D.far)if(!x.alive&&x.owner===lose.name)x.owner=win.name;win.pop+=Math.round(lose.pop*.7);farLog(win,`${josa(win.name,'이','가')} ${josa(lose.name,'을','를')} 무너뜨리고 땅을 합쳤다`,true)}
+        else{const t=Math.round(lose.pop*.08);lose.pop-=t;win.pop+=t;farLog(win,`${josa(win.name,'과','와')} ${lose.name}의 전쟁이 끝났다. ${josa(win.name,'이','가')} 이겨 배상을 받았다`,true)}
+        if(lose.rel>.4)dynChron(`우리와 가까운 ${josa(lose.name,'이','가')} ${win.name}에게 졌다는 소식이 들려오다`,[])}}
+    // 새 전쟁
+    if(wr()<.25){const cand=L.filter(F=>!F.war);const A=cand[Math.floor(wr()*cand.length)];if(A&&wr()<.3+A.ruler.g.war*.5){const near=cand.filter(B=>B!==A&&!A.ally.includes(B.name)).sort((x,y)=>Math.hypot(x.x-A.x,x.y-A.y)-Math.hypot(y.x-A.x,y.y-A.y))[0];
+      if(near){A.war={vs:near.name,d:S.day,score:0,att:1};near.war={vs:A.name,d:S.day,score:0};const helpers=farAlive().filter(x=>x.ally.includes(near.name)&&!x.war);farLog(A,`${josa(A.name,'이','가')} ${near.name}에 쳐들어갔다${helpers.length?`. ${josa(helpers.map(h=>h.name).join('·'),'이','가')} ${near.name} 편을 들겠다고 나섰다`:''}`,true);for(const h of helpers)near.mil+=Math.round(h.mil*.3);
+        if(near.rel>.4||A.rel>.4)dynChron(`사절을 주고받던 ${near.rel>.4?near.name:A.name} 쪽에서 전쟁 소식을 먼저 알려 오다: ${A.name} ↔ ${near.name}`,[])}}}
+    // 동맹
+    if(wr()<.15){const a=L[Math.floor(wr()*L.length)],b=L[Math.floor(wr()*L.length)];if(a&&b&&a!==b&&!a.ally.includes(b.name)&&a.war?.vs!==b.name&&a.ally.length<2&&b.ally.length<2){a.ally.push(b.name);b.ally.push(a.name);farLog(a,`${josa(a.name,'과','와')} ${josa(b.name,'이','가')} 동맹을 맺었다`)}}
+    if(wr()<.05){const a=L.find(x=>x.ally.length);if(a){const n=a.ally[Math.floor(wr()*a.ally.length)],b=farBy(n);a.ally=a.ally.filter(x=>x!==n);if(b)b.ally=b.ally.filter(x=>x!==a.name);farLog(a,`${josa(a.name,'과','와')} ${n}의 동맹이 깨졌다`)}}
+    // 독립·분열: 합쳐진 땅이 다시 나라가 됨
+    for(const x of D.far){if(x.alive)continue;const own=farRoot(x);if(!own)continue;const p=(own.war?.03:.008)+(farAlive().length<4?.05:0);if(wr()<p){const nn=(D.farSpare||[]).length?D.farSpare.splice(Math.floor(wr()*D.farSpare.length),1)[0]:x.name;
+      x.alive=true;x.owner=null;const old=x.name;x.name=nn;x.ruler=farRuler(wr);x.since=S.day;x.regime=FAR_REGS[Math.floor(wr()*FAR_REGS.length)];x.pop=Math.round(own.pop*.25);own.pop-=x.pop;x.mil=Math.round(x.pop*.02);x.war=null;x.ally=[];x.rel=0;x.envoy=0;
+      for(const y of D.far)if(!y.alive&&y.owner===old)y.owner=nn;farLog(x,`${own.name}에 눌려 있던 ${old} 땅이 들고일어나 ${josa(nn,'으로','로')} 독립했다`,true);break}}
+    for(const F of L)F.rel=Math.max(-1,Math.min(1,(F.rel||0)*.98))}
+  function farActions(me,add){const D=S.dyn;if(!D.far||!(S.trade&&S.trade.on))return;const r=dynRank(),wA=dynWA();
+    for(const F of farAlive())add('far:envoy:'+F.name,'외교',`${F.name}에 사절 보내기`,`먼 나라 · ${REALM_REG[F.regime]} · 비용 ${won(wA*10)} · 관계 +15 · 가까워지면 그 나라 전쟁 소식을 먼저 들음 (지금 관계 ${Math.round((F.rel||0)*100)})`,r<3?'의원·귀족 이상이어야 함':me.cash<wA*10?'비용이 모자람':dynWait('far'+F.name))}
+  function farAct(me,k){const [,op,name]=k.split(':'),F=farBy(name),D=S.dyn,wA=dynWA();if(!F||!F.alive||op!=='envoy')throw Error('모르는 나라입니다');if(me.cash<wA*10)throw Error('비용이 모자랍니다');me.cash-=wA*10;SP(me,'bribe',wA*10);D.cool['actfar'+name]=S.day+60;
+    const ok=wr()<.85;F.rel=Math.min(1,(F.rel||0)+(ok?.15:.03));F.envoy=(F.envoy||0)+1;const t=ok?`${F.name}에 보낸 사절이 환대를 받고 돌아왔다`:`${F.name} 궁정이 사절을 냉담하게 대했다`;dynChron(t,[me.id]);return t}
+  function farView(r){const D=S.dyn,our=S.mil?.str||0;if(!D.far)return [];const approx=m=>r>=3?Math.round(m):m<our*.6?'우리보다 약함':m>our*1.6?'우리보다 강함':'우리와 비슷';
+    return D.far.map(F=>{const root=farRoot(F);return {name:F.name,x:F.x,y:F.y,w:F.w,alive:!!F.alive,owner:F.alive?F.name:(root?.name||F.owner),
+      ...(F.alive?{pop:F.pop,mil:approx(F.mil),era:F.era,regName:REALM_REG[F.regime]||F.regime,title:REALM_TITLE[F.regime]||'통치자',ruler:{name:rName(F.ruler),age:Math.floor(F.ruler.age/YEAR),sex:F.ruler.sex},war:F.war?F.war.vs:null,ally:F.ally.slice(),rel:Math.round((F.rel||0)*100),land:F.land||1,since:F.since,hist:(F.hist||[]).slice(-6).reverse()}:{})}})}
+  function farMarks(){const D=S.dyn,out=[];for(const F of farAlive()){if(F.war?.att){const E=farBy(F.war.vs);if(E)out.push({x:(F.x+E.x)/2,y:(F.y+E.y)/2,i:'💥',t:`${F.name} ↔ ${E.name} 전쟁`})}}
+    for(const n of (D.wnews||[]).slice(-12))if(n.big&&S.day-n.d<90){const F=farBy(n.t);if(F&&F.alive&&!F.war&&!out.some(o=>o.t===n.text))out.push({x:F.x,y:F.y-.12,i:'📢',t:n.text})}return out.slice(0,10)}
   function dynWorldView(r){const D=S.dyn,T=S.trade,G=S.gov,our=S.mil?.str||0;const known=!!(T&&T.on&&D.realms);
     const approx=m=>r>=3?Math.round(m):m<our*.6?'우리보다 약함':m>our*1.6?'우리보다 강함':'우리와 비슷';
     const ch=G&&S.byId.get(G.king||G.chief);
@@ -7197,7 +7274,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         regime:R0.prov?'prov':R0.regime,regName:R0.prov?(R0.prov.how==='union'?'우리 속령(계승)':'우리 속령(정복)'):REALM_REG[R0.regime],rel:rRel(t,R0),ally:!!R0.ally,prov:R0.prov?{d:R0.prov.d,unrest:Math.round(R0.prov.unrest*100),tax:Math.round(R0.prov.tax||0)}:null,kin:R0.kin?{name:nm(S.byId.get(R0.kin.id)||{sur:'',given:''}),spouse:nm(S.byId.get(R0.kin.spouse)||{sur:'',given:''})}:null,title:R0.prov?(R0.prov.how==='union'?'군주(겸임)':'총독'):REALM_TITLE[R0.regime],house:R0.ruler.sur+'씨',dyn:R0.dyn||1,since:Math.max(0,R0.since),
         ruler:{name:rName(R0.ruler),age:rAge(R0.ruler),sex:R0.ruler.sex,traits:r>=3?REALM_G.map(([k,l])=>[l,Math.round(R0.ruler.g[k]*100)]):null},
         heir:R0.heir?{name:rName(R0.heir),age:rAge(R0.heir),sex:R0.heir.sex}:null,hist:R0.hist.slice(-6).reverse()}}).filter(Boolean);
-    return {known:true,us,realms,fw:S.fw&&S.fw.until>S.day?{a:S.fw.a,b:S.fw.b}:null,news:(D.wnews||[]).slice(-12).reverse()}}
+    {const sf=G&&G.stateFaith&&(S.faiths||[]).find(f=>f.id===G.stateFaith);if(sf)us.faith=sf.name}
+    return {known:true,us,realms,far:farView(r),marks:farMarks(),fw:S.fw&&S.fw.until>S.day?{a:S.fw.a,b:S.fw.b}:null,news:(D.wnews||[]).slice(-12).reverse()}}
   function dynTick(){const D=S.dyn;dynWorldTick();if(D.over)return;const me=dynMe();if(me&&D.gig)dynGigTick(me);if(me)dynMilitiaTick(me);if(me)dynSpyOrgTick(me);if(me)dynUnderworldTick(me);dynTierTick();coTick(me);if(me&&me.alive){dynSiteTick(me);dynStressTick(me);dynFaithTick(me);dynStoryTick(me)}if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
     if(me&&W(me)>D.peak.w)D.peak.w=W(me);
     if(me&&me.alive){const tt=dynPolTitle(me);if(D.title===undefined)D.title=tt;else if(tt!==D.title){const t=tt?`${josa(nm(me),'이','가')} ${josa(tt,'이','가')} 됐습니다`:`${josa(nm(me),'이','가')} ${D.title} 자리에서 물러났습니다`;D.title=tt;dynChron(t,[me.id]);dynPush('notice',t,[{k:'ok',label:'확인'}],{d:S.day})}

@@ -208,3 +208,10 @@ node scripts/check-server.js / check-http.js / check-migration.js / check-lifecy
 - god-client 첫 탭 `home`(🧭 한눈에): 재산·지위·건강·가문·회사·신앙 요약, 챙길 것, 행동 검색(`dynQuery`), ⭐ 즐겨찾기(localStorage `v-dynfav`, 행동 키 기준), 지금 할 수 있는 것. 행동 버튼은 `dynActHTML`으로 통일.
 - 가문 모드 건물 18종(`DYN_BLD`): 기존 7종 + 회관·금고·경비 초소·의원·신문사·공연장·공장·연구소·대형 공장·사무실 빌딩·경기장. 잠금 조건(`dynBldLock`)은 마을 주민 조건과 같다. 대형은 빈 집터 통째로(`lotUsed=99`, `big`). 완공 시 신문사 이름·대형 표시 처리. 사원·감옥은 제외(교단·정부 경로가 따로 있음).
 - 검사: `scripts/check-dyn-buildings.js`.
+
+## 세계지도 · 먼 나라 (2026-11-18)
+- 가문 모드 전용 `S.dyn.far`: 바다 건너 먼 나라 6~9곳(시드로 같은 배치). 원래 마을의 이웃 3나라(`S.trade.towns`)와 무역 계산은 건드리지 않는다.
+- `farTick`(매월 20일): 인구·군대·기술, 통치자 사망·정변, 먼 나라끼리 전쟁·동맹·멸망(합병)·독립. 소식은 `D.wnews`(far:1).
+- 외교 행동 `far:envoy:<나라>`(의원·귀족 이상). 먼 나라 사건 9개(`far*`).
+- 지도(god-client): 4개 대륙 추가, 지형 음영, 굵은 국경, 교역로·동맹·전선 선, 💥/📢 표시, 국교 표시, 먼 나라 정보·목록.
+- 검사: `scripts/check-far-world.js`.
