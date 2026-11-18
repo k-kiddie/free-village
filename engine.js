@@ -1494,10 +1494,11 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 민병대 (일하면서 틈틈이)
     const milN=Math.round(ad.length*.02);const mil=al.filter(a=>a.militia&&a.alive);if(mil.length<milN){for(const a of ad.filter(a=>!a.militia&&!a.soldier&&(a.g.civic+a.g.boss)>.7).slice(0,milN-mil.length))a.militia=1}
     // 상비군
+    if(S.dyn&&G){for(const id of [G.king,G.chief,G.regent,...(G.council||[]),...Object.values(G.min||{}).map(m=>m&&m.mn)]){const x=id&&S.byId.get(id);if(x&&x.drafted&&x.soldier){x.soldier=null;x.drafted=0;x.armyUntil=0;x.served=1}}}
     const sold=al.filter(a=>a.soldier&&a.armyUntil>S.day);for(const a of al)if(a.soldier&&!(a.armyUntil>S.day)){if(a.drafted){a.drafted=0;X('discharge')}a.soldier=null}
     if(M.lvl>=2&&G){const tgt=Math.round(ad.length*(P.draft?.06:.025)*[.7,1,1.4][P.milBudget??1]*(S.war?1.5:1));
       if(sold.length<tgt){const need=tgt-sold.length;let got=0;
-        if(P.draft){const pool=ad.filter(a=>(a.sex==='M'||P.draftSex)&&a.age>=20*YEAR&&a.age<28*YEAR&&!a.soldier&&!a.served&&!a.disab&&!a.study);for(const a of pool){if(got>=need)break;
+        if(P.draft){const exempt=S.dyn?new Set([G.king,G.chief,G.regent,...(G.council||[]),...Object.values(G.min||{}).map(m=>m&&m.mn)].filter(Boolean)):null;const pool=ad.filter(a=>(a.sex==='M'||P.draftSex)&&a.age>=20*YEAR&&a.age<28*YEAR&&!a.soldier&&!a.served&&!a.disab&&!a.study&&!(exempt&&exempt.has(a.id)));for(const a of pool){if(got>=need)break;
             if(a.g.faith>.7&&R()<.5){if(P.altService){a.altServ=S.day+YEAR*3;a.served=1;X('altServ');continue}X('draftEvade');fileC('draftEvade',a,hr*.1,.8);mile('consObj',`병역 거부. 신앙 때문에 총을 들 수 없다는 ${josa(nm(a),'이','가')} 감옥에 갔다`,[a.id]);a.served=1;continue}
             const par=a.parents.map(id=>S.byId.get(id)).find(p=>p&&p.alive&&p.cash>hr&&p.g.cheat>.3);if(par&&R()<.3){par.cash-=hr*.3;X('draftBribe');a.served=1;mile('draftBribe',`병역 비리. 부자 ${josa(nm(par),'이','가')} 뒷돈을 써서 아들 ${josa(nm(a),'을','를')} 군대에서 빼냈다`,[par.id,a.id]);if(R()<.2)fileC('draftBribe',par,hr*.6,.6);continue}
             a.soldier='army';a.drafted=1;a.served=1;a.armyUntil=S.day+YEAR*(P.draftYears||2);a.emp=null;got++}if(got)mile('draft',`징병. 스무 살 ${P.draftSex?'젊은이들이':'남자들이'} ${P.draftYears||2}년씩 군대에 끌려가기 시작했다`,[])}
