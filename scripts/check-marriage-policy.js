@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict');
+const {createWorld}=require('../engine.js');
+const w=createWorld(719,100);w.dynStart();w.dynChoose(w.S.dyn.pending[0].id,'go');
+const me=w.S.byId.get(w.S.dyn.pid),other=w.S.agents.find(a=>a.alive&&a.id!==me.id&&!a.partner&&a.age>=18*60);
+me.age=25*60;other.age=25*60;me.partner=null;me.sex=other.sex='F';me.orient=other.orient='bi';
+w.S.gov={regime:'rep',chief:other.id,policy:{sameSex:false},council:[],min:{}};
+let wedding=w.dynTargetActions(other.id).find(a=>a.k===`tgt:wed:${other.id}`);assert(wedding&&!wedding.ok,'동성혼 불허 시 혼인 행동이 비활성화됨');
+w.S.gov.policy.sameSex=true;
+wedding=w.dynTargetActions(other.id).find(a=>a.k===`tgt:wed:${other.id}`);assert(wedding?.ok,'동성혼 허용 시 양성애 커플의 혼인 경로 제공');
+me.partner=other.id;other.partner=me.id;me.hid=other.hid=1;
+const saved=JSON.parse(JSON.stringify(w.exportState())),restored=createWorld(1,1);restored.importState(saved);
+assert.equal(restored.S.byId.get(me.id).partner,other.id,'기존 저장의 관계 유지');assert.equal(restored.S.byId.get(other.id).partner,me.id,'상대 관계도 유지');
+const pop=restored.dynView().population;assert(pop.current>0&&pop.capacity>=pop.current,'인구와 수용 상한 표시');assert(Number.isFinite(pop.births)&&Number.isFinite(pop.deaths)&&Number.isFinite(pop.in)&&Number.isFinite(pop.out),'출생·사망·유입·유출 지표 표시');
+console.log('동성 결혼 정책·혼인 행동·기존 관계 저장 호환 확인 완료');
