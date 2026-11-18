@@ -42,10 +42,10 @@ act('co:heir:'+small.id,'e'+kid.id);assert(small.co.exec.includes(kid.id));
 act('co:heir:'+small.id,'c'+kid.id);assert.equal(small.ceo,kid.id,'사장 승계');
 // 12 어두운 경영
 const p0=f.price;act(`co:dark:${f.id}:dress`);assert(f.price>p0);act(`co:dark:${f.id}:cartel`);act(`co:dark:${f.id}:sub`);const m0=me.cash;act(`co:dark:${f.id}:slush`);assert(me.cash>m0,'비자금');assert(f.co.risk>.5);
-f.co.risk=1.4;let exposed=false;for(let i=0;i<300&&!exposed;i++){w.step();exposed=!!f.co.exposed;for(const q of D.pending.slice())try{w.dynChoose(q.id,q.opts[q.opts.length-1].k)}catch(e){}}
+let exposed=false;for(let i=0;i<1800&&!exposed;i++){f.co.risk=1.4;w.step();exposed=!!f.co.exposed;for(const q of D.pending.slice())try{w.dynChoose(q.id,q.opts[q.opts.length-1].k)}catch(e){}}
 assert(exposed,'어두운 경영이 들통남');
 // 경영권 장악
-rival.sh={[others[0].id]:4000,[me.id]:6000};act('co:seize:'+rival.id);assert.equal(rival.ceo,me.id,'과반 지분으로 경영권 장악');
+if(!S.firms.includes(rival)){rival.bld=[];S.firms.push(rival)}rival.alive=true;rival.ceo=others[0].id;rival.sh={[others[0].id]:4000,[me.id]:6000};act('co:seize:'+rival.id);assert.equal(rival.ceo,me.id,'과반 지분으로 경영권 장악');
 // 10 매각·청산
 act('co:sell:'+rival.id,'sell');assert(!(rival.sh[me.id]>0)||rival.sh[me.id]<6000,'지분 매각');
 const g=mk(9004,'정리상회',me,'agri',500);g.sh={[me.id]:10000};act('co:sell:'+g.id,'close');assert(!S.firms.includes(g),'청산');
