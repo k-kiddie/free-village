@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const {createWorld}=require('../engine.js');
+const w=createWorld(731,140);w.dynStart();w.dynChoose(w.S.dyn.pending[0].id,'go');
+const me=w.S.byId.get(w.S.dyn.pid),leader=w.S.agents.find(a=>a.alive&&a.id!==me.id&&a.age>=20*60);
+me.age=30*60;me.cash=100000;me.w=100000;me.crimes=1;me.caught=1;me.banned=true;me.jailUntil=w.S.day+100;
+w.S.gov={regime:'rep',chief:leader.id,king:null,council:[leader.id],policy:{punish:4,womenVote:true},min:{},approval:.6};
+let action=w.dynActions().find(a=>a.k==='runCouncil');assert(action&&!action.ok&&action.why.includes('유죄'),'엄격한 처벌 체제에서 범죄 이력·유죄는 출마 제한');
+w.S.dyn.pid=leader.id;action=w.dynActions().find(a=>a.k===`pardon:${me.id}`);assert(action,'통치자가 사면·복권 행동을 볼 수 있음');w.dynAct(action.k);
+assert.equal(me.banned,false);assert.equal(me.pardoned,true);assert(me.jailUntil<=w.S.day,'사면 시 구금 해제');
+w.S.dyn.pid=me.id;action=w.dynActions().find(a=>a.k==='runCouncil');assert(action?.ok,'사면·복권 후 선거 자격 회복');
+me.pardoned=false;w.S.gov.policy.punish=1;action=w.dynActions().find(a=>a.k==='runCouncil');assert(action?.ok,'관대한 세계에서는 전과가 있어도 출마 가능');
+console.log('범죄 이력에 따른 체제별 출마 제한·통치자 사면·복권·관대한 체제 출마 확인 완료');

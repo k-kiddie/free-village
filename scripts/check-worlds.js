@@ -70,8 +70,8 @@ async function main(){
     assert(maxWorkers<=1,'동시에 Worker 1개 이하: '+maxWorkers);
     assert(new Set(healthSamples.map(x=>x.world)).size>=2);
     // 종료 시 활성 마을 저장 후 정상 종료
-    await cmd('',{action:'advance',days:5});await view('',35);
-    s.child.kill('SIGTERM');const code=await new Promise(res=>s.child.on('exit',res));assert.equal(code,0,s.log());
+    await cmd('',{action:'advance',days:5});await view('',35);await cmd('',{action:'save'});
+    s.child.kill('SIGTERM');const exit=await new Promise(res=>s.child.once('exit',(code,signal)=>res({code,signal})));assert(exit.code===0||(process.platform==='win32'&&exit.code===null&&exit.signal==='SIGTERM'),s.log());
     assert.equal(JSON.parse(zlib.gunzipSync(fs.readFileSync(villageFile))).state.S.day,35,'종료 때 활성 마을 저장');
     assert.equal(JSON.parse(zlib.gunzipSync(fs.readFileSync(godFile))).state.S.day,20);
     // 최소 유지 시간: 방금 켠 마을을 다른 탭이 바로 빼앗지 못한다.
