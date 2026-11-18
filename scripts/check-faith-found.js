@@ -9,7 +9,7 @@ const me=w.S.byId.get(w.S.dyn.pid);assert(me.g.faith>=.64,'성직자 집안 신�
 const wr0=createWorld(702,120);wr0.dynStart();wr0.dynConfigureStart({background:'몰락한 왕족'});assert.equal(wr0.S.byId.get(wr0.S.dyn.pid).dynRoyal,1,'몰락한 왕족 혈통');
 
 // 2) 종교 창시
-me.cash=1e6;const found=w.dynActions().find(a=>a.k==='extra:found');assert(found&&found.ok&&found.faithSpec.docs.length===12,'창시 행동과 교리 12개');
+me.cash=1e6;const found=w.dynActions().find(a=>a.k==='extra:found');assert(found&&found.ok&&found.faithSpec.docs.filter(d=>!d.x).length===12&&found.faithSpec.docs.filter(d=>d.x).length===8,'창시 행동과 교리 12개+이단 8개');
 assert.throws(()=>w.dynAct('extra:found:charity:'),/2~3개/);assert.throws(()=>w.dynAct('extra:found:charity+equal+honest+work:'),/2~3개/);
 assert.throws(()=>w.dynAct('extra:found:celibate+poly:'),/하나만/);assert.throws(()=>w.dynAct('extra:found:charity+equal:abc'),/한글/);
 const msg=w.dynAct('extra:found:charity+equal:새빛');const fa=w.S.faiths.find(f=>f.name==='새빛교');
