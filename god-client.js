@@ -97,7 +97,7 @@ function dynKV(rows){return `<div class="kv">${rows.filter(Boolean).map(([k,val]
 function dynPanelHTML(v){
   const m=v.me;if(!m)return '<p class="muted">캐릭터 정보가 없습니다.</p>';
   if(dynTab==='me')return `<div class="sec"><h4>${dynEsc(m.name)}</h4>${dynKV([['나이·성별',`${m.age}세 · ${m.sex==='F'?'여':'남'}`],['건강',Math.round(m.health)+'점'],['배고픔',Math.round(m.hunger)],
-      m.happy!=null&&['행복',Math.round(m.happy*100)+'점'],['평판',Math.round((m.rep??1)*100)],['스트레스',(v.stress||0)+'/100'],v.clergy&&['교단 지위',dynEsc(v.clergy)],['학력',EDU_L[m.edu||0]],['업종',m.occ?OCC_L[m.occ]:'없음'],
+      m.happy!=null&&['행복',Math.round(m.happy*100)+'점'],['평판',Math.round((m.rep??1)*100)],['스트레스',(v.stress||0)+'/100'],v.clergy&&['교단 지위',dynEsc(v.clergy)],['병역',m.drafted?'복무 중':m.altServ?'대체 복무 중':m.served?'군필':'미필'],['학력',EDU_L[m.edu||0]],['업종',m.occ?OCC_L[m.occ]:'없음'],
       ['고용주',m.emp?dynPerson(m.emp):'없음'],m.staff&&['고용한 사람',m.staff+'명'],m.grp&&['소속',dynEsc(m.grp.name)+(m.grp.leader?' (우두머리)':'')],m.caught&&['전과',m.caught+'번'],m.jail&&['처지','수감 중']])}
       <button data-person="${m.id}">자세한 인물 카드</button></div>
       <div class="sec"><h4>초반 생계 · 일 고르기</h4><label class="bud">희망하는 일 <select data-bud="job"><option value="-1" ${v.budget.job==null||v.budget.job<0?'selected':''}>성향대로 자동 선택</option>${(v.jobs||[]).map(j=>`<option value="${j.k}" ${v.budget.job===j.k?'selected':''}>${dynEsc(j.n)}${j.wage?` · ${money(j.wage.min)}~${money(j.wage.max)}/일 예상`:''}</option>`).join('')}</select>
@@ -182,6 +182,7 @@ function dynOpen(p,force){
       <label>가족 조건 <select id="dynFamilyStart"><option value="single">혼자 이주</option><option value="partner">배우자와 함께 이주</option><option value="children">배우자·자녀와 함께 이주</option></select></label>
       <label>시작 재산 <select id="dynWealthStart"><option value="keep">일반 이주민 정착금</option><option value="poor">가난한 편 · 1~4일 품삯</option><option value="modest">살림 안정 · 8~25일 품삯</option><option value="wealthy">넉넉한 편 · 40~80일 품삯</option></select></label>
       <label>외모 <input id="dynLooks" type="number" min="0" max="100" value="${Math.round((m.looks??.5)*100)}"></label>
+      <label>병역 <select id="dynServed"><option value="no">미필 · 징병제가 있으면 영장이 나올 수 있음</option><option value="yes">군필 · 징병 면제, 경계심·체력 조금 높음</option></select></label>
       <label>학력 <select id="dynEdu">${['없음','기본','사교육','고등','대학'].map((x,i)=>`<option value="${i}" ${i===(m.edu||0)?'selected':''}>${x}</option>`).join('')}</select></label>
       <label>출신 배경 <select id="dynBackground"><option>평범한 주민</option><option>농촌</option><option>장터</option><option>기술자 집안</option><option>유학 경험</option><option>이주민</option><option>정보기관 직원</option></select></label>
       <label>성격 · 야망 <input id="dynBoss" type="number" min="0" max="100" value="${Math.round((m.g?.boss??.2)*100)}"></label><label>성격 · 공익심 <input id="dynCivic" type="number" min="0" max="100" value="${Math.round((m.g?.civic??.3)*100)}"></label>
@@ -200,7 +201,7 @@ function dynOpen(p,force){
   box.querySelectorAll('.opt[data-k]').forEach(b=>b.onclick=async()=>{
     box.querySelectorAll('.opt').forEach(x=>x.disabled=true);
     try{
-      if(start&&m&&startMode?.value==='custom'){const character={sur:$('#dynSur').value,given:$('#dynGiven').value,sex:$('#dynSex').value,age:+$('#dynAge').value,family:$('#dynFamilyStart').value,wealth:$('#dynWealthStart').value,looks:+$('#dynLooks').value,edu:+$('#dynEdu').value,background:$('#dynBackground').value,boss:+$('#dynBoss').value,civic:+$('#dynCivic').value,care:+$('#dynCare').value,cheat:100-(+$('#dynCheat').value),join:+$('#dynJoin').value,lux:+$('#dynLux').value,roma:+$('#dynRoma').value,faith:+$('#dynFaith').value,farm:+$('#dynFarm').value,craft:+$('#dynCraft').value,trade:+$('#dynTrade').value};await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'configureStart',character})})}
+      if(start&&m&&startMode?.value==='custom'){const character={sur:$('#dynSur').value,given:$('#dynGiven').value,sex:$('#dynSex').value,age:+$('#dynAge').value,family:$('#dynFamilyStart').value,wealth:$('#dynWealthStart').value,served:$('#dynServed').value,looks:+$('#dynLooks').value,edu:+$('#dynEdu').value,background:$('#dynBackground').value,boss:+$('#dynBoss').value,civic:+$('#dynCivic').value,care:+$('#dynCare').value,cheat:100-(+$('#dynCheat').value),join:+$('#dynJoin').value,lux:+$('#dynLux').value,roma:+$('#dynRoma').value,faith:+$('#dynFaith').value,farm:+$('#dynFarm').value,craft:+$('#dynCraft').value,trade:+$('#dynTrade').value};await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'configureStart',character})})}
       else if(start&&m){const sur=$('#dynSur')?.value.trim(),given=$('#dynGiven')?.value.trim();if(sur&&given&&(sur!==m.sur||given!==m.given))await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'rename',sur,given})})}
       box.hidden=true;await dynSend({action:'choose',id:p.id,k:b.dataset.k});
     }catch(e){box.hidden=false;$('#dynErr').textContent=e.message;box.querySelectorAll('.opt').forEach(x=>x.disabled=false)}
