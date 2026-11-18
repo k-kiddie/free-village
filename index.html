@@ -4987,7 +4987,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     coNote(f,text);return text}
   function coView(me){if(!me)return [];const out=[];const seen=new Set();
     for(const f of [...coMine(me),...dynMajorFirms(me)]){if(seen.has(f.id))continue;seen.add(f.id);const o=f.co||{},staff=coStaff(f),c=S.byId.get(f.ceo);
-      out.push({id:f.id,name:f.name,mine:f.ceo===me.id,ceo:c?nm(c):'-',lines:firmLines(f).map(l=>LINE_L[l]),rev:(f.revM||0)*3,prof:(f.profE||0)*3,gain:o.lastGain||0,cash:f.cash||0,debt:coDebt(f),staff:staff.length,wage:staff.length?staff.reduce((t,x)=>t+(x.ct?.w||0),0)/staff.length:0,price:f.price,cap:marketCap(f),stake:coStake(me,f),listed:!!f.listed,
+      out.push({id:f.id,name:f.name,mine:f.ceo===me.id,ceo:c?nm(c):'-',lines:firmLines(f).map(l=>LINE_L[l]),rev:(f.revM||0)*3,prof:(f.profE||0)*3,gain:o.lastGain||0,cash:f.cash||0,debt:coDebt(f),staff:staff.length,wage:staff.length?staff.reduce((t,x)=>t+(x.ct?.w||c?.lastWage||S.wageAvg||0),0)/staff.length:0,price:f.price,cap:marketCap(f),stake:coStake(me,f),listed:!!f.listed,
         morale:o.morale??null,fac:o.fac||0,pat:(f.co?coPats(f):[]).map(p=>p.n),ad:o.adUntil>S.day?o.ad:0,br:o.br||0,wel:!!o.wel,fund:!!o.fund,risk:o.risk||0,strike:o.strike>S.day,parent:f.parent?firmById(f.parent)?.name||null:null,subs:S.firms.filter(x=>x.parent===f.id).map(x=>x.name),heir:o.heir?nm(S.byId.get(o.heir)):null,exec:(o.exec||[]).map(id=>nm(S.byId.get(id))),log:(o.log||[]).slice(-4)})}
     return out}
   function dynFamTie(p,d,why){if(!p)return;const D=S.dyn;D.ties=D.ties||{};const fm=p.family,o=D.ties[fm]||{v:0,name:dynFamName(fm,p),d:S.day,why:''};D.ties[fm]={...o,v:cl(o.v+d,-1,1),d:S.day,why:why||o.why}}
@@ -6030,22 +6030,36 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function dynPrince(G,king,rivals){const D=S.dyn;if(!D||king.id!==D.pid||!rivals.length)return false;const rv=rivals.sort((a,b)=>b.g.boss-a.g.boss)[0];if(wr()>.12*rv.g.boss)return true;
     dynPush('prince',`왕자 ${josa(nm(rv),'이','가')} 왕위를 노리고 사람을 모으고 있습니다.`,[{k:'purge',label:'숙청한다',hint:'왕자를 잡아 없앰 · 평판↓, 피의 군주라는 말'},{k:'reconcile',label:'화해한다',hint:`약 ${won(dynWA()*30)}과 자리를 줘 달램 · 70% 물러섬`},{k:'abdicate',label:'왕위를 넘긴다',hint:'왕자가 왕이 됨(우리 가문 안)'}],{who:rv.id});return true}
   // ---- 가문 모드 화면 개편: 가게 짓기·사람 고용·인물 대상 행동·법안 전체 ----
-  const DYN_BIZ=['b1','b0','b2','b10','pub','shelter','store'];
+  // 내가 지을 수 있는 건물: [집값 대비 비용, 공사 일수, 집터 통째로]. 조건은 마을 주민이 짓는 조건과 같다(dynBldLock).
+  const DYN_BLD={b1:[1.5,40],b0:[1.5,40],b2:[1.5,40],b10:[1.5,40],pub:[1.5,40],shelter:[1.5,40],store:[1.5,40],gather:[1.4,40],vault:[1.4,40],guard:[1.4,40],heal:[1.4,40],press:[1.4,40],stage:[1.4,40],fac:[1.6,80],lab:[2.2,70],bigfac:[4,120,1],office:[4,110,1],arena:[5,140,1]};
+  const DYN_BIZ=Object.keys(DYN_BLD);
   function dynFreeLots(){return S.lotUsed.map((u,i)=>lotFull(i)?-1:i).filter(i=>i>=0)}
-  function dynBizActions(me,add){if(!isAdult(me))return;const hr=S.houseRef||100,cost=hr*1.5,D=S.dyn;const busy=S.sites.find(x=>x.dynOwner===me.id);const free=dynFreeLots().length;
-    for(const fx of DYN_BIZ)add('biz:build:'+fx,'가게·일꾼',`${FXN[fx]} 짓기`,`약 ${won(cost)} · 목수를 고용해 짓고 다 지으면 내 건물(${FXD[fx]}) · 회사로 키울 수 있음`,busy?'이미 짓고 있는 건물이 있음':me.cash<cost?'돈이 모자람':!free?'빈 집터가 없음':'');
+  function dynEmptyLots(){return S.lotUsed.map((u,i)=>u===0?i:-1).filter(i=>i>=0)}
+  function dynBldCost(fx){return (S.houseRef||100)*DYN_BLD[fx][0]}
+  function dynBldLock(me,fx){const staff=S.agents.filter(x=>x.alive&&x.emp===me.id).length,ad=adultsC().length,EN=S.eduN||[];
+    if(fx==='fac'&&staff<3)return `내 일꾼이 3명 이상이어야 함(지금 ${staff}명)`;
+    if(fx==='heal'&&!((S.medT||0)>=1))return '의학 기술(약초·침)이 생겨야 함';
+    if((fx==='press'||fx==='stage')&&ad<150)return `마을 어른이 150명 이상이어야 함(지금 ${ad}명)`;
+    if(fx==='bigfac'){if(!S.iron)return '쇠(철) 기술이 있어야 함';if(staff<6)return `내 일꾼이 6명 이상이어야 함(지금 ${staff}명)`}
+    if(fx==='lab'){if(S.designs.length<8)return `건물 설계가 8종 이상 쌓여야 함(지금 ${S.designs.length}종)`;if(S.firms.length<2)return '마을에 회사가 2곳 이상 있어야 함';if(((EN[3]||0)+(EN[4]||0))<3)return '고학력자가 3명 이상 있어야 함'}
+    if(fx==='office'){if(!(S.tall>=1))return '고층 건축 기술이 있어야 함';if(S.firms.length<3)return '마을에 회사가 3곳 이상 있어야 함'}
+    if(fx==='arena'&&ad<350)return `마을 어른이 350명 이상이어야 함(지금 ${ad}명)`;
+    return ''}
+  function dynBizActions(me,add){if(!isAdult(me))return;const D=S.dyn;const busy=S.sites.find(x=>x.dynOwner===me.id);const free=dynFreeLots().length,empty=dynEmptyLots().length;
+    for(const fx of DYN_BIZ){const [,days,big]=DYN_BLD[fx],cost=dynBldCost(fx);add('biz:build:'+fx,'가게·일꾼',`${FXN[fx]} 짓기`,`약 ${won(cost)} · 공사 약 ${days}일${big?' · 빈 집터 한 필을 통째로 씀':''} · 다 지으면 내 건물(${FXD[fx]}) · 회사로 키울 수 있음`,dynBldLock(me,fx)||(busy?'이미 짓고 있는 건물이 있음':me.cash<cost?'돈이 모자람':big?(!empty?'통째로 빈 집터가 없음':''):(!free?'빈 집터가 없음':'')))}
     const staff=S.agents.filter(x=>x.alive&&x.emp===me.id);if(staff.length)add('biz:none','가게·일꾼',`내 일꾼 ${staff.length}명`,staff.slice(0,6).map(x=>nm(x)).join(', ')+(staff.length>6?' 외':'')+' · 고용·해고는 인물 카드에서','이름을 누르면 인물 카드에서 해고할 수 있음')}
   // 목수: 남의 일꾼이 아니고 맡은 공사가 없는 어른 중 집짓기를 잘하고 자주 한 사람
   function dynBuilder(me,not){return S.agents.filter(a=>a.alive&&isAdult(a)&&!a.site&&a!==me&&a!==not&&!a.emp&&!a.ct&&!a.study&&!a.soldier&&!((a.jailUntil||0)>S.day)).sort((x,y)=>(y.skill[BUILD]*2+y.actCount[BUILD]/Math.max(1,S.day)*5)-(x.skill[BUILD]*2+x.actCount[BUILD]/Math.max(1,S.day)*5))[0]}
   // 내 공사: 목수가 그날 일하지 않으면 공사비로 산 인부들이 하루치(1)를 짓는다. 다 되면 내 건물로 완공.
   function dynSiteTick(me){for(const st of S.sites.slice()){if(st.dynOwner!==me.id)continue;if(st.lastDay!==S.day){st.prog+=1;st.lastDay=S.day}
     if(st.prog<st.need)continue;S.sites=S.sites.filter(x=>x!==st);const bd=S.byId.get(st.owner);if(bd&&bd.site===st.id)bd.site=null;
-    const b={big:false,pname:null,pk:null,faith:null,id:st.id,lot:st.lot,owner:me.id,firm:null,spec:null,pub:false,weak:false,fx:normalizeBuildingFx(st.fx),fee:1,cond:1,built:S.day,builder:st.owner,rev:0,revE:0,users:0,stud:0};S.bldgs.push(b);S._fxD=-1;S._foD=-1;S._waD=-1;
+    const fx=normalizeBuildingFx(st.fx),pname=fx.includes('press')?paperName(me):null,pk=pname?paperName.k:null;const b={big:!!st.big,pname,pk,faith:null,id:st.id,lot:st.lot,owner:me.id,firm:null,spec:null,pub:false,weak:false,fx,fee:1,cond:1,built:S.day,builder:st.owner,rev:0,revE:0,users:0,stud:0};S.bldgs.push(b);S._fxD=-1;S._foD=-1;S._waD=-1;
+    {const M={bigfac:['bigfacDone','첫 대형 공장 완공. 땅 한 필을 통째로 쓰는 대형 공장이 돌기 시작했다'],lab:['labDone','첫 연구소 완공. 연구원을 뽑아 새 기술을 개발한다'],arena:['arenaDone','첫 경기장 완공'],fac:['bigFactory',`첫 공장. ${josa(nm(me),'이','가')} 일꾼이 많을수록 효율이 오르는 공장을 지었다`]};for(const f of fx)if(M[f])mile(M[f][0],M[f][1],[me.id])}
     log('build',`${josa(nm(me),'이','가')} ${josa(bName(b),'을','를')} 완공`,[me.id],{...lotPos(b.lot),t:bName(b)+' 완공!'});dynChron(`${josa(nm(me),'의','의')} ${josa(bName(b),'이','가')} 완공되다`,[me.id]);dynPush('notice',`🏗️ ${josa(bName(b),'이','가')} 완공됐습니다. 영지 메뉴에서 회사로 키울 수 있습니다.`,[{k:'ok',label:'확인'}],{d:S.day,b:b.id})}}
-  function dynBiz(me,k){const [,op,fx]=k.split(':');if(op!=='build'||!DYN_BIZ.includes(fx))throw Error('모르는 행동입니다');const hr=S.houseRef||100,cost=hr*1.5;const free=dynFreeLots();if(!free.length)throw Error('빈 집터가 없습니다');
+  function dynBiz(me,k){const [,op,fx]=k.split(':');if(op!=='build'||!DYN_BIZ.includes(fx))throw Error('모르는 행동입니다');const lock=dynBldLock(me,fx);if(lock)throw Error(lock);if(S.sites.some(x=>x.dynOwner===me.id))throw Error('이미 짓고 있는 건물이 있습니다');const [,days,big]=DYN_BLD[fx],cost=dynBldCost(fx);if(me.cash<cost)throw Error('돈이 모자랍니다');const free=big?dynEmptyLots():dynFreeLots();if(!free.length)throw Error(big?'통째로 빈 집터가 없습니다':'빈 집터가 없습니다');
     const builder=dynBuilder(me);if(!builder)throw Error('지을 사람이 없습니다');
-    const lot=pickLot(me,free,.5);if(lot<0)throw Error('빈 집터가 없습니다');me.cash-=cost;SP(me,'house',cost);builder.cash+=cost;builder.src.house=(builder.src.house||0)+cost;S.lotUsed[lot]++;
-    const site={id:S.nextHouse++,lot,owner:builder.id,prog:0,kind:'eff',fx:[fx],need:40,start:S.day,dynOwner:me.id};S.sites.push(site);builder.site=site.id;builder.q[0][BUILD]=Math.max(builder.q[0][BUILD],8);builder.q[1][BUILD]=Math.max(builder.q[1][BUILD],8);
+    const lot=pickLot(me,free,big?1:.5);if(lot<0)throw Error('빈 집터가 없습니다');me.cash-=cost;SP(me,'house',cost);builder.cash+=cost;builder.src.house=(builder.src.house||0)+cost;if(big){S.lotUsed[lot]=99;S.lotOwn[lot]=me.id}else S.lotUsed[lot]++;
+    const site={id:S.nextHouse++,lot,owner:builder.id,prog:0,kind:'eff',fx:[fx],need:days,start:S.day,dynOwner:me.id,...(big?{big:true}:{})};S.sites.push(site);builder.site=site.id;builder.q[0][BUILD]=Math.max(builder.q[0][BUILD],8);builder.q[1][BUILD]=Math.max(builder.q[1][BUILD],8);
     const t=`${josa(nm(builder),'을','를')} 고용해 ${josa(FXN[fx],'을','를')} 짓기 시작했다`;dynChron(`${josa(nm(me),'이','가')} ${josa(FXN[fx],'을','를')} 짓기 시작하다`,[me.id,builder.id]);return t}
   // 인물 카드에서 고르는 행동(대상 지정). 키 tgt:동작:id
   function dynTargetActions(id){const D=S.dyn,me=dynMe(),x=S.byId.get(Number(id));const out=[];if(!D||!me||!me.alive||!x||!x.alive||x.id===me.id||D.over)return out;const add=(k,label,hint,why)=>out.push({k,group:'대상',label,hint,ok:!why,why:why||''});

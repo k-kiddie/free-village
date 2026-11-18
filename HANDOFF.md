@@ -203,3 +203,8 @@ node scripts/check-server.js / check-http.js / check-migration.js / check-lifecy
 - 회사별 상태는 `f.co`. 매월(`S.day%30===7`) `coTick`이 사기·경영 효과·복지·지점비·특허 사용료·비리 발각을 처리한다. 경영 효과로 버는 돈은 경쟁사와 주민 지갑에서 옮겨 와 돈이 새로 생기지 않는다.
 - 회사 사건 21개(`co*`: 파업, 경쟁사, 납품 계약, 사고, 인재 빼가기, 세무 조사, 적대적 인수, 후계 다툼, 내부 고발 등). 현황판은 view의 `co` 배열 → god-client `dynCoHTML`.
 - 검사: `scripts/check-company.js`. 원래 마을 해시 불변 확인. `check-dynasty`(256행)·`check-stocks`(w.ipo 없음)는 main에서도 실패하던 기존 문제다.
+
+## 화면 편의성 · 건물 확장 (2026-11-18)
+- god-client 첫 탭 `home`(🧭 한눈에): 재산·지위·건강·가문·회사·신앙 요약, 챙길 것, 행동 검색(`dynQuery`), ⭐ 즐겨찾기(localStorage `v-dynfav`, 행동 키 기준), 지금 할 수 있는 것. 행동 버튼은 `dynActHTML`으로 통일.
+- 가문 모드 건물 18종(`DYN_BLD`): 기존 7종 + 회관·금고·경비 초소·의원·신문사·공연장·공장·연구소·대형 공장·사무실 빌딩·경기장. 잠금 조건(`dynBldLock`)은 마을 주민 조건과 같다. 대형은 빈 집터 통째로(`lotUsed=99`, `big`). 완공 시 신문사 이름·대형 표시 처리. 사원·감옥은 제외(교단·정부 경로가 따로 있음).
+- 검사: `scripts/check-dyn-buildings.js`.
