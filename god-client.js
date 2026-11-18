@@ -5,7 +5,7 @@ const DYN_FULL_GROUPS=GROUPS.map(g=>[g[0],g[1].slice()]);
 const dynEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const DYN_TABS=[['me','👤','인물'],['fam','🏠','가문'],['asset','💰','영지'],['dip','🌍','외교'],['plot','🗡️','음모'],['law','⚖️','정치'],['news','📰','소식'],['power','📊','통계']];
 // 메뉴별 행동 묶음(서버 행동의 group). 목록에 없는 묶음은 인물 메뉴에 나온다.
-const DYN_TAB_G={me:['건강','인맥','일자리'],fam:['가족','상속','자녀 교육','가문 목표'],asset:['가게·일꾼','집·땅','주식','회사','돈'],dip:['외교'],plot:['첩보','어두운 길','평판 싸움'],law:['정부 세우기','조직','선거','법 바꾸기','권력']};
+const DYN_TAB_G={me:['건강','인맥','일자리'],fam:['가족','상속','자녀 교육','가문 목표'],asset:['가게·일꾼','집·땅','주식','회사','돈'],dip:['외교'],plot:['첩보','어두운 길','평판 싸움','교단 · 어둠'],law:['정부 세우기','조직','선거','법 바꾸기','권력','종교','교단 · 선행']};
 const dynTabOfGroup=g=>/^법/.test(g)?'law':Object.keys(DYN_TAB_G).find(k=>DYN_TAB_G[k].includes(g))||'me';
 function initDyn(send,api,base){
   dynSend=send;dynApi=api;dynApiBase=base;document.body.classList.add('dyn');
@@ -104,6 +104,7 @@ function dynPanelHTML(v){
       m.happy!=null&&['행복',Math.round(m.happy*100)+'점'],['평판',Math.round((m.rep??1)*100)],['스트레스',(v.stress||0)+'/100'],v.clergy&&['교단 지위',dynEsc(v.clergy)],['병역',m.drafted?'복무 중':m.altServ?'대체 복무 중':m.served?'군필':'미필'],['학력',EDU_L[m.edu||0]],['업종',m.occ?OCC_L[m.occ]:'없음'],
       ['고용주',m.emp?dynPerson(m.emp):'없음'],m.staff&&['고용한 사람',m.staff+'명'],m.grp&&['소속',dynEsc(m.grp.name)+(m.grp.leader?' (우두머리)':'')],m.caught&&['전과',m.caught+'번'],m.jail&&['처지','수감 중']])}
       <button data-person="${m.id}">자세한 인물 카드</button></div>
+      ${v.faithInfo?`<div class="sec"><h4>신앙 · ${dynEsc(v.faithInfo.name)}</h4>${dynKV([['교리',dynEsc(v.faithInfo.docs.join(' · '))],['내 자리',v.faithInfo.leader?'교주':v.clergy?'성직자':'신도'],['신도',v.faithInfo.members+'명'],v.faithInfo.leader&&['교단 금고',money(v.faithInfo.tre)],['교단 평판',dynEsc(v.faithInfo.repName)+` (${Math.round(v.faithInfo.rep*100)})`],v.faithInfo.state&&['지위','국교'],v.faithInfo.lock&&['세습','우리 가문이 대대로 이끎'],v.faithInfo.mutual&&['상호부조 계','운영 중'],v.faithInfo.rumor&&['소문','⚠️ 수상한 소문이 돈다']])}<small class="muted">종교 행동은 ⚖️ 정치 탭(창시·전도·선행)과 🗡️ 음모 탭(어둠)에 있습니다.</small></div>`:''}
       <div class="sec"><h4>초반 생계 · 일 고르기</h4><label class="bud">희망하는 일 <select data-bud="job"><option value="-1" ${v.budget.job==null||v.budget.job<0?'selected':''}>성향대로 자동 선택</option>${(v.jobs||[]).map(j=>`<option value="${j.k}" ${v.budget.job===j.k?'selected':''}>${dynEsc(j.n)}${j.wage?` · ${money(j.wage.min)}~${money(j.wage.max)}/일 예상`:''}</option>`).join('')}</select>
         <small>${(()=>{const j=(v.jobs||[]).find(x=>v.budget.job===x.k);return dynEsc(j?[j.h,j.days,j.wage?`예상 품삯 ${money(j.wage.min)}~${money(j.wage.max)}/일`:''].filter(Boolean).join(' · '):'기술과 조건에 맞는 합법 일감을 엔진이 고릅니다. 품팔이 임금은 마을 일당을 바탕으로 한 예상치입니다.')} )()} · 오늘: ${dynEsc(DYN_ACT_N[v.act]??'-')}</small></label></div>
       ${dynActionsHTML(v,'me')}${dynNetHTML(v)}`;
