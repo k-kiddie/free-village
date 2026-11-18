@@ -3653,7 +3653,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function appointJudges(ch){const G=S.gov;if(!G.judges)G.judges=[];if(courtKind()==='ruler'){G.judges=[];return}
     G.judges=G.judges.filter(j=>{const x=S.byId.get(j.id);return x&&x.alive&&!x.banned&&!inJail(x)&&S.day<j.until});
     const n=nJudges();const mem=(G.council||[]).map(id=>S.byId.get(id)).filter(m=>m&&m.alive);let guard=0;
-    while(G.judges.length<n&&guard++<6){const taken=new Set([...(G.prosList||[]),...G.judges.map(j=>j.id)]);
+    while(G.judges.length<n&&!(S.dyn&&G.jr)&&guard++<6){const taken=new Set([...(G.prosList||[]),...G.judges.map(j=>j.id)]);
       const ad=S.agents.filter(a=>isAdult(a)&&a.age>=25*YEAR&&!a.banned&&!inJail(a)&&!taken.has(a.id)&&(!ch||a.id!==ch.id));if(!ad.length)break;
       const loyal=ch&&(ch.g.cheat>.4||courtKind()==='puppet');const sc=a=>loyal?(a.grp&&a.grp===ch.grp?1:0)+a.g.comply*.5+R()*.3:prosInt(a)+R()*.2;
       const cand=ad.sort((x,y)=>sc(y)-sc(x)).slice(0,3);let pickd=null;
@@ -5301,14 +5301,14 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(agency&&(!secMinistry||agency.exposed))add('spyorg:disband','첩보','비밀 정보조직 해산','조직을 없애고 요원들을 돌려보냄');
     }
     if(!((me.jailUntil||0)>S.day))dynMoreActions(me,add);
-    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r);dynMore2Actions(me,add,r);dynBizActions(me,add);dynLaw2Actions(me,add);dynExtraActions(me,add);dynFaithActions(me,add);dynFaithDeedActions(me,add);dynRoyalActions(me,add);coActions(me,add);farActions(me,add);p2Actions(me,add);bdActions(me,add);crActions(me,add);duActions(me,add);adActions(me,add)}
+    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r);dynMore2Actions(me,add,r);dynBizActions(me,add);dynLaw2Actions(me,add);dynExtraActions(me,add);dynFaithActions(me,add);dynFaithDeedActions(me,add);dynRoyalActions(me,add);coActions(me,add);farActions(me,add);p2Actions(me,add);bdActions(me,add);crActions(me,add);duActions(me,add);adActions(me,add);jrActions(me,add)}
     if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynEcoActions(me,add,out);
     if(isAdult(me)&&!((me.jailUntil||0)>S.day)){
       if(D.gig)add('gig:quit','일자리','계약을 그만둔다',`${D.gig.label} · ${Math.max(0,D.gig.end-S.day)}일 남음 · 실제 일한 날만 임금 지급`);
       else for(const g of dynGigOffers(me)){const a=add(`gig:${g.type}:${g.e.id}`,'일자리',`${g.label} · ${nm(g.e)}`,`하루 ${won(g.wage)} · ${g.durations.map(n=>`${n}일 ${won(n*g.wage)}`).join(' / ')} · 계약 뒤 일한 날에 임금 지급`);a.opts=g.durations.map(n=>[n,`${n}일 계약`])}
     }
     return out}
-  function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');if(/^tgt:/.test(k)){const text=dynTarget(me,k);D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}const base=/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):/^law2:/.test(k)?k.split(':').slice(0,2).join(':'):/^lawval:/.test(k)?'law2:'+k.split(':')[1]:/^gig:/.test(k)?k.split(':').slice(0,3).join(':'):/^privmil:recruit:/.test(k)?'privmil:recruit':/^spyorg:recruit:/.test(k)?'spyorg:recruit':/^spyorg:order:/.test(k)?k.split(':').slice(0,3).join(':'):/^loan:lend:/.test(k)?k.split(':').slice(0,3).join(':'):/^bank:ops:/.test(k)?k.split(':').slice(0,3).join(':'):/^corp:offer:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:found:/.test(k)?'extra:found':/^fdark:politics:/.test(k)?'fdark:politics':/^extra:gang:business:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:gang:task:/.test(k)?k.split(':').slice(0,4).join(':'):/^co:dark:/.test(k)?k:/^co:/.test(k)?k.split(':').slice(0,3).join(':'):/^pol2:/.test(k)?k.split(':').slice(0,2).join(':'):/^bld:/.test(k)?k.split(':').slice(0,2).join(':'):/^crime:/.test(k)?k.split(':').slice(0,2).join(':'):/^duty:/.test(k)?k.split(':').slice(0,2).join(':'):/^adult:/.test(k)?k.split(':').slice(0,2).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!/^lawval:/.test(k)&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
+  function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');if(/^tgt:/.test(k)){const text=dynTarget(me,k);D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}const base=/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):/^law2:/.test(k)?k.split(':').slice(0,2).join(':'):/^lawval:/.test(k)?'law2:'+k.split(':')[1]:/^gig:/.test(k)?k.split(':').slice(0,3).join(':'):/^privmil:recruit:/.test(k)?'privmil:recruit':/^spyorg:recruit:/.test(k)?'spyorg:recruit':/^spyorg:order:/.test(k)?k.split(':').slice(0,3).join(':'):/^loan:lend:/.test(k)?k.split(':').slice(0,3).join(':'):/^bank:ops:/.test(k)?k.split(':').slice(0,3).join(':'):/^corp:offer:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:found:/.test(k)?'extra:found':/^fdark:politics:/.test(k)?'fdark:politics':/^extra:gang:business:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:gang:task:/.test(k)?k.split(':').slice(0,4).join(':'):/^co:dark:/.test(k)?k:/^co:/.test(k)?k.split(':').slice(0,3).join(':'):/^pol2:/.test(k)?k.split(':').slice(0,2).join(':'):/^bld:/.test(k)?k.split(':').slice(0,2).join(':'):/^crime:/.test(k)?k.split(':').slice(0,2).join(':'):/^duty:/.test(k)?k.split(':').slice(0,2).join(':'):/^adult:/.test(k)?k.split(':').slice(0,2).join(':'):/^jr:/.test(k)?k.split(':').slice(0,2).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!/^lawval:/.test(k)&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
     const ad=adultsC();let text='';
     if(k==='gig:quit')text=dynGigFinish(me,'quit')?.text||'계약이 없습니다';
     else if(/^gig:/.test(k)){const days=Number(k.split(':')[3]);text=dynGigStart(me,k,days)}
@@ -5348,6 +5348,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     else if(/^crime:/.test(k))text=crAct(me,k);
     else if(/^duty:/.test(k))text=duAct(me,k);
     else if(/^adult:/.test(k))text=adAct(me,k);
+    else if(/^jr:/.test(k))text=jrAct(me,k);
     else if(k==='runChief'||k==='runCouncil'){const kind=k==='runChief'?'chief':'council',f=dynFee(kind);me.cash-=f;SP(me,'bribe',f);D.run={...(D.run||{}),[kind]:true};text=`${kind==='chief'?chiefTitle():'의원'} 선거에 출마 등록했다(선거비 ${won(f)})`}
     D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}
   // 선거 후보 명단에 출마 등록한 플레이어를 넣는다(당락은 엔진 투표).
@@ -5359,6 +5360,12 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(me&&!ad.includes(me)){dynChron(`${josa(nm(me),'은','는')} ${dynEligible(kind)||'자격이 없어'} ${kind==='chief'?chiefTitle():'의원'} 선거에 나가지 못하다`,[me.id]);return}
     if(me&&ad.includes(me)&&!cand.includes(me)){cand.push(me);dynChron(`${josa(nm(me),'이','가')} ${kind==='chief'?chiefTitle():'의원'} 선거에 출마하다`,[me.id])}}
   const DYN_H={
+    jrCj(ctx,k,me){const G=S.gov,J=G?.jr,x=S.byId.get(Number(k.slice(1)));if(!J||!x||!x.alive)return '대법원장 자리가 이미 정리됐다';G.cj=x.id;J.cjUntil=S.day+YEAR*6;J.cjAsk=0;jrLog(`${josa(nm(x),'이','가')} 대법원장이 됐다 (임기 6년)`,[x.id],true);return `${josa(nm(x),'을','를')} 대법원장에 앉혔다`},
+    jrNom(ctx,k,me){const V=S.gov?.jr?.vac,x=S.byId.get(Number(k.slice(1)));if(!V||!x)return '절차가 바뀌었다';V.cand=x.id;V.by=me.id;V.stage=jrRuler()===me?'consent':'ruler';V.wait=0;S.gov.jr.law.noNomTemp=0;jrLog(`${josa(nm(me),'이','가')} ${josa(nm(x),'을','를')} 재판관 후보로 제청했다`,[me.id,x.id]);return `${josa(nm(x),'을','를')} 제청했다`},
+    jrRuler(ctx,k,me){const G=S.gov,V=G?.jr?.vac;if(!V)return '절차가 끝났다';V.wait=0;if(k==='accept'){V.stage='consent';return '제청을 받아들여 의회 동의로 넘겼다'}
+      if(k==='hold'){V.holdUntil=S.day+30;G.approval=Math.max(0,(G.approval??.5)-.02);return '임명을 미뤘다. 사법 공백 비판이 나온다'}
+      V.ren=(V.ren||0)+1;const cj=S.byId.get(G.cj);if(cj&&cj!==me&&wr()<.3+(cj.g.boss??.5)*.5){V.refused=1;V.holdUntil=S.day+30;jrLog(`대법원장 ${josa(nm(cj),'이','가')} 재제청 요구를 거부했다`,[cj.id],true);return '대법원장이 재제청 요구를 거부했다'}V.stage='nom';V.cand=null;return '대법원장이 다른 후보를 다시 제청하기로 했다'},
+    jrReview(ctx,k,me){const J=S.gov?.jr,r=(J?.rev||[]).find(x=>x.k===ctx.k&&x.asked);if(!r)return '심판이 이미 끝났다';J.rev=J.rev.filter(x=>x!==r);r.mine=k;jrRule(r,me);return k==='void'?'위헌 의견을 냈다':'합헌 의견을 냈다'},
     duty(ctx,k,me){const G=S.gov,c=duFind(ctx),d=S.byId.get(ctx.who);if(!c||!d)return '사건이 이미 다른 데로 넘어갔다';const rp=x=>{me.rep=cl((me.rep??1)+x,0,1)};
       if(k==='fair'){c.dynD='go';return `${nm(d)} 사건을 증거대로 처리했다`}
       if(k==='harsh'){c.ev=Math.min(.95,(c.ev||.5)+.2);c.dynD='go';dynFamTie(d,-.25,'엄한 처벌');return `${nm(d)} 사건을 본보기로 엄하게 다뤘다`}
@@ -6595,6 +6602,26 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     o:[['meet','다시 만나 본다','',c=>{if(c.x&&!c.x.affair){c.me.affair=c.x.id;c.x.affair=c.me.id}c.happy(.08);return '옛 감정이 되살아났다. 그날 밤 등불이 늦게 꺼졌다'}],['memory','추억으로 남긴다','',c=>{c.happy(.03);return '웃으며 헤어졌다'}]]});
   E('adPartyDeath',{cat:'연애',need:c=>(S.dyn.storyHist?.adPartyDeath==null)&&c.mem.since('adParty')<YEAR,cd:YEAR*2,title:'🍾 파티의 뒷수습',text:()=>'내가 연 향락 파티에서 손님 하나가 술과 약에 취해 쓰러졌습니다.',
     o:[['doctor','의원을 부른다','',c=>{c.rep(-.03);return '목숨은 건졌지만 소문이 났다'}],['hide','조용히 집으로 옮긴다','',c=>{if(c.roll(.3)){c.rep(-.12);return '숨기려다 일이 커졌다'}return '아무도 몰랐다'},{trait:'honesty'}]]});
+  // ===== 사법부 사건 (가문 모드) =====
+  const jrV=()=>S.gov?.jr?.vac;
+  E('jrVacancyLong',{cat:'사법',need:c=>!!jrV()&&S.day-jrV().d>60&&jrRuler()===c.me,cd:YEAR,title:'⚖️ 재판관 공백 장기화',text:()=>`재판관 자리가 ${S.day-jrV().d}일째 비어 있습니다. 밀린 재판이 쌓이고 신문마다 "사법 공백"이라고 씁니다.`,
+    o:[['compromise','타협한다 · 한 명씩 나눠 갖기','',c=>{const V=jrV();V.stage='consent';c.appr(.03);return '대법원장 후보를 받아들이는 대신 다음 자리는 내가 고르기로 했다'}],['blame','대법원장 탓으로 돌린다','',c=>{c.appr(-.01);c.rep(-.02);return '여론전을 벌였다. 지지층은 결집했다'}],['wait','버틴다','',c=>{c.appr(-.04);return '공백이 계속된다'}]]});
+  E('jrRefusalShock',{cat:'사법',trig:c=>!!jrV()?.refused&&!jrV().shock&&jrRuler()===c.me,cd:YEAR,title:'📰 제청 거부 파동',text:()=>'내가 재외 순방 중인 사이 대법원장이 재제청 요구를 거부한다고 발표했습니다. "등 뒤에 칼을 꽂았다"는 말까지 나옵니다.',
+    o:[['angry','강하게 비판한다','',c=>{jrV().shock=1;c.appr(.02);return '지지층이 들끓었다. 반대쪽은 사법부 독립을 외친다'}],['calm','차분히 대응한다','',c=>{jrV().shock=1;c.rep(.03);return '절제된 대응이라는 평을 들었다'}],['court','권한쟁의로 가겠다고 한다','',c=>{jrV().shock=1;return '헌법 재판으로 결판을 내기로 했다'}]]});
+  E('jrSecretMeet',{cat:'사법',need:c=>!!S.gov?.cj&&S.gov.cj!==c.me.id&&!!jrRuler()&&jrRuler()!==c.me,cd:YEAR*2,title:'🕯️ 비밀 회동 의혹',text:c=>`대법원장 ${josa(nm(sBy(S.gov.cj)),'이','가')} 야당 실세와 밤에 따로 만났다는 제보가 들어왔습니다.`,
+    o:[['leak','언론에 흘린다','',c=>{const cj=sBy(S.gov.cj);if(cj)cj.rep=Math.max(0,(cj.rep??.5)-.1);return '대법원장 사퇴론이 거세졌다'}],['hold','쥐고 있는다','약점',c=>{c.mem.set('cjDirt',S.gov.cj);return '나중에 쓸 카드로 남겨 뒀다'}],['ignore','흘려듣는다','',()=>'뜬소문으로 여겼다']]});
+  E('jrReformProtest',{cat:'사법',need:c=>Object.values(S.gov?.jr?.law||{}).some(Boolean)&&jrRuler()===c.me,cd:YEAR,title:'📢 사법개혁 반대 시위',text:()=>'"사법부 장악 반대!" 법조인과 시민들이 법원 앞에 촛불을 들었습니다. 다른 쪽에서는 "사법 적폐 청산"을 외칩니다.',
+    o:[['talk','양쪽 대표를 부른다','',c=>{c.appr(.02);return '대화 자리를 마련했다'}],['push','개혁을 밀어붙인다','',c=>{c.appr(-.03);return '지지층은 환호했고 반대쪽은 더 커졌다'}],['retreat','속도를 늦춘다','',c=>{const L=S.gov.jr.law;const k=Object.keys(L).find(k=>L[k]);if(k)L[k]=false;return '개혁 법안 하나를 거둬들였다'}]]});
+  E('jrMassResign',{cat:'사법',need:c=>!!S.gov?.jr?.law?.distort&&jrRuler()===c.me,cd:YEAR*2,title:'🧑‍⚖️ 판사들의 집단 사직',text:()=>'법왜곡죄가 생기자 판사들이 "소신 판결을 못 한다"며 줄줄이 사표를 냅니다.',
+    o:[['accept','사표를 받는다','공백↑ 내 사람 채울 기회',c=>{const js=S.gov.judges||[];if(js.length>1)js.splice(0,1);return '빈자리가 생겼다'}],['persuade','설득한다','',c=>{c.appr(.01);return '일부가 사표를 거뒀다'}]]});
+  E('jrUnconstAnger',{cat:'사법',trig:c=>(S.gov?.jr?.log||[]).some(x=>/위헌 결정/.test(x.text)&&S.day-x.d<20)&&jrRuler()===c.me,cd:YEAR,title:'🔥 위헌 결정 후폭풍',text:()=>'법원이 내 정부가 만든 법을 위헌이라며 없앴습니다. 지지자들이 법원으로 몰려갑니다.',
+    o:[['accept','결정을 존중한다','',c=>{c.rep(.05);return '법치를 지켰다는 평을 들었다'}],['remake','조금 고쳐 다시 만든다','',c=>{return '법을 손봐 다시 추진하기로 했다'}],['attack','법원을 공격한다','',c=>{c.appr(.02);c.rep(-.05);if(S.gov.jr)S.gov.jr.law.noNom=true;return '사법부 개혁 카드를 꺼냈다'}]]});
+  E('jrJudgeOffer',{cat:'사법',need:c=>jrJ().includes(c.me)&&!!jrRuler()&&jrRuler()!==c.me,cd:YEAR,title:'🍷 청와대(관저)의 초대',text:c=>`${josa(nm(jrRuler()),'이','가')} 조용히 저녁을 하자고 합니다. 곧 정권 사건 판결이 있습니다.`,
+    o:[['go','간다','친분↑ · 독립성 의심',c=>{c.tie(jrRuler(),.25,'만찬');c.rep(-.03);return '만찬에 다녀왔다. 말이 나기 시작했다'}],['no','정중히 거절한다','',c=>{c.tie(jrRuler(),-.15,'거절');c.rep(.04);return '거절했다. 소신 판사라는 말을 들었다'}]]});
+  E('jrCjPressure',{cat:'사법',need:c=>S.gov?.cj===c.me.id&&!!jrRuler()&&jrRuler()!==c.me,cd:YEAR,title:'📞 사퇴하라는 압박',text:()=>'정권 쪽에서 "물러나는 게 모두를 위한 길"이라는 말이 계속 들어옵니다.',
+    o:[['stay','버틴다','',c=>{c.rep(.05);return '자리를 지켰다. 사법부 독립의 상징이 됐다'}],['deal','물러나는 대가를 받는다',c=>`+${won(c.wA*15)}`,c=>{c.cash(c.wA*15);S.gov.cj=null;if(S.gov.jr)S.gov.jr.cjUntil=0;return '조용히 물러났다'},{trait:'honesty'}],['resign','명예롭게 물러난다','',c=>{S.gov.cj=null;if(S.gov.jr)S.gov.jr.cjUntil=0;c.rep(.02);return '물러났다'}]]});
+  E('jrDisputeWait',{cat:'사법',need:c=>!!jrV()?.refused&&S.gov?.cj===c.me.id,cd:YEAR,title:'⚖️ 권한쟁의 앞에서',text:()=>'통치자가 권한쟁의를 예고했습니다. 대법원장으로서 제청권을 끝까지 지킬지 정해야 합니다.',
+    o:[['keep','제청권을 지킨다','',c=>{c.rep(.04);return '물러서지 않았다'}],['bend','다른 후보를 다시 제청한다','',c=>{const V=jrV();V.stage='nom';V.cand=null;V.refused=0;return '한발 물러섰다'}]]});
   const FOLLOW={};function F(id,k,list){(FOLLOW[id+':'+k]=FOLLOW[id+':'+k]||[]).push(...list)}
   const sOk=re=>(c,r)=>re.test(r),sNok=re=>(c,r)=>!re.test(r);
   // A. 형제 다툼 → 분가 → 가문 내전 / 독살 음모
@@ -7725,6 +7752,64 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     for(const b of bdMine(me)){if(b.dynBrothel){const g=bdTake(wA*(law>=2?4:3),me);me.cash+=g;b.rev=(b.rev||0)+g;if(law>=2&&G){const t=g*(G.policy.tax||0);me.cash-=t;G.tre+=t}if(law<=1){crHeat(.08);if(G&&wr()<.04)G.cases.push({t:'fzIllegal',who:me.id,amt:g*3,ev:.6,d:S.day})}if(wr()<.02){me.std=me.std||(wr()<.3?1:0)}}
       if(b.dynAdultMag){const g=bdTake(wA*2,me);me.cash+=g;if(G?.policy?.censor&&wr()<.04)G.cases.push({t:'obscene',who:me.id,amt:g*3,ev:.6,d:S.day})}}
     for(const x of S.agents){if(!x.alive||x.dynConc!==me.id)continue;if(wr()<.04){const c=adBaby(me,x);if(c)dynChron(`${nm(me)}의 ${me.sex==='F'?'남총':'후궁'} ${nm(x)} 사이에서 ${josa(nm(c),'이','가')} 태어나다`,[me.id,c.id])}}}
+  // ===== 사법부: 대법원장·재판관 제청/동의/임명·위헌법률심판·권한쟁의·사법개혁 (가문 모드 전용) =====
+  const JR_LAW={expand:'재판관 증원(+2석)',noNom:'대법원장 제청권 폐지',appeal:'재판소원(판결 다시 다투기)',distort:'법왜곡죄(판사 처벌)',noAdmin:'법원행정처 폐지'};
+  const JR_REV=['censor','drugLaw','polyBan','sameSex','redlightClose','armsBan','offenderReg','multiTax','propTax','landReform','rentCap','priceCap','resNat','fdiNat','breakup','draft','draftSex','spyAgency','platformReg','basicIncome','debtRelief','deathPen','fuzoku','layoffLaw'];
+  function jrOn(){const G=S.gov;return !!(S.dyn&&G&&['indep','semi','puppet'].includes(courtKind()))}
+  function jrJ(){const G=S.gov;return (G?.judges||[]).map(j=>S.byId.get(j.id)).filter(x=>x&&x.alive)}
+  function jrCap(){const G=S.gov;return nJudges()+(G?.jr?.law?.expand?2:0)}
+  function jrRuler(){const G=S.gov;return G&&S.byId.get(G.king&&regime()!=='cmon'?G.king:G.chief)}
+  const jrIndep=j=>j?cl((j.g.civic??.5)*(1-(j.g.cheat??.3))+(j.g.boss??.5)*.2,0,1):0;
+  function jrSide(j,ch){return !!(j&&ch&&((j.grp&&j.grp===ch.grp)||j.jrBy===ch.id))}
+  function jrLog(t,ids,big){const G=S.gov;G.jr.log=(G.jr.log||[]).concat({d:S.day,text:t}).slice(-12);log('pol',t,ids||[]);if(big)dynChron(t,ids||[])}
+  function jrCandidates(by){const G=S.gov,taken=new Set([...(G.prosList||[]),...(G.judges||[]).map(j=>j.id),G.chief,G.king]);return adA().filter(a=>a.age>=25*YEAR&&!a.banned&&!inJail(a)&&!taken.has(a.id)&&a.id!==by?.id).sort((x,y)=>(by&&y.grp===by.grp?1:0)+jrIndep(y)*.5-((by&&x.grp===by.grp?1:0)+jrIndep(x)*.5)).slice(0,4)}
+  function jrConsent(c){const mem=p2Mem(),ch=jrRuler();if(mem.length<3)return true;let y=0;for(const m of mem){const s2=(jrIndep(c)-.3)*1.5+(ch&&p2Same(m,ch)?.6:-.2)+(c.grp&&m.grp===c.grp?.6:0)+(wr()-.5)*.6;if(s2>0)y++}return y*2>mem.length}
+  // 열흘마다: 대법원장 임기, 빈자리 진행(제청→동의→임명), 위헌 심판 판결, 정부가 알아서 하는 몫
+  function jrTick(me){const G=S.gov;if(!jrOn()||S.day%10!==4){return}if(!G.jr)G.jr={vac:null,rev:[],law:{},log:[],cjUntil:0};const J=G.jr,ch=jrRuler();
+    // 대법원장
+    if(!G.cj||!S.byId.get(G.cj)?.alive||S.day>J.cjUntil){const js=jrJ();const pickCj=me&&ch===me?null:js.sort((x,y)=>(jrSide(y,ch)?1:0)-(jrSide(x,ch)?1:0)||jrIndep(y)-jrIndep(x))[0];
+      if(ch===me&&js.length){if(!J.cjAsk){J.cjAsk=1;dynPush('jrCj','대법원장 자리가 비었습니다. 재판관 가운데 누구를 대법원장에 앉힐까요?',js.slice(0,4).map(j=>dynOpt('j'+j.id,`${nm(j)}${jrSide(j,me)?' (내 편)':''}`,`독립성 ${Math.round(jrIndep(j)*100)}`)),{})}}
+      else if(pickCj){G.cj=pickCj.id;J.cjUntil=S.day+YEAR*6;J.cjAsk=0;jrLog(`${josa(nm(pickCj),'이','가')} 대법원장이 됐다 (임기 6년)`,[pickCj.id])}}
+    // 빈자리
+    const js=jrJ();if(!J.vac&&js.length<jrCap()){J.vac={stage:'nom',d:S.day,cand:null,ren:0};jrLog('재판관 자리가 비었다. 후임 제청 절차가 시작됐다')}
+    const V=J.vac;if(V){const cj=S.byId.get(G.cj);const nomBy=J.law.noNom||J.law.noNomTemp||!cj?ch:cj;
+      if(V.stage==='nom'&&!V.wait){if(nomBy===me){V.wait=1;dynPush('jrNom','재판관 후임을 제청해야 합니다.',jrCandidates(me).map(c=>dynOpt('c'+c.id,nm(c),`독립성 ${Math.round(jrIndep(c)*100)}${c.grp===me.grp&&me.grp?' · 내 편':''}`)),{})}
+        else{const c=jrCandidates(nomBy)[0];if(c){V.cand=c.id;V.stage='ruler';V.by=nomBy?.id;J.law.noNomTemp=0;jrLog(`${nomBy?josa(nm(nomBy),'이','가'):'법원이'} ${josa(nm(c),'을','를')} 재판관 후보로 제청했다`,[c.id])}}}
+      else if(V.stage==='ruler'&&!V.wait&&!(V.holdUntil>S.day)){const c=S.byId.get(V.cand);if(!c||!c.alive){J.vac={stage:'nom',d:V.d,ren:V.ren};return}
+        if(ch===me&&V.by!==me.id){V.wait=1;dynPush('jrRuler',`${josa(V.by?nm(S.byId.get(V.by)):'대법원장','이','가')} ${josa(nm(c),'을','를')} 재판관 후보로 제청했습니다.${jrSide(c,me)?' 내 편 사람입니다.':' 내 편이 아닙니다.'}`,[dynOpt('accept','받아들인다','의회 동의로 넘김'),dynOpt('renom','재제청을 요구한다','대법원장이 거부할 수 있음 · 공백이 길어짐'),dynOpt('hold','임명을 미룬다','공백 · 비판')],{})}
+        else if(ch&&ch!==me&&!jrSide(c,ch)&&V.by!==ch.id&&wr()<.35&&V.ren<2){V.ren++;V.stage='nom';V.cand=null;jrLog(`${josa(nm(ch),'이','가')} 재제청을 요구했다. 재판관 공백이 길어진다`,[ch.id]);const cj2=S.byId.get(G.cj);if(cj2&&cj2!==me&&wr()<(cj2.g.boss??.5)*.6){V.stage='ruler';V.cand=c.id;V.refused=1;jrLog(`대법원장 ${josa(nm(cj2),'이','가')} 재제청 요구를 거부했다`,[cj2.id],true)}}
+        else V.stage='consent'}
+      else if(V.stage==='consent'){const c=S.byId.get(V.cand);if(!c){J.vac={stage:'nom',d:V.d,ren:V.ren};return}if(jrConsent(c)){G.judges.push({id:c.id,until:S.day+YEAR*8,by:ch?.id||null});c.jrBy=V.by;J.vac=null;jrLog(`의회 동의를 거쳐 ${josa(nm(c),'이','가')} 재판관에 임명됐다 (공백 ${S.day-V.d}일)`,[c.id],true)}else{jrLog(`의회가 ${nm(c)} 임명동의안을 부결했다`,[c.id]);J.vac={stage:'nom',d:V.d,ren:V.ren}}}}
+    // 위헌 심판 판결
+    for(const r of (J.rev||[]).slice()){if(S.day<r.at)continue;J.rev=J.rev.filter(x=>x!==r);jrRule(r,me)}
+    // 야당이 알아서 청구
+    if(elective()&&!(J.rev||[]).length&&wr()<.04){const k=JR_REV.find(k=>G.policy[k]===true&&!(J.done||{})[k]);const opp=p2Mem().find(m=>ch&&!p2Same(m,ch));if(k&&opp){J.rev=[{k,by:opp.id,at:S.day+20,d:S.day}];jrLog(`${josa(nm(opp),'이','가')} '${POL_LABEL[k]}'의 위헌 여부를 가려 달라고 청구했다`,[opp.id])}}}
+  function jrRule(r,me){const G=S.gov,J=G.jr,ch=jrRuler(),js=jrJ();if(G.policy[r.k]!==true)return;const ck=courtKind();
+    const mine=js.includes(me)||G.cj===me?.id;if(mine&&!r.asked){r.asked=1;r.at=S.day;J.rev.push(r);dynPush('jrReview',`'${POL_LABEL[r.k]}'에 대한 위헌법률심판이 올라왔습니다. 재판관으로서 어떻게 판단할까요?`,[dynOpt('valid','합헌','법이 그대로 살아남음'),dynOpt('void','위헌','법이 폐지됨 · 통치자와 부딪힐 수 있음')],{k:r.k});return}
+    let v=0;for(const j of js){if(j===me){v+=(r.mine==='void'?1:0);continue}const p=.3+jrIndep(j)*.4-(jrSide(j,ch)?.35:0)+(ck==='puppet'?-.3:ck==='semi'?-.1:0);if(wr()<p)v++}
+    J.done={...(J.done||{}),[r.k]:S.day};if(js.length&&v*2>js.length){G.policy[r.k]=false;jrLog(`위헌 결정. 법원이 ${v}대 ${js.length-v}로 '${POL_LABEL[r.k]}' 법을 헌법에 어긋난다며 폐지했다`,[],true);mEv('unconst',`위헌 결정. '${POL_LABEL[r.k]}' 법이 폐지됐다`,[]);if(ch===me)G.approval=Math.max(0,(G.approval??.5)-.04)}
+    else jrLog(`합헌 결정. 법원이 '${POL_LABEL[r.k]}' 법을 그대로 두었다 (${v}대 ${js.length-v})`,[])}
+  function jrActions(me,add){const G=S.gov;if(!jrOn()||!G.jr||!isAdult(me))return;const J=G.jr,wA=dynWA(),W=k=>dynWait('jr'+k),ch=jrRuler(),ruler=ch===me,mp=p2Mem().includes(me),cj=S.byId.get(G.cj),V=J.vac,js=jrJ();
+    const laws=JR_REV.filter(k=>G.policy[k]===true&&!(J.rev||[]).some(r=>r.k===k));if(laws.length){const a=add('jr:petition','사법부','위헌법률심판 청구',`법원이 헌법에 맞는지 따져 위헌이면 법이 폐지됨 · 비용 ${won(wA*5)} · 재판관 성향에 달림`,me.cash<wA*5?'비용이 모자람':W('petition'));a.opts=laws.slice(0,8).map(k=>['k'+k,POL_LABEL[k]])}
+    if(V)add('jr:status','사법부',`재판관 공백 ${S.day-V.d}일째`,`단계: ${{nom:'제청 대기',ruler:'임명권자 검토',consent:'의회 동의'}[V.stage]||V.stage}${V.refused?' · 대법원장이 재제청을 거부함':''}`,'진행 중인 절차');
+    if(ruler&&V&&V.refused&&cj&&cj!==me){add('jr:dispute','사법부','권한쟁의 심판 청구',`누구 권한이 맞는지 재판소에 물음 · 이기면 내 뜻대로, 지면 대법원장 제청대로`,W('dispute'))}
+    if((ruler||mp)&&elective()){const a=add('jr:reform','사법부','사법개혁 법안 발의',`의회 과반이면 통과 · 사법부 독립을 중시하는 주민은 반발`,p2Mem().length<3?'의회가 3명 이상이어야 함':W('reform'));a.opts=Object.keys(JR_LAW).map(k=>[(J.law[k]?'x':'o')+k,(J.law[k]?'폐지: ':'도입: ')+JR_LAW[k]])}
+    if(cj&&cj!==me){if(ruler)add('jr:press','사법부',`대법원장 ${nm(cj)} 사퇴 압박`,'물러나면 내 사람을 앉힐 수 있음 · 삼권분립 침해 비판',W('press'));if(mp&&elective())add('jr:impeach','사법부',`대법원장 ${nm(cj)} 탄핵소추`,'의회 3분의 2 찬성이면 파면 · 실패하면 역풍',W('impeach'))}
+    if(J.law.distort&&(ruler||mp)&&js.some(j=>j!==me)){const a=add('jr:charge','사법부','법왜곡죄로 판사 고발',`판결을 문제 삼아 판사를 재판에 넘김 · 법원 위축`,W('charge'));a.opts=js.filter(j=>j!==me).map(j=>['j'+j.id,nm(j)])}
+    if(J.law.appeal&&(me.jailUntil||0)>S.day)add('jr:appeal','사법부','재판소원(내 판결 다시 다투기)','이기면 갇힌 기간이 절반으로',W('appeal'));
+    if(js.includes(me)&&(!cj||!cj.alive))add('jr:seek','사법부','대법원장 자리 청원','재판관 가운데 대법원장 후보로 나섬',W('seek'))}
+  function jrAct(me,k){const [,op,arg0]=k.split(':'),arg=arg0||'',G=S.gov,J=G.jr,D=S.dyn,wA=dynWA(),ch=jrRuler(),cool=(n,d)=>{D.cool['actjr'+n]=S.day+d},ap=d=>{if(ch===me)G.approval=cl((G.approval??.5)+d,0,1)};const civ=adA().reduce((t,a)=>t+(a.g.civic??.5),0)/Math.max(1,adA().length);
+    if(op==='status')return '절차가 진행 중이다';
+    if(op==='petition'){const kk=arg.slice(1);if(G.policy[kk]!==true)throw Error('없는 법입니다');me.cash-=wA*5;cool('petition',60);J.rev=(J.rev||[]).concat({k:kk,by:me.id,at:S.day+20,d:S.day});jrLog(`${josa(nm(me),'이','가')} '${POL_LABEL[kk]}' 위헌법률심판을 청구했다`,[me.id]);return '위헌법률심판을 청구했다. 스무 날 뒤 결정이 나온다'}
+    if(op==='dispute'){cool('dispute',YEAR);const js=jrJ();let v=0;for(const j of js)if(wr()<.5+(jrSide(j,me)?.25:-.1))v++;const win=js.length&&v*2>js.length;const V=J.vac;if(!V)return '다툴 일이 남아 있지 않았다';if(win){V.stage='nom';V.cand=null;V.refused=0;J.law.noNomTemp=1;jrLog('권한쟁의 결정: 임명권자의 손을 들어줬다. 대법원장이 다시 제청해야 한다',[me.id],true);return '권한쟁의에서 이겼다'}V.stage='consent';jrLog('권한쟁의 결정: 대법원장의 제청권을 인정했다',[me.id],true);ap(-.03);return '권한쟁의에서 졌다. 대법원장의 제청대로 간다'}
+    if(op==='reform'){const on=arg[0]==='o',kk=arg.slice(1);if(!JR_LAW[kk])throw Error('모르는 법안입니다');cool('reform',YEAR/2);const mem=p2Mem();let y=0;for(const m of mem){if(m===me){y++;continue}const s2=(p2Same(m,me)?.7:-.3)+((m.g.civic??.5)-.5)*(on?-1:1)+(wr()-.5)*.6;if(s2>0)y++}const pass=y*2>mem.length;
+      if(pass){J.law[kk]=on;if(on&&(kk==='noNom'||kk==='expand'||kk==='distort'))ap(civ>.55?-.05:.02);jrLog(`사법개혁: '${JR_LAW[kk]}' ${on?'도입':'폐지'}안이 ${y}대 ${mem.length-y}로 통과됐다`,[me.id],true);return `'${JR_LAW[kk]}' ${on?'도입':'폐지'} 통과 (${y}대 ${mem.length-y})`}return `'${JR_LAW[kk]}' 법안이 ${y}대 ${mem.length-y}로 부결됐다`}
+    if(op==='press'){const cj=S.byId.get(G.cj);cool('press',YEAR/2);ap(civ>.55?-.06:-.02);if(cj&&wr()<.25+(1-(cj.g.boss??.5))*.3){G.cj=null;J.cjUntil=0;jrLog(`대법원장 ${josa(nm(cj),'이','가')} 압박 끝에 물러났다`,[cj.id],true);return '대법원장이 물러났다'}jrLog(`대법원장 ${josa(cj?nm(cj):'','이','가')} 사퇴 압박을 거부했다. 삼권분립 침해 논란이 인다`,[me.id]);return '대법원장이 버텼다. 사법부 독립 침해 비판이 쏟아진다'}
+    if(op==='impeach'){const cj=S.byId.get(G.cj),mem=p2Mem();cool('impeach',YEAR);let y=0;for(const m of mem){if(m===me){y++;continue}if((p2Same(m,me)?.6:-.2)+((m.g.civic??.5)-.5)*-.6+(wr()-.5)*.6>0)y++}if(y*3>=mem.length*2&&cj){G.cj=null;J.cjUntil=0;G.judges=(G.judges||[]).filter(j=>j.id!==cj.id);jrLog(`대법원장 ${josa(nm(cj),'이','가')} 탄핵으로 파면됐다 (${y}대 ${mem.length-y})`,[cj.id,me.id],true);return '대법원장 탄핵 성공'}me.rep=cl((me.rep??1)-.03,0,1);return `탄핵소추안 부결 (${y}대 ${mem.length-y}). 역풍이 분다`}
+    if(op==='charge'){const j=S.byId.get(Number(arg.slice(1)));if(!j)throw Error('없는 판사입니다');cool('charge',YEAR/2);ap(civ>.55?-.05:0);if(wr()<.45){G.judges=(G.judges||[]).filter(x=>x.id!==j.id);j.jailUntil=S.day+YEAR/2;jrLog(`판사 ${josa(nm(j),'이','가')} 법왜곡죄로 처벌됐다. 법원이 얼어붙었다`,[j.id,me.id],true);return '판사가 법왜곡죄로 처벌됐다'}return '법왜곡죄 고발이 기각됐다'}
+    if(op==='appeal'){cool('appeal',YEAR);if(wr()<.4){me.jailUntil=S.day+Math.ceil(((me.jailUntil||S.day)-S.day)/2);return '재판소원이 받아들여져 형기가 절반으로 줄었다'}return '재판소원이 기각됐다'}
+    if(op==='seek'){cool('seek',YEAR);if(wr()<.3+jrIndep(me)*.3+(jrSide(me,ch)?.3:0)){G.cj=me.id;J.cjUntil=S.day+YEAR*6;jrLog(`${josa(nm(me),'이','가')} 대법원장이 됐다`,[me.id],true);return '대법원장이 됐다'}return '대법원장이 되지 못했다'}
+    throw Error('모르는 행동입니다')}
   function dynWorldView(r){const D=S.dyn,T=S.trade,G=S.gov,our=S.mil?.str||0;const known=!!(T&&T.on&&D.realms);
     const approx=m=>r>=3?Math.round(m):m<our*.6?'우리보다 약함':m>our*1.6?'우리보다 강함':'우리와 비슷';
     const ch=G&&S.byId.get(G.king||G.chief);
@@ -7737,7 +7822,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         heir:R0.heir?{name:rName(R0.heir),age:rAge(R0.heir),sex:R0.heir.sex}:null,hist:R0.hist.slice(-6).reverse()}}).filter(Boolean);
     {const sf=G&&G.stateFaith&&(S.faiths||[]).find(f=>f.id===G.stateFaith);if(sf)us.faith=sf.name}
     return {known:true,us,realms,far:farView(r),marks:farMarks(),fw:S.fw&&S.fw.until>S.day?{a:S.fw.a,b:S.fw.b}:null,news:(D.wnews||[]).slice(-12).reverse()}}
-  function dynTick(){const D=S.dyn;dynWorldTick();if(D.over)return;const me=dynMe();if(me&&D.gig)dynGigTick(me);if(me)dynMilitiaTick(me);if(me)dynSpyOrgTick(me);if(me)dynUnderworldTick(me);dynTierTick();coTick(me);crTick(me);duTick(me);adTick(me);if(me&&me.alive){dynSiteTick(me);dynStressTick(me);dynFaithTick(me);dynStoryTick(me)}if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
+  function dynTick(){const D=S.dyn;dynWorldTick();if(D.over)return;const me=dynMe();if(me&&D.gig)dynGigTick(me);if(me)dynMilitiaTick(me);if(me)dynSpyOrgTick(me);if(me)dynUnderworldTick(me);dynTierTick();coTick(me);crTick(me);duTick(me);adTick(me);jrTick(me);if(me&&me.alive){dynSiteTick(me);dynStressTick(me);dynFaithTick(me);dynStoryTick(me)}if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
     if(me&&W(me)>D.peak.w)D.peak.w=W(me);
     if(me&&me.alive){const tt=dynPolTitle(me);if(D.title===undefined)D.title=tt;else if(tt!==D.title){const t=tt?`${josa(nm(me),'이','가')} ${josa(tt,'이','가')} 됐습니다`:`${josa(nm(me),'이','가')} ${D.title} 자리에서 물러났습니다`;D.title=tt;dynChron(t,[me.id]);dynPush('notice',t,[{k:'ok',label:'확인'}],{d:S.day})}
       if(S.day%5===0&&!((me.jailUntil||0)>S.day))dynBudgetTick(me);
