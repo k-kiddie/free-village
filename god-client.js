@@ -262,7 +262,8 @@ function dynOpen(p,force){
 // 서버가 보내는 view.dyn.world(이웃 나라 요약)만 그린다. 우리 마을을 누르면 원래 상세 지도로 돌아간다.
 let dynMapMode='town',dynWSel=null;
 const DYN_WCOL={us:'#d8b04a',너른들:'#5f9a4a',쇠뫼:'#8a6a52',비단나루:'#6a64a8'};
-const DYN_WALT=['#4a8a8a','#a0584f','#7a8a3a'];
+const DYN_WALT=['#4a8a8a','#a0584f','#7a8a3a','#9a6a9a','#5a7ab0','#b07a3a','#3a8a6a','#a04a6a','#6a8a3a','#8a5a3a','#4a6a9a','#9a8a4a'];
+function dynShade(hex,f){const n=parseInt(hex.slice(1),16);const c=[n>>16,n>>8&255,n&255].map(v=>Math.max(0,Math.min(255,Math.round(f>=1?v+(255-v)*(f-1):v*f))));return '#'+c.map(v=>v.toString(16).padStart(2,'0')).join('')}
 function dynInitWorld(){
   const css=document.createElement('style');css.textContent=`
 .dynmapbar{display:flex;gap:4px;margin:6px 3px 0}.dynmapbar button{flex:1;padding:6px;font-size:14px}.dynmapbar button.on{background:var(--gold);color:#000}
@@ -285,15 +286,16 @@ function dynSetMap(m){dynMapMode=m;try{localStorage.setItem('v-dynmap',m)}catch(
   $('.screen').hidden=m==='world';$('#dynWorld').hidden=m!=='world';document.querySelectorAll('#dMap [data-mm2]').forEach(b=>b.classList.toggle('on',b.dataset.mm2===m));if(m==='world')dynDrawWorld();if(typeof dynFitMap==='function')dynFitMap()}
 // Seeded physical world: coastlines and territory area are independent of population size.
 function dynWSeeds(){const W=dynView?.world;if(!W)return [];const seed=W.us.seed||0;const size=(id)=>{let h=seed>>>0;for(const c of String(id)){h=Math.imul(h^c.charCodeAt(0),16777619)}return .72+dynWHash(h>>>0,seed%997,seed)*.34};const s=[{id:'us',x:0,y:0,w:size('us')}];
-  for(const r of W.realms)s.push({id:r.name,x:r.x,y:r.y,w:size(r.name)});return s}
+  for(const r of W.realms)s.push({id:r.name,x:r.x,y:r.y,w:size(r.name)});for(const f of W.far||[])s.push({id:f.owner,x:f.x,y:f.y,w:f.w});return s}
 function dynWHash(x,y,seed=0){let h=Math.imul((x^seed)*374761393+(y+seed)*668265263,1274126177);h^=h>>>13;h=Math.imul(h,1103515245);return((h^h>>>16)>>>0)/4294967296}
-function dynWLand(x,y,seed){const oval=(cx,cy,rx,ry)=>1-Math.hypot((x-cx)/rx,(y-cy)/ry);const main=Math.max(oval(-.22,0,.79,.72),oval(.39,.20,.55,.43),oval(.04,-.51,.40,.39));const west=oval(-.99,-.47,.22,.18),south=oval(.92,.58,.23,.16);const broad=(dynWHash(Math.floor((x+2)*5),Math.floor((y+2)*5),seed)-.5)*.16,fine=(dynWHash(Math.floor((x+2)*13),Math.floor((y+2)*13),seed+73)-.5)*.055;return Math.max(main,west,south)+broad+fine>.015}
+function dynWLand(x,y,seed){const oval=(cx,cy,rx,ry)=>1-Math.hypot((x-cx)/rx,(y-cy)/ry);const main=Math.max(oval(-.22,0,.79,.72),oval(.39,.20,.55,.43),oval(.04,-.51,.40,.39));const west=oval(-.99,-.47,.22,.18),south=oval(.92,.58,.23,.16);const far=dynView?.world?.far?.length?Math.max(...DYN_FARC.map(c=>oval(c[0],c[1],c[2]*1.05,c[3]*1.08))):-9;const broad=(dynWHash(Math.floor((x+2)*5),Math.floor((y+2)*5),seed)-.5)*.16,fine=(dynWHash(Math.floor((x+2)*13),Math.floor((y+2)*13),seed+73)-.5)*.055;return Math.max(main,west,south,far)+broad+fine>.015}
 function dynWOwnerXY(x,y,seeds,known,seed){
   if(!dynWLand(x,y,seed))return 'sea';
   const n=(dynWHash(Math.floor((x+2)*14),Math.floor((y+2)*14),seed+151)-.5)*.08;
   let best=null,bd=9;for(const s of seeds){if(!known&&s.id!=='us')continue;const d=Math.hypot(x-s.x,y-s.y)/s.w+n;if(d<bd){bd=d;best=s.id}}
-  if(!known&&bd>1)return 'fog';if(bd>1.45)return 'fog';return best}
-const DYN_WAR=.68;const dynWXY=(fx,fy)=>[(fx-.5)*2.4,(fy-.5)*2.4*DYN_WAR];
+  if(!known&&bd>1)return 'fog';if(bd>1.45&&!dynView?.world?.far?.length)return 'fog';return best}
+const DYN_WAR=.68;const DYN_WSC=()=>dynView?.world?.far?.length?4.5:2.4;const dynWXY=(fx,fy)=>{const k=DYN_WSC();return [(fx-.5)*k,(fy-.5)*k*DYN_WAR]};
+const DYN_FARC=[[1.58,-.72,.5,.4],[-1.6,.42,.42,.5],[1.22,.98,.56,.3],[-1.3,-.95,.4,.3]];
 function dynWOwner(fx,fy){const W=dynView?.world;if(!W)return null;const [x,y]=dynWXY(fx,fy);return dynWOwnerXY(x,y,dynWSeeds(),W.known,W.us.seed||0)}
 function dynDrawWorld(){
   const W=dynView?.world,c=$('#dynWC');if(!c||$('#dynWorld').hidden)return;
@@ -307,29 +309,39 @@ function dynDrawWorld(){
   for(let j=0;j<rows;j++){own[j]=[];for(let i=0;i<cols;i++){const [x,y]=dynWXY((i+.5)/cols,(j+.5)/rows);own[j][i]=dynWOwnerXY(x,y,seeds,W.known,W.us.seed||0)}}
   const warN=new Set(W.realms.filter(r=>r.war).map(r=>r.name));
   for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const o=own[j][i];
-    g.fillStyle=o==='sea'?((i+j)%7===0?'#22385a':'#1b2c44'):o==='fog'?'#2a2a30':col(o);
+    if(o==='sea'||o==='fog')g.fillStyle=o==='sea'?((i+j)%7===0?'#22385a':'#1b2c44'):'#2a2a30';else{const [wx,wy]=dynWXY((i+.5)/cols,(j+.5)/rows),sd=W.us.seed||0;const e=dynWHash(Math.floor((wx+3)*6),Math.floor((wy+3)*6),sd+999)*.6+dynWHash(Math.floor((wx+3)*15),Math.floor((wy+3)*15),sd+777)*.4;g.fillStyle=dynShade(col(o),e>.72?.72:e>.6?.86:e<.3?1.1:1)}
     g.fillRect(i*cell,j*cell,cell,cell);
     if(o!=='sea'&&o!=='fog'&&dynWSel===o){g.fillStyle='#ffffff44';g.fillRect(i*cell,j*cell,cell,cell)}}
   // 국경: 옆 칸 주인이 다르면 선. 전쟁 중인 우리-상대 국경은 붉게.
   for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const o=own[j][i];if(o==='sea'||o==='fog')continue;
     for(const [di,dj] of [[1,0],[0,1]]){const p=own[j+dj]?.[i+di];if(p==null||p===o)continue;
       const war=(o==='us'&&warN.has(p))||(p==='us'&&warN.has(o));const inner=(o==='us'&&provN.has(p))||(p==='us'&&provN.has(o));g.fillStyle=war?'#ff3b30':inner?'#00000044':p==='sea'?'#79bfe5':p==='fog'?'#00000088':'#000';
-      if(di)g.fillRect((i+1)*cell-1,j*cell,2,cell);else g.fillRect(i*cell,(j+1)*cell-1,cell,2)}}
-  const P=(x,y)=>[(x/2.4+.5)*cw,(y/(2.4*DYN_WAR)+.5)*ch];
+      const bw=p==='sea'||inner?2:3;if(di)g.fillRect((i+1)*cell-bw/2,j*cell,bw,cell);else g.fillRect(i*cell,(j+1)*cell-bw/2,cell,bw)}}
+  const SC=DYN_WSC(),P=(x,y)=>[(x/SC+.5)*cw,(y/(SC*DYN_WAR)+.5)*ch];
+  // 선: 교역로(금색 점선)·동맹(파란 점선)·전선(붉은 선)
+  const line=(a,b,color,dash,wd)=>{const [ax,ay]=P(a[0],a[1]),[bx,by]=P(b[0],b[1]);g.save();g.strokeStyle=color;g.lineWidth=wd||2;g.setLineDash(dash||[]);g.beginPath();g.moveTo(ax,ay);g.lineTo(bx,by);g.stroke();g.restore()};
+  for(const r of W.realms){if(r.prov)continue;if(r.fta)line([0,0],[r.x,r.y],'#e8c25acc',[6,4],2);if(r.ally)line([0,0],[r.x,r.y],'#6fb6ffcc',[2,4],2.5);if(r.war)line([0,0],[r.x,r.y],'#ff3b30',[],3)}
+  const FN=Object.fromEntries((W.far||[]).filter(f=>f.alive).map(f=>[f.name,f]));const done=new Set();
+  for(const f of Object.values(FN)){for(const n of f.ally||[]){const b=FN[n],key=[f.name,n].sort().join('|');if(b&&!done.has(key)){done.add(key);line([f.x,f.y],[b.x,b.y],'#6fb6ffaa',[2,4],2)}}if(f.war&&FN[f.war]){const key='w'+[f.name,f.war].sort().join('|');if(!done.has(key)){done.add(key);line([f.x,f.y],[FN[f.war].x,FN[f.war].y],'#ff3b30dd',[8,3],3)}}}
   g.textAlign='center';g.textBaseline='middle';
-  const label=(x,y,t1,t2,mark)=>{const [px,py]=P(x,y);g.font=`bold ${Math.round(cw/24)}px sans-serif`;g.lineWidth=3;g.strokeStyle='#000';g.fillStyle='#fff';
-    g.strokeText(t1,px,py);g.fillText(t1,px,py);if(t2){g.font=`${Math.round(cw/34)}px sans-serif`;g.strokeText(t2,px,py+cw/22);g.fillStyle='#f3e6c4';g.fillText(t2,px,py+cw/22)}
+  const big=SC>3?28:24,label=(x,y,t1,t2,mark)=>{const [px,py]=P(x,y);g.font=`bold ${Math.round(cw/big)}px sans-serif`;g.lineWidth=3;g.strokeStyle='#000';g.fillStyle='#fff';
+    g.strokeText(t1,px,py);g.fillText(t1,px,py);if(t2){g.font=`${Math.round(cw/34)}px sans-serif`;g.strokeText(t2,px,py+cw/(big-2));g.fillStyle='#f3e6c4';g.fillText(t2,px,py+cw/(big-2))}
     if(mark){g.font=`${Math.round(cw/20)}px sans-serif`;g.fillText(mark,px,py-cw/20)}};
-  const us=W.us;label(0,0,'🏠 '+us.name,us.regName,null);
+  const us=W.us;label(0,0,'🏠 '+us.name,us.regName+(us.faith?' · ⛪'+us.faith:''),null);
   const capital=(x,y,home)=>{const [px,py]=P(x,y);g.beginPath();g.arc(px,py,home?4:3,0,Math.PI*2);g.fillStyle=home?'#fff2a6':'#fff';g.fill();g.lineWidth=1.5;g.strokeStyle='#20252d';g.stroke()};capital(0,0,true);
   for(const r of W.realms)capital(r.x,r.y,false);
-  for(const r of W.realms)label(r.x,r.y,r.name,`${r.regName} · ${r.title} ${r.ruler.name}`,r.war?'⚔️':r.prov?'🏴':r.ally?'🛡️':r.fta?'🤝':r.tension>=60?'⚠️':null);
+  for(const r of W.realms)label(r.x,r.y,r.name,SC>3&&cw<560?r.regName:`${r.regName} · ${r.title} ${r.ruler.name}`,r.war?'⚔️':r.prov?'🏴':r.ally?'🛡️':r.fta?'🤝':r.tension>=60?'⚠️':null);
+  for(const f of Object.values(FN)){capital(f.x,f.y,false);const [px,py]=P(f.x,f.y);g.font=`bold ${Math.round(cw/30)}px sans-serif`;g.lineWidth=3;g.strokeStyle='#000';g.fillStyle=dynWSel===f.name?'#ffe9a0':'#fff';const t1=(f.war?'⚔️':f.rel>=40?'🤝':'')+f.name;g.strokeText(t1,px,py+cw/36);g.fillText(t1,px,py+cw/36);g.font=`${Math.round(cw/42)}px sans-serif`;g.fillStyle='#f3e6c4';g.strokeText(f.regName,px,py+cw/36+cw/30);g.fillText(f.regName,px,py+cw/36+cw/30)}
+  for(const m of W.marks||[]){const [px,py]=P(m.x,m.y);g.font=`${Math.round(cw/26)}px sans-serif`;g.fillText(m.i,px,py)}
   if(W.fw){const A=W.realms.find(r=>r.name===W.fw.a),B=W.realms.find(r=>r.name===W.fw.b);if(A&&B){const [ax,ay]=P(A.x,A.y),[bx,by]=P(B.x,B.y);g.font=`${Math.round(cw/18)}px sans-serif`;g.fillText('⚔️',(ax+bx)/2,(ay+by)/2)}}
   if(!W.known){const [px,py]=P(0,.55);g.font=`${Math.round(cw/28)}px sans-serif`;g.fillStyle='#ccc';g.fillText('바깥 세상은 아직 모릅니다. 이웃과 장사가 트이면 열립니다.',px,py)}
   dynWInfo(W)}
 function dynWRel(r){return r.rel||(r.war?'전쟁 중':r.fta?'자유무역':r.tension>=60?'적대':r.tension>=35?'긴장':'보통')}
 function dynWInfo(W){const el=$('#dynWInfo');if(!el)return;const h=dynWInfoHTML(W);if(el._h!==h){el._h=h;el.innerHTML=h;dynBindActions(el)}}
-function dynWInfoHTML(W){let h='';const r=W.realms.find(x=>x.name===dynWSel);
+function dynJo(w,a,b){const c=(w||'').charCodeAt((w||'').length-1)-0xAC00;return w+(c>=0&&c<11172&&c%28?a:b)}
+function dynFarHTML(f){return `<h4>${dynEsc(f.name)} <small>바다 건너 먼 나라</small></h4>${dynKV([['체제',dynEsc(f.regName)],[dynEsc(f.title),`${dynEsc(f.ruler.name)} (${f.ruler.age}세·${f.ruler.sex==='F'?'여':'남'})`],['인구',f.pop.toLocaleString()+'명'],['군대',typeof f.mil==='number'?f.mil.toLocaleString():dynEsc(f.mil)],['거느린 땅',f.land+'곳'],['전쟁',f.war?'⚔️ '+dynJo(dynEsc(f.war),'과','와')+' 전쟁 중':'없음'],['동맹',f.ally.length?dynEsc(f.ally.join(', ')):'없음'],['우리와의 관계',`${f.rel>=40?'가까움':f.rel>=15?'알고 지냄':f.rel<=-20?'나쁨':'잘 모름'} (${f.rel})`]])}
+  ${dynWActs(f.name)}${f.hist.length?`<b class="muted">최근 일</b><ul>${f.hist.map(e=>`<li><small>${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul>`:''}`}
+function dynWInfoHTML(W){let h='';const r=W.realms.find(x=>x.name===dynWSel);const ff=!r&&(W.far||[]).find(x=>x.alive&&x.name===dynWSel);if(ff)return dynFarHTML(ff)+(W.news?.length?`<b class="muted">세계 소식</b><ul>${W.news.slice(0,8).map(e=>`<li><small>${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul>`:'');
   if(r){const rl=r.ruler;h=`<h4>${dynEsc(r.name)} <small>${dynEsc(r.tag)}</small></h4>${dynKV([['체제',dynEsc(r.regName)],[dynEsc(r.title),`${dynEsc(rl.name)} (${rl.age}세·${rl.sex==='F'?'여':'남'})`],
       ['통치 가문',`${dynEsc(r.house)} · ${r.since>0?fmtD(r.since)+'부터':'우리 마을이 생기기 전부터'}`],r.heir&&['후계자',`${dynEsc(r.heir.name)} (${r.heir.age}세·${r.heir.sex==='F'?'여':'남'})`],['인구',r.pop.toLocaleString()+'명'],
       ['군대',typeof r.mil==='number'?r.mil.toLocaleString():dynEsc(r.mil)],['기술',typeof POWER_L!=='undefined'?POWER_L[r.era]||r.era:r.era],r.prov?['속령',`${fmtD(r.prov.d)}부터 · 거둔 세금 ${money(r.prov.tax)} · 불만 ${r.prov.unrest}${r.prov.unrest>=55?' ⚠️ 독립 위험':''}`]:['우리와의 관계',`${dynWRel(r)} (긴장 ${r.tension})`],r.kin&&['사돈',`${dynEsc(r.kin.name)} ↔ ${dynEsc(r.kin.spouse)}`]])}
@@ -337,7 +349,7 @@ function dynWInfoHTML(W){let h='';const r=W.realms.find(x=>x.name===dynWSel);
       ${dynWActs(r.name)}
       ${r.hist.length?`<b class="muted">최근 일</b><ul>${r.hist.map(e=>`<li><small>${fmtD(e.d)}</small> ${dynEsc(e.text.replace(r.name+': ',''))}</li>`).join('')}</ul>`:''}`}
   else{const us=W.us;h=`<h4>🏠 ${dynEsc(us.name)}</h4>${dynKV([['체제',dynEsc(us.regName)],us.ruler&&[dynEsc(us.ruler.title),`${dynEsc(us.ruler.name)} (${us.ruler.age}세)`],['인구',us.pop.toLocaleString()+'명'],['군대',us.mil.toLocaleString()]])}
-    <p><small>${W.known?'다른 나라를 누르면 통치 가문과 관계가 보입니다. 우리 마을을 누르면 마을 지도로 돌아갑니다.':'이웃과 장사가 트이면 이웃 나라가 지도에 나타납니다.'}</small></p>`}
+    <p><small>${W.known?'다른 나라를 누르면 통치 가문과 관계가 보입니다. 우리 마을을 누르면 마을 지도로 돌아갑니다.':'이웃과 장사가 트이면 이웃 나라가 지도에 나타납니다.'}</small></p>${W.known?'<p><small>지도 표시: <span style="color:#e8c25a">- - 교역로</span> · <span style="color:#6fb6ff">··· 동맹</span> · <span style="color:#ff3b30">━ 전선</span> · 💥 전쟁터 · 📢 큰 사건 · 🏴 속령 · ⛪ 국교</small></p>':''}`}
   if(W.news&&W.news.length)h+=`<b class="muted">세계 소식</b><ul>${W.news.slice(0,8).map(e=>`<li><small>${fmtD(e.d)}</small> ${dynEsc(e.text)}</li>`).join('')}</ul>`;
   return h}
 // 선택한 나라에 대한 외교 행동(서버가 지위에 맞게 보낸 것만). 나 탭의 행동 목록과 같은 버튼·두 번 눌러 실행.
@@ -350,8 +362,8 @@ function dynWActs(name){const acts=(dynView?.actions||[]).filter(a=>a.group==='�
 function dynNetHTML(v){const f=v.family,m=v.me;return `<div class="sec"><h4>인맥</h4>${dynKV([['배우자',f.partner?dynPerson(f.partner):'없음'],['고용주',m.emp?dynPerson(m.emp):'없음'],['고용한 사람',(m.staff||0)+'명'],['소속 조직',m.grp?dynEsc(m.grp.name):'없음']])}</div>
   <div class="sec"><h4>사돈·가문 관계</h4>${(v.ties||[]).length?dynKV(v.ties.map(t=>[dynEsc(t.name),`${t.v>0?'우호':t.v<0?'적대':'보통'} ${Math.round(t.v*100)} · ${dynEsc(t.why)}`])):'<p class="muted">아직 사돈을 맺은 집안이 없습니다.</p>'}</div>`}
 function dynProvHTML(v){const P=(v.world?.realms||[]).filter(r=>r.prov);if(!P.length)return '';return `<div class="sec"><h4>속령</h4>${dynKV(P.map(r=>[dynEsc(r.name),`인구 ${r.pop.toLocaleString()} · 세금 ${money(r.prov.tax)} · 불만 ${r.prov.unrest}${r.prov.unrest>=55?' ⚠️':''}`]))}</div>`}
-function dynDipHTML(v){const W=v.world;if(W&&W.known&&dynWSel&&W.realms.some(r=>r.name===dynWSel))return `<div class="sec"><button class="act" data-wback="1">← 나라 목록</button></div><div class="dynwinfo">${dynWInfoHTML(W)}</div>`;if(!W||!W.known)return '<div class="sec"><h4>외교</h4><p class="muted">아직 이웃 나라를 모릅니다. 이웃과 장사가 트이면 세계 지도와 외교가 열립니다.</p></div>';
-  return `<div class="sec"><h4>이웃 나라</h4><p class="muted">위 세계 지도에서 나라를 눌러도 됩니다.</p>${W.realms.map(r=>`<button class="act realm" data-realm="${dynEsc(r.name)}">${r.war?'⚔️':r.prov?'🏴':r.ally?'🛡️':r.fta?'🤝':''} ${dynEsc(r.name)} · ${dynEsc(r.regName)}<small>${dynEsc(r.title)} ${dynEsc(r.ruler.name)}(${r.ruler.age}) · 인구 ${r.pop.toLocaleString()} · ${dynEsc(dynWRel(r))}</small></button>`).join('')}</div>
+function dynDipHTML(v){const W=v.world;if(W&&W.known&&dynWSel&&(W.realms.some(r=>r.name===dynWSel)||(W.far||[]).some(f=>f.alive&&f.name===dynWSel)))return `<div class="sec"><button class="act" data-wback="1">← 나라 목록</button></div><div class="dynwinfo">${dynWInfoHTML(W)}</div>`;if(!W||!W.known)return '<div class="sec"><h4>외교</h4><p class="muted">아직 이웃 나라를 모릅니다. 이웃과 장사가 트이면 세계 지도와 외교가 열립니다.</p></div>';
+  return `<div class="sec"><h4>이웃 나라</h4><p class="muted">위 세계 지도에서 나라를 눌러도 됩니다.</p>${W.realms.map(r=>`<button class="act realm" data-realm="${dynEsc(r.name)}">${r.war?'⚔️':r.prov?'🏴':r.ally?'🛡️':r.fta?'🤝':''} ${dynEsc(r.name)} · ${dynEsc(r.regName)}<small>${dynEsc(r.title)} ${dynEsc(r.ruler.name)}(${r.ruler.age}) · 인구 ${r.pop.toLocaleString()} · ${dynEsc(dynWRel(r))}</small></button>`).join('')}</div>${(W.far||[]).some(f=>f.alive)?`<div class="sec"><h4>바다 건너 먼 나라</h4>${W.far.filter(f=>f.alive).map(f=>`<button class="act realm" data-realm="${dynEsc(f.name)}">${f.war?'⚔️':f.rel>=40?'🤝':''} ${dynEsc(f.name)} · ${dynEsc(f.regName)}<small>${dynEsc(f.title)} ${dynEsc(f.ruler.name)}(${f.ruler.age}) · 인구 ${f.pop.toLocaleString()} · 땅 ${f.land}곳${f.war?' · '+dynJo(dynEsc(f.war),'과','와')+' 전쟁 중':''}${f.ally.length?' · 동맹 '+dynEsc(f.ally.join('/')):''}</small></button>`).join('')}</div>`:''}
   ${dynActionsHTML(v,'dip')||'<p class="muted">외교는 의원·귀족 이상이 되어야 할 수 있습니다(전쟁·동맹은 최고 권력자만).</p>'}`}
 function dynAppLayout(){
   const css=document.createElement('style');css.textContent=`
