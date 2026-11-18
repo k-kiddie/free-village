@@ -12,3 +12,8 @@ for(const b of S.bldgs.filter(b=>b.id>900000)){const a=A(b);assert(a,b.fx[0]+' �
 for(const v of ['feast','banquet','refuge','free','school','meet','release','hoard','patrol','extort','push','show','labA','labM','labW','hide','tenant','praise','scoop','tabloid','close','feeUp','feeDn'])assert(seen.has(v),v+' 실행됨');
 assert(new Set(kinds.map(k=>JSON.stringify(A(S.bldgs.find(b=>b.fx[0]===k&&b.id>900000))?.opts?.map(o=>o[0])||[]))).size>=10,'건물마다 행동이 다름');
 console.log(JSON.stringify({ok:true,ops:seen.size}));
+// 건물 사건: 내 건물이 있을 때 본문과 모든 선택지가 오류 없이 돈다
+{const {SE,sCtx}=w._story;let n=0;S.pollution=.5;for(const x of S.agents.slice(0,10))x.hunger=80;me.inv.grain=500;
+  for(const [id,e] of Object.entries(SE)){if(!/^bd/.test(id))continue;for(const [k,,,fn] of e.o){const ctx={sid:id,title:e.title};const c0=sCtx(me,ctx);if(e.need&&!e.need(c0)&&!e.chain)continue;if(e.who){const x=e.who(sCtx(me,ctx));if(x)ctx.x=x.id}const c=sCtx(me,ctx);me.cash=1e6;
+    try{e.text(c);const r=fn(c);assert(typeof r==='string',id+':'+k)}catch(err){throw new Error(id+':'+k+' '+err.message)}n++}}
+  assert(n>=50,'건물 사건 선택지 '+n);console.log('건물 사건 선택지',n)}
