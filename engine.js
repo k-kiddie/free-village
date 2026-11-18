@@ -4301,18 +4301,28 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const skillVals={};for(const[k,id]of Object.entries(skills))if(c[k]!=null){const n=Number(c[k]);if(!Number.isFinite(n)||n<0||n>100)throw Error('기술 값은 0~100 사이여야 합니다');skillVals[id]=n/100}
     const bg=txt(c.background,24),family=c.family||'keep',wealth=c.wealth||'keep';if(bg&&!['평범한 주민','농촌','장터','기술자 집안','유학 경험','이주민','정보기관 직원'].includes(bg))throw Error('출신 배경을 다시 선택해 주세요');
     if(!['keep','single','partner','children'].includes(family)||!['keep','poor','modest','wealthy'].includes(wealth))throw Error('가족이나 시작 재산 조건을 다시 선택해 주세요');
-    const wage=Math.max(.5,S.wageAvg||1),famOk=x=>family==='keep'||(family==='single'?!x.partner&&!(x.kids||[]).length:family==='partner'?!!(x.partner&&S.byId.get(x.partner)?.alive):(x.kids||[]).some(id=>S.byId.get(id)?.alive));
-    const wealthOk=x=>wealth==='keep'||(wealth==='poor'?W(x)<=wage*5:wealth==='modest'?W(x)>wage*5&&W(x)<=wage*30:W(x)>wage*30);
-    const eligible=S.agents.filter(x=>x.alive&&isAdult(x)&&famOk(x)&&wealthOk(x));
-    if(!eligible.length)throw Error('이 가족·재산 조건에 맞는 성인 주민이 없습니다. 다른 조건을 골라주세요');
-    const a=eligible[Math.floor(wr()*eligible.length)];
-    if(c.sex!=null)a.sex=c.sex;if(age!=null){a.age=age*YEAR;a.born=S.day-a.age}if(edu!=null)a.edu=edu;if(looks!=null){a.looks=looks/100;a.faceL=a.bodyL=a.looks}
+    // 꾸미기 시작은 항상 새 인물이 마을로 이주해 오는 것으로 만든다(기존 주민은 건드리지 않는다).
+    // 다시 꾸미면 앞서 만든 인물과 가족을 지우고 새로 만든다. 시작 선택 전에는 시간이 멈춰 있어 다른 주민과 엮이지 않는다.
+    if(D.startMade){const ids=new Set(D.startMade);for(let i=S.agents.length-1;i>=0;i--)if(ids.has(S.agents[i].id))S.agents.splice(i,1);for(const id of ids)S.byId.delete(id);if(S.yr)S.yr.migIn=Math.max(0,(S.yr.migIn||0)-ids.size);D.startMade=null;dynKinD=-1}
+    const wage=Math.max(.5,S.wageAvg||1),mlv=S.mlvl||1,ageY=age!=null?age:20+Math.floor(wr()*11),sex=c.sex||(wr()<.5?'M':'F');
+    const cash=wealth==='poor'?wage*(1+wr()*3):wealth==='modest'?wage*(8+wr()*17):wealth==='wealthy'?wage*(40+wr()*40):30*mlv;
+    const a=mk({age:ageY*YEAR,born:S.day-ageY*YEAR,cash,g:randGenome(),migrant:true,sex});a.inv.grain=6;for(const k of PROD)a.skill[k]=.05+wr()*.25;initQ(a);a.edu=edu!=null?edu:0;
+    const made=[a.id];
+    if(looks!=null){a.g.face=a.g.body=looks/100;a.looks=looks/100;a.faceL=a.bodyL=a.looks}
     for(const[k,v]of Object.entries(traits))a.g[k]=v;for(const[id,v]of Object.entries(skillVals)){a.skill[id]=v;for(const q of a.q)q[id]=Math.max(q[id]||0,v*5)}
     if(sur)a.sur=sur;if(given)a.given=given;
+    if(family==='partner'||family==='children'){a.orient='het';const py=cl(ageY+Math.round((wr()-.5)*6),18,60);
+      const b=mk({age:py*YEAR,born:S.day-py*YEAR,cash:5*mlv,g:randGenome(),migrant:true,sex:a.sex==='M'?'F':'M'});b.orient='het';b.inv.grain=4;for(const k of PROD)b.skill[k]=.05+wr()*.25;initQ(b);b.edu=Math.floor(wr()*2);made.push(b.id);dynWed(a,b);
+      if(family==='children'){const n=wr()<.5?2:1,maxY=Math.max(0,Math.min(12,Math.min(ageY,py)-18));
+        for(let i=0;i<n;i++){const kd=Math.floor(wr()*(maxY+1))*YEAR+Math.floor(wr()*YEAR*.9);
+          const k=mk({sur:a.sur,family:a.family,g:childGenome(a.g,b.g),gen:Math.max(a.gen,b.gen)+1,parents:[a.id,b.id],age:kd,born:S.day-kd,migrant:true});
+          for(const s of[0,1])for(let j=0;j<NA;j++)k.q[s][j]=(a.q[s][j]+b.q[s][j])/2*.6+(PROD.includes(j)?1.5:0);for(const j of PROD)k.skill[j]=.05+(a.skill[j]+b.skill[j])*.1;
+          a.kids.push(k.id);b.kids.push(k.id);made.push(k.id)}}}
+    D.startMade=made;
     if(bg==='농촌')a.skill[FARM]=cl(a.skill[FARM]+.08,0,1);else if(bg==='장터')a.skill[TRADE]=cl(a.skill[TRADE]+.08,0,1);
     else if(bg==='기술자 집안')a.skill[CRAFT]=cl(a.skill[CRAFT]+.08,0,1);else if(bg==='유학 경험'){a.edu=Math.max(a.edu||0,2);a.skill[TEACH]=cl(a.skill[TEACH]+.06,0,1)}else if(bg==='이주민')a.g.explore=cl((a.g.explore||.5)+.08,0,1);else if(bg==='정보기관 직원'){a.g.vigil=cl((a.g.vigil||.5)+.18,0,1);a.g.civic=cl((a.g.civic||.5)+.06,0,1);a.edu=Math.max(a.edu||0,1);D.spyCareer='staff';D.spyExperience=0}
     D.pid=a.id;D.background=bg||'평범한 주민';D.familyStart=family;D.wealthStart=wealth;D.customized=true;D.houseAuto=true;D.house=a.sur+'씨 가문';D.founder=a.id;D.peak={w:W(a),title:''};
-    const p=D.pending.find(p=>p.kind==='start');if(p)p.text=`${nm(a)}, ${Math.floor(a.age/YEAR)}세. ${D.background} 출신으로 가문을 시작합니다.`;
+    const p=D.pending.find(p=>p.kind==='start');if(p)p.text=`${nm(a)}, ${Math.floor(a.age/YEAR)}세. ${D.background} 출신으로 마을에 이주해 와 가문을 시작합니다.`;
     dynChron(`${nm(a)}, ${Math.floor(a.age/YEAR)}세. ${D.background} 출신으로 삶을 시작하다`,[a.id]);return {name:nm(a),age:Math.floor(a.age/YEAR),background:D.background,family,wealth}}
   function dynRename(sur,given){const D=S.dyn,a=dynMe();if(!D||!a)throw Error('가문 모드가 아닙니다');
     sur=String(sur??'').trim();given=String(given??'').trim();
