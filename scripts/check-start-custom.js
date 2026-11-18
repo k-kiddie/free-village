@@ -15,7 +15,7 @@ assert.throws(()=>w.dynConfigureStart({age:17}),/18~45/);assert.equal(w.S.dyn.pi
 const r2=w.dynConfigureStart({family:'children',wealth:'wealthy',age:40,sur:'최'});const me=w.S.byId.get(w.S.dyn.pid);
 assert(!w.S.byId.has(a.id),'이전 꾸미기 인물 제거');assert.equal(r2.family,'children');
 const sp=w.S.byId.get(me.partner);assert(sp&&sp.alive&&sp.partner===me.id&&sp.sex!==me.sex,'배우자 함께 이주');assert(me.kids.length>=1&&me.kids.every(id=>{const k=w.S.byId.get(id);return k&&k.parents.includes(me.id)&&k.parents.includes(sp.id)&&k.sur==='최'}),'자녀 함께 이주');
-assert.equal(w.S.agents.length,n0+2+me.kids.length,'인물·배우자·자녀만 늘어남');assert(me.cash>=Math.max(.5,w.S.wageAvg||1)*40,'넉넉한 재산 정착금');
+assert.equal(w.S.agents.length,n0+2+me.kids.length,'인물·배우자·자녀만 늘어남');{const cs=w.S.agents.filter(x=>x.alive&&x.age>=14*60&&x!==me&&x.id!==sp.id&&!me.kids.includes(x.id)).map(x=>x.cash).sort((x,y)=>x-y);assert(me.cash>=cs[cs.length>>1]*3,'넉넉한 재산은 보통의 3배 이상')}
 // 조건이 맞는 기존 주민이 없어도 시작할 수 있다(이번 오류 재현 조건)
 const w3=createWorld(482,100);w3.dynStart();for(const x of w3.S.agents){x.partner=null;x.kids=[]}const picked=w3.dynConfigureStart({family:'children',wealth:'poor'});const a3=w3.S.byId.get(w3.S.dyn.pid);
 assert.equal(picked.family,'children');assert(a3.partner&&a3.kids.length>=1,'조건 맞는 기존 주민이 없어도 가족과 시작');
