@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const ec={module:{exports:{}},console};vm.createContext(ec);vm.runInContext(fs.readFileSync(require.resolve('../engine.js'),'utf8').replace('return{dynSetStory,','return{dynSiteTick,ecTick,claim,dynSetStory,'),ec);
+const w=ec.module.exports.createWorld(2025,180);w.dynStart();w.dynConfigureStart({age:40,status:'king'});const S=w.S,D=S.dyn,me=S.byId.get(D.pid);me.cash=1e6;me.jailUntil=0;
+const run=k=>w.dynAct(k),A=k=>w.dynActions().find(a=>a.k===k);
+run('econ:house');const houseSite=S.sites.find(x=>x.dynOwner===me.id);assert.equal(houseSite.kind,'house');houseSite.prog=houseSite.need;w.dynSiteTick(me);assert(S.houses.some(h=>h.id===houseSite.id&&h.owner===me.id));
+run('econ:shop');const shopSite=S.sites.find(x=>x.dynOwner===me.id);shopSite.prog=shopSite.need;w.dynSiteTick(me);assert(S.shops.some(s=>s.id===shopSite.id&&s.owner===me.id));
+Object.assign(me.inv,{wood:50,plank:50,gold:20});me.knowJewel=true;
+for(const g of ['tool','jewel','furn']){D.cool.acteccraft=0;const before=me.inv[g]||0;run('econ:craft:'+g);assert(me.inv[g]>before)}
+const seller=S.agents.find(a=>a.alive&&a!==me);seller.inv.gold=20;seller.cash=1e5;const supply=w.moneySupply(),g0=me.inv.gold;run('econ:market:gold:buy');assert(me.inv.gold>g0);run('econ:market:gold:sell');assert(Math.abs(w.moneySupply()-supply)<1e-6,'현물 거래 돈 보존');
+run('econ:insurer:'+encodeURIComponent('자유 보험'));assert.equal(me.insurer.name,'자유 보험');run('econ:insRename:'+encodeURIComponent('동현 보험'));assert.equal(me.insurer.name,'동현 보험');
+const ins=S.agents.find(a=>a.alive&&a!==me);ins.insurer={name:'이웃 보험',house:.0012,theft:.12,prem:0,claims:0};ins.cash=1e5;run('econ:insurance:t'+ins.id);assert(S.policies.some(p=>p.holder===me.id&&p.kind==='theft'));const cash=me.cash;w.claim(me,'theft',10);assert(me.cash>cash);
+run('econ:coopFound');const coop=S.coops.find(c=>c.id===me.coop);coop.fund=1e4;run('econ:coopBorrow');assert(D.economy.coopDebt[0].balance>0);S.day+=10;w.ecTick();assert(D.economy.coopDebt[0].balance>20*Math.max(.5,S.wageAvg||1));run('econ:coopRepay');assert.equal(D.economy.coopDebt[0].balance,0);
+run('econ:fund:food');const fund=S.funds.find(f=>f.founder===me.id);assert(fund);const beforeFund=fund.cash;run('econ:donate:f'+fund.id);assert(fund.cash>beforeFund);
+const t={name:'시험 무역국',pop:1000,p:{grain:2,gold:40,wood:1.5},tension:0,tar:{agri:0,mfg:0},mil:1,dev:1,era:1};S.trade={on:true,fxr:1,towns:[t],yr:{imp:0,exp:0,tar:0,smug:0}};const stock=me.inv.grain;run('econ:trade:'+encodeURIComponent(t.name)+':i_grain');assert(me.inv.grain>stock);D.cool.actectrade=0;run('econ:trade:'+encodeURIComponent(t.name)+':e_grain');assert.equal(me.inv.grain,stock);
+const firm={id:S.nextFirm++,name:'개발 회사',pre:'개발',suf:'건설',ceo:me.id,founder:me.id,sh:{[me.id]:10000},shareVersion:74,totalShares:10000,price:1,p30:1,peak:1,cash:1e5,bld:[],lines:['build'],born:S.day,divE:0,hist:[]};S.firms.push(firm);S.houseRef=Math.max(S.houseRef,S.rentRef*30);run('econ:project:'+firm.id+':apt');const apt=S.sites.find(x=>x.firm===firm.id);assert.equal(apt.kind,'apt');assert(apt.units>=2);
+run('econ:syndicate');assert(D.economy.syndicate.members.length>0);const old=firm.price;run('econ:pump:'+firm.id);assert(firm.price>old&&firm.pump>0);D.cool.actecfraud=0;run('econ:fraud:ponzi');assert.equal(S.ponzi.by,me.id);
+const restored=ec.module.exports.createWorld(2025,180);restored.importState(JSON.parse(JSON.stringify(w.exportState())));assert.equal(restored.S.byId.get(D.pid).insurer.name,'동현 보험');assert.equal(restored.S.dyn.economy.coopDebt[0].balance,0);assert.equal(restored.S.ponzi.by,me.id);
+assert(Object.keys(w._story.SE).filter(k=>/^ec[A-Z]/.test(k)).length>=12);
+console.log('주택·공방 완공·제작·현물 거래 돈 보존·보험·조합 대출·재단·수출입·개발·작전·폰지·저장 확인 완료');
