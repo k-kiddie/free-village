@@ -186,7 +186,7 @@ function dynOpen(p,force){
       <label>성별 <select id="dynSex"><option value="M" ${m.sex==='M'?'selected':''}>남성</option><option value="F" ${m.sex==='F'?'selected':''}>여성</option></select></label>
       <label>나이 <input id="dynAge" type="number" min="18" max="45" value="${m.age}"></label>
       <label>가족 조건 <select id="dynFamilyStart"><option value="single">혼자 이주</option><option value="partner">배우자와 함께 이주</option><option value="children">배우자·자녀와 함께 이주</option></select></label>
-      <label>시작 재산 <select id="dynWealthStart"><option value="keep">일반 이주민 정착금</option><option value="poor">가난한 편 · 1~4일 품삯</option><option value="modest">살림 안정 · 8~25일 품삯</option><option value="wealthy">넉넉한 편 · 40~80일 품삯</option></select></label>
+      <label>시작 재산 <select id="dynWealthStart"><option value="keep">보통 · 마을 사람 보통 재산</option><option value="poor">가난한 편 · 보통의 3~6할</option><option value="modest">살림 안정 · 보통의 1.2~1.8배</option><option value="wealthy">넉넉한 편 · 보통의 3배 + 집 한두 채 값</option></select></label>
       <label>외모 <input id="dynLooks" type="number" min="0" max="100" value="${Math.round((m.looks??.5)*100)}"></label>
       <label>병역 <select id="dynServed"><option value="no">미필 · 징병제가 있으면 영장이 나올 수 있음</option><option value="yes">군필 · 징병 면제, 경계심·체력 조금 높음</option></select></label>
       <label>학력 <select id="dynEdu">${['없음','기본','사교육','고등','대학'].map((x,i)=>`<option value="${i}" ${i===(m.edu||0)?'selected':''}>${x}</option>`).join('')}</select></label>

@@ -4502,14 +4502,16 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 다시 꾸미면 앞서 만든 인물과 가족을 지우고 새로 만든다. 시작 선택 전에는 시간이 멈춰 있어 다른 주민과 엮이지 않는다.
     if(D.startMade){const ids=new Set(D.startMade);for(let i=S.agents.length-1;i>=0;i--)if(ids.has(S.agents[i].id))S.agents.splice(i,1);for(const id of ids)S.byId.delete(id);if(S.yr)S.yr.migIn=Math.max(0,(S.yr.migIn||0)-ids.size);D.startMade=null;dynKinD=-1}
     const wage=Math.max(.5,S.wageAvg||1),mlv=S.mlvl||1,ageY=age!=null?age:20+Math.floor(wr()*11),sex=c.sex||(wr()<.5?'M':'F');
-    const cash=wealth==='poor'?wage*(1+wr()*3):wealth==='modest'?wage*(8+wr()*17):wealth==='wealthy'?wage*(40+wr()*40):30*mlv;
+    // 시작 재산은 마을 어른 현금의 중간값(보통 사람)과 집값을 기준으로 정한다(초반 품삯 기준이면 너무 적게 나옴)
+    const cs=adultsC().map(x=>x.cash).sort((x,y)=>x-y),med=Math.max(10*mlv,cs[cs.length>>1]||30*mlv),hr0=S.houseRef||100;
+    const cash=wealth==='poor'?med*(.3+wr()*.3):wealth==='modest'?med*(1.2+wr()*.6):wealth==='wealthy'?med*3+hr0*(1+wr()):med;
     const a=mk({age:ageY*YEAR,born:S.day-ageY*YEAR,cash,g:randGenome(),migrant:true,sex});a.inv.grain=6;for(const k of PROD)a.skill[k]=.05+wr()*.25;initQ(a);a.edu=edu!=null?edu:0;
     const made=[a.id];
     if(looks!=null){a.g.face=a.g.body=looks/100;a.looks=looks/100;a.faceL=a.bodyL=a.looks}
     for(const[k,v]of Object.entries(traits))a.g[k]=v;for(const[id,v]of Object.entries(skillVals)){a.skill[id]=v;for(const q of a.q)q[id]=Math.max(q[id]||0,v*5)}
     if(sur)a.sur=sur;if(given)a.given=given;
     if(family==='partner'||family==='children'){a.orient='het';const py=cl(ageY+Math.round((wr()-.5)*6),18,60);
-      const b=mk({age:py*YEAR,born:S.day-py*YEAR,cash:5*mlv,g:randGenome(),migrant:true,sex:a.sex==='M'?'F':'M'});b.orient='het';b.inv.grain=4;for(const k of PROD)b.skill[k]=.05+wr()*.25;initQ(b);b.edu=Math.floor(wr()*2);made.push(b.id);dynWed(a,b);
+      const b=mk({age:py*YEAR,born:S.day-py*YEAR,cash:med*.5,g:randGenome(),migrant:true,sex:a.sex==='M'?'F':'M'});b.orient='het';b.inv.grain=4;for(const k of PROD)b.skill[k]=.05+wr()*.25;initQ(b);b.edu=Math.floor(wr()*2);made.push(b.id);dynWed(a,b);
       if(family==='children'){const n=wr()<.5?2:1,maxY=Math.max(0,Math.min(12,Math.min(ageY,py)-18));
         for(let i=0;i<n;i++){const kd=Math.floor(wr()*(maxY+1))*YEAR+Math.floor(wr()*YEAR*.9);
           const k=mk({sur:a.sur,family:a.family,g:childGenome(a.g,b.g),gen:Math.max(a.gen,b.gen)+1,parents:[a.id,b.id],age:kd,born:S.day-kd,migrant:true});
