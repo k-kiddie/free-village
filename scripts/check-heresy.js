@@ -21,7 +21,7 @@ const run=(w,d)=>{for(let i=0;i<d;i++){w.step();for(const p of w.S.dyn.pending.s
 {const {w,S,fa}=cult(1205,'doom+obey');fa.doomD=S.day+12;w.dynSetStory(2);S.dyn.story.next=S.day+999;let p=null;for(let i=0;i<40&&!p;i++){w.step();p=S.dyn.pending.find(x=>x.ctx&&x.ctx.sid==='xDoomDay');if(!p)for(const q of S.dyn.pending.slice())try{w.dynChoose(q.id,q.opts[0].k)}catch(e){}}
   assert(p&&/⭐/.test(p.ctx.title),'종말의 날 특별 사건');w.dynChoose(p.id,'confess');assert(!fa.doc.includes('doom'),'고백하면 종말 교리 폐기')}
 // 6) 계단: 헌금이 쌓이고 흔들리면 붕괴 사건
-{const {w,S,fa}=cult(1206,'ladder+work');run(w,95);assert((fa.ladder||0)>0,'계단 헌금 누적');fa.ladderShaky=S.day;w.dynSetStory(2);S.dyn.story.next=S.day+999;let p=null;for(let i=0;i<20&&!p;i++){w.step();p=S.dyn.pending.find(x=>x.ctx&&x.ctx.sid==='xLadderCollapse');if(!p)for(const q of S.dyn.pending.slice())try{w.dynChoose(q.id,q.opts[0].k)}catch(e){}}
+{const {w,S,fa}=cult(1206,'ladder+work');run(w,70);assert((fa.ladder||0)>0,'계단 헌금 누적');fa.ladderShaky=S.day;w.dynSetStory(2);S.dyn.story.next=S.day+999;let p=null;for(let i=0;i<20&&!p;i++){w.step();p=S.dyn.pending.find(x=>x.ctx&&x.ctx.sid==='xLadderCollapse');if(!p)for(const q of S.dyn.pending.slice())try{w.dynChoose(q.id,q.opts[0].k)}catch(e){}}
   assert(p,'계단 붕괴 사건');w.dynChoose(p.id,'bail');assert(!fa.ladderShaky,'수습')}
 // 7) 선민·피의 보복: 폭력 사건이 쌓임
 {let feud=0;for(const sd of [1207,1307,1407]){const {w,fa}=cult(sd,'chosen+vendetta');run(w,400);feud+=fa.feud||0;if(feud)break}assert(feud>0,'피의 보복 발생')}

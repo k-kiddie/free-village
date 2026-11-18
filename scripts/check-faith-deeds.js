@@ -21,7 +21,7 @@ assert(D.faithMutual[fa.id]>S.day,'상호부조 계 운영');assert(S.agents.som
 
 // 어둠
 const cash0=me.cash;act('fdark:embezzle');assert(me.cash>cash0,'헌금 착복');assert(D.faithRisk[fa.id]>=.25,'들킬 위험 누적');
-act('fdark:miracle');act('fdark:indulge');{const c0=S.gov.chief;S.gov.chief=crook.id;act('fdark:politics:ally');S.gov.chief=c0}act('fdark:politics:heretic');
+act('fdark:miracle');act('fdark:indulge');{const c0=S.gov.chief;S.gov.chief=crook.id;act('fdark:politics:ally');S.gov.chief=c0}{const rl=ad().find(a=>a!==me&&a.faith!==fa.id);S.faiths.push({id:S.nextFaith++,name:'경쟁교',doc:['work','obey'],prophet:rl.id,leader:rl.id,tre:0,born:S.day,temple:null,members:5});for(const a of ad().filter(a=>a!==me&&a.faith!==fa.id).slice(0,5))a.faith=S.faiths.at(-1).id;rl.faith=S.faiths.at(-1).id}act('fdark:politics:heretic');
 assert(w.dynActions().find(a=>a.k==='fdark:inquisition').why,'신정이 아니면 이단 재판 불가');
 act('fdark:cult');assert.equal(fa.dynLock,D.house,'교단 세습');
 // 신정에서 이단 재판
