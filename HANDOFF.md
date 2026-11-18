@@ -187,3 +187,13 @@ node scripts/check-server.js / check-http.js / check-migration.js / check-lifecy
 - 엔진 1년 = 60일(`YEAR`), 계절 15일. "1년에 한 번" = 60일.
 - 화면 수정 뒤 `node scripts/build.js` 필수. 로컬 서버는 재시작해야 새 `god-client.js`를 읽는다.
 - 옛 커밋 메시지 일부가 깨져 있다(CP949). 새 커밋은 UTF-8.
+
+## 2026-11-18 세션 (PR #6~#12, main 반영)
+- #6 생활·정치·금융·세계지도 확장(d5bd998). PR #5는 CRLF 오염(내용 동일)이라 닫음.
+- #7 결혼 기록 오류 수정(mate()의 `unregistered` 미정의 → 결혼 기록 순간 엔진 정지, 원래 마을 포함), 캐릭터 꾸미기 = 새 인물 이주(정착금·가족 동반), 시작 병역(군필/미필), 가문 마을 전용 정책 `draftSex`(남녀 모두 징병).
+- #8 종교 창시(교리 2~3개)·전도·신정(정부 없으면 신정 국가, 있으면 종교 혁명), 출신 '몰락한 왕족'(`a.dynRoyal`)·'성직자 집안'.
+- #9 교단 선행 10(`fgood:*`)·어둠 8(`fdark:*`), 교단 평판 `D.faithRep`, 들킬 위험 `D.faithRisk`·폭로 선택지 `faithExpose`, 세습 교단 `fa.dynLock`.
+- #10 사건 장치: 가문 기억 `D.mem`(c.mem), 지난 선택 `D.storyHist`(c.did), `trig`/`season`(1년=60일, 닷새마다 확인)/`special`/`once`, 몇 년 뒤 사건 `c.later`(heirOk). 특별 사건은 `D.specials` → 소식 탭.
+- #11 새 기능 사건 71개(병역·이주민·종교·신정·왕권·은행·정보기관·조직·공직), #12 기본·복합 줄거리 12·특별 17·계절 6·직업별 27(총 110개). 이야기 사건 392개.
+- 점검: `check-draft-policy`, `check-faith-found`, `check-faith-deeds`, `check-story-engine`, `check-story-fuzz`(모든 사건 선택지 실행) 추가. 매 PR마다 원래 마을 300명·900일 exportState가 main과 일치함을 확인.
+- AWS: 서버 저장소가 `claude/modest-volta-zqs2wm` 브랜치에 있어 main을 못 받던 것을 `main`으로 바꿈. 서버에서 수정돼 있던 engine.js는 `/opt/engine.js.server-backup-20261118`, `/opt/engine-server-changes-20261118.patch`, git stash에 보관. #7 이후 반영은 `sudo systemctl restart village` 필요.
