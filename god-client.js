@@ -5,7 +5,7 @@ const DYN_FULL_GROUPS=GROUPS.map(g=>[g[0],g[1].slice()]);
 const dynEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const DYN_TABS=[['home','🧭','한눈에'],['me','👤','인물'],['fam','🏠','가문'],['asset','💰','영지'],['dip','🌍','외교'],['plot','🗡️','음모'],['law','⚖️','정치'],['news','📰','소식'],['power','📊','통계']];
 // 메뉴별 행동 묶음(서버 행동의 group). 목록에 없는 묶음은 인물 메뉴에 나온다.
-const DYN_TAB_G={me:['건강','인맥','일자리'],fam:['가족','상속','자녀 교육','가문 목표'],asset:['회사 경영','회사 확장','회사 · 어두운 경영','가게·일꾼','집·땅','주식','회사','돈'],dip:['외교'],plot:['첩보','어두운 길','평판 싸움','교단 · 어둠'],law:['정부 세우기','조직','선거','법 바꾸기','권력','종교','교단 · 선행']};
+const DYN_TAB_G={me:['건강','인맥','일자리'],fam:['가족','상속','자녀 교육','가문 목표'],asset:['내 건물','회사 경영','회사 확장','회사 · 어두운 경영','가게·일꾼','집·땅','주식','회사','돈'],dip:['외교'],plot:['첩보','어두운 길','평판 싸움','교단 · 어둠'],law:['정부 세우기','조직','선거','법 바꾸기','권력','종교','교단 · 선행']};
 const dynTabOfGroup=g=>/^(법|정치)/.test(g)?'law':Object.keys(DYN_TAB_G).find(k=>DYN_TAB_G[k].includes(g))||'me';
 function initDyn(send,api,base){
   dynSend=send;dynApi=api;dynApiBase=base;document.body.classList.add('dyn');

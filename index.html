@@ -3424,7 +3424,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         mile('absorb',`첫 흡수. ${josa(big.name,'이','가')} 경쟁 세력 ${josa(small.name,'을','를')} 무너뜨렸다`,[big.leader])}}}
     if(S.groups.length===1&&S.groups[0].members.length+S.groups[0].clients>=ad.length*.8&&ad.length>=15)mile('unify',`마을 통일. ${josa(S.groups[0].name,'이','가')} 마을 거의 전부를 거느리게 됐다`,[S.groups[0].leader])}
   // ---- 정부: 세금·처벌 (정부가 있을 때만)
-  function govTax(a,amt){const G=S.gov;if(!G||!(amt>0)||a.foreign||a.cottage||!(a.id>0))return;const rt=G.rules&&G.rules.length?ruleTax(a):0;if(!G.policy.tax&&!rt)return;const pm=G.policy.progressive?Math.min(3,Math.max(.3,Math.pow((a.incAvg||0)/Math.max(.05,S._medInc||1),.7))):1;let t=amt*Math.min(.6,G.policy.tax*pm+rt);if(a.g.cheat>.35&&R()<a.g.cheat*((G.guards||0)>3?.3:.7)){const e=t*.7;t-=e;a.evaded=(a.evaded||0)+e}a.cash-=t;G.tre+=t;G.st.collected+=t;SP(a,'govtax',t)}
+  function govTax(a,amt){const G=S.gov;if(!G||!(amt>0)||(S.dyn&&a.hideTax>S.day)||a.foreign||a.cottage||!(a.id>0))return;const rt=G.rules&&G.rules.length?ruleTax(a):0;if(!G.policy.tax&&!rt)return;const pm=G.policy.progressive?Math.min(3,Math.max(.3,Math.pow((a.incAvg||0)/Math.max(.05,S._medInc||1),.7))):1;let t=amt*Math.min(.6,G.policy.tax*pm+rt);if(a.g.cheat>.35&&R()<a.g.cheat*((G.guards||0)>3?.3:.7)){const e=t*.7;t-=e;a.evaded=(a.evaded||0)+e}a.cash-=t;G.tre+=t;G.st.collected+=t;SP(a,'govtax',t)}
   function govFraud(ch,vic){const G=S.gov;if(!G)return;ch.frD=(ch.frD||[]).filter(d=>d>S.day-YEAR);ch.frD.push(S.day);if((G.rules||[]).some(r=>r.what==='exile'&&inWho(ch,r.who)&&ruleOn(r))&&ch.frD.length>=4)ch.pendExile='상습 사기';const f=Math.min(Math.max(0,ch.cash),6*G.policy.punish);if(f<=0)return;ch.cash-=f;SP(ch,'fine',f);vic.cash+=f*.5;G.tre+=f*.5;G.st.fraudFined++;
     mile('fraudLaw',`첫 사기 처벌. 관청이 사기꾼 ${josa(nm(ch),'에게','에게')} 벌금 ${won(f)}을 물렸다`,[ch.id,vic.id])}
   // ---- 금융: 빌려주기, 이자, 연체, 압류, 예금, 은행
@@ -5300,14 +5300,14 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(agency&&(!secMinistry||agency.exposed))add('spyorg:disband','첩보','비밀 정보조직 해산','조직을 없애고 요원들을 돌려보냄');
     }
     if(!((me.jailUntil||0)>S.day))dynMoreActions(me,add);
-    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r);dynMore2Actions(me,add,r);dynBizActions(me,add);dynLaw2Actions(me,add);dynExtraActions(me,add);dynFaithActions(me,add);dynFaithDeedActions(me,add);dynRoyalActions(me,add);coActions(me,add);farActions(me,add);p2Actions(me,add)}
+    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r);dynMore2Actions(me,add,r);dynBizActions(me,add);dynLaw2Actions(me,add);dynExtraActions(me,add);dynFaithActions(me,add);dynFaithDeedActions(me,add);dynRoyalActions(me,add);coActions(me,add);farActions(me,add);p2Actions(me,add);bdActions(me,add)}
     if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynEcoActions(me,add,out);
     if(isAdult(me)&&!((me.jailUntil||0)>S.day)){
       if(D.gig)add('gig:quit','일자리','계약을 그만둔다',`${D.gig.label} · ${Math.max(0,D.gig.end-S.day)}일 남음 · 실제 일한 날만 임금 지급`);
       else for(const g of dynGigOffers(me)){const a=add(`gig:${g.type}:${g.e.id}`,'일자리',`${g.label} · ${nm(g.e)}`,`하루 ${won(g.wage)} · ${g.durations.map(n=>`${n}일 ${won(n*g.wage)}`).join(' / ')} · 계약 뒤 일한 날에 임금 지급`);a.opts=g.durations.map(n=>[n,`${n}일 계약`])}
     }
     return out}
-  function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');if(/^tgt:/.test(k)){const text=dynTarget(me,k);D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}const base=/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):/^law2:/.test(k)?k.split(':').slice(0,2).join(':'):/^lawval:/.test(k)?'law2:'+k.split(':')[1]:/^gig:/.test(k)?k.split(':').slice(0,3).join(':'):/^privmil:recruit:/.test(k)?'privmil:recruit':/^spyorg:recruit:/.test(k)?'spyorg:recruit':/^spyorg:order:/.test(k)?k.split(':').slice(0,3).join(':'):/^loan:lend:/.test(k)?k.split(':').slice(0,3).join(':'):/^bank:ops:/.test(k)?k.split(':').slice(0,3).join(':'):/^corp:offer:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:found:/.test(k)?'extra:found':/^fdark:politics:/.test(k)?'fdark:politics':/^extra:gang:business:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:gang:task:/.test(k)?k.split(':').slice(0,4).join(':'):/^co:dark:/.test(k)?k:/^co:/.test(k)?k.split(':').slice(0,3).join(':'):/^pol2:/.test(k)?k.split(':').slice(0,2).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!/^lawval:/.test(k)&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
+  function dynAct(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');if(/^tgt:/.test(k)){const text=dynTarget(me,k);D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}const base=/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):/^law2:/.test(k)?k.split(':').slice(0,2).join(':'):/^lawval:/.test(k)?'law2:'+k.split(':')[1]:/^gig:/.test(k)?k.split(':').slice(0,3).join(':'):/^privmil:recruit:/.test(k)?'privmil:recruit':/^spyorg:recruit:/.test(k)?'spyorg:recruit':/^spyorg:order:/.test(k)?k.split(':').slice(0,3).join(':'):/^loan:lend:/.test(k)?k.split(':').slice(0,3).join(':'):/^bank:ops:/.test(k)?k.split(':').slice(0,3).join(':'):/^corp:offer:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:found:/.test(k)?'extra:found':/^fdark:politics:/.test(k)?'fdark:politics':/^extra:gang:business:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:gang:task:/.test(k)?k.split(':').slice(0,4).join(':'):/^co:dark:/.test(k)?k:/^co:/.test(k)?k.split(':').slice(0,3).join(':'):/^pol2:/.test(k)?k.split(':').slice(0,2).join(':'):/^bld:/.test(k)?k.split(':').slice(0,2).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!/^lawval:/.test(k)&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
     const ad=adultsC();let text='';
     if(k==='gig:quit')text=dynGigFinish(me,'quit')?.text||'계약이 없습니다';
     else if(/^gig:/.test(k)){const days=Number(k.split(':')[3]);text=dynGigStart(me,k,days)}
@@ -5343,6 +5343,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     else if(/^co:/.test(k))text=coAct(me,k);
     else if(/^far:/.test(k))text=farAct(me,k);
     else if(/^pol2:/.test(k))text=p2Act(me,k);
+    else if(/^bld:/.test(k))text=bdAct(me,k);
     else if(k==='runChief'||k==='runCouncil'){const kind=k==='runChief'?'chief':'council',f=dynFee(kind);me.cash-=f;SP(me,'bribe',f);D.run={...(D.run||{}),[kind]:true};text=`${kind==='chief'?chiefTitle():'의원'} 선거에 출마 등록했다(선거비 ${won(f)})`}
     D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}
   // 선거 후보 명단에 출마 등록한 플레이어를 넣는다(당락은 엔진 투표).
@@ -6385,7 +6386,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   E('coPatentSuit',{cat:'회사',need:c=>coHas(c,f=>coPats(f).length>0&&coRivals(f).length>0),cd:YEAR,title:'⚖️ 특허 도용',text:c=>{const f=coF(c);return `${josa(coRivals(f)[0].name,'이','가')} 우리 특허 '${coPats(f)[0].n}'를 몰래 베껴 팔고 있습니다.`},
     o:[['sue','손해를 물어내라고 다툰다','반반',c=>{const f=coF(c),r=coRivals(f)[0];if(c.roll(.55)){const t=Math.min(r.cash||0,coBase(f));r.cash-=t;f.cash+=t;return `배상금 ${won(t)}을 받아 냈다`}c.cash(-c.wA*5);return '다툼에서 졌다'}],['license','사용료를 받고 허락한다','',c=>{const f=coF(c),r=coRivals(f)[0];const t=Math.min(r.cash||0,c.wA*10);r.cash-=t;f.cash+=t;return `사용료 ${won(t)}을 받기로 했다`}]]});
   // ===== 먼 나라 사건 (가문 모드) =====
-  const fN=c=>{const D=S.dyn;if(!D.far)return null;if(c.ctx.fn){const F=farBy(c.ctx.fn);if(F&&F.alive)return F}const L=farAlive();const F=L[Math.floor(wr()*L.length)];if(F)c.ctx.fn=F.name;return F||null};
+  const fN=c=>{const D=S.dyn;if(!D.far)return null;if(c.ctx.fn){const F=farBy(c.ctx.fn);if(F&&F.alive)return F}const L=farAlive();const F=L.length?L[S.day%L.length]:null;if(F)c.ctx.fn=F.name;return F||null};
   const fNear=c=>!!S.dyn.far&&!!(S.trade&&S.trade.on);
   const fRel=(c,d)=>{const F=fN(c);if(F)F.rel=cl((F.rel||0)+d,-1,1)};
   E('farEnvoyVisit',{cat:'외교',need:c=>fNear(c)&&dynRank()>=2&&!!fN(c),cd:YEAR,title:'🐫 먼 나라의 사절',text:c=>`바다 건너 ${fN(c).name}에서 사절단이 낯선 짐승과 선물을 끌고 찾아왔습니다. ${fN(c).regName||REALM_REG[fN(c).regime]||''}의 ${REALM_TITLE[fN(c).regime]||'통치자'}이 보낸 인사라고 합니다.`,
@@ -6439,6 +6440,28 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     o:[['obey','결정을 따른다','',c=>{c.rep(.04);return '법치를 지켰다는 평을 들었다'}],['replace','재판관을 갈아치운다','',c=>{const j=adultsC().find(a=>a!==c.me&&p2Same(a,c.me));if(j)c.G.judge=j.id;pAp(c,-.05);return '내 편을 재판관에 앉혔다'},{trait:'honesty'}],['defy','결정을 무시한다','',c=>{pAp(c,-.08);return '헌정 위기라는 말이 나온다'}]]});
   E('p2Assassin',{cat:'정치',need:c=>pR(c)&&(dynHard()||c.G.fear>S.day||(c.G.approval??.5)<.3),cd:YEAR*2,title:'🔪 암살 시도',text:()=>'행차 길에 누군가 칼을 들고 뛰어들었습니다.',
     o:[['fight','맞선다','',c=>{if(c.roll(.6)){c.rep(.04);return '자객을 제압했다'}c.health(-25);return '칼에 찔려 크게 다쳤다'}],['run','몸을 피한다','',c=>{if(c.roll(.8))return '무사히 피했다';c.health(-15);return '피하다 다쳤다'}]]});
+  // ===== 건물 사건 (가문 모드) =====
+  const bdF=(c,f)=>{const L=bdMine(c.me).filter(b=>bdHas(b,f));if(!L.length)return null;if(c.ctx.bid){const b=L.find(x=>x.id===c.ctx.bid);if(b)return b}const b=L[0];c.ctx.bid=b.id;return b};
+  E('bdPubFight',{cat:'건물',need:c=>!!bdF(c,'pub'),cd:YEAR,title:'🍶 주막 패싸움',text:c=>`${bName(bdF(c,'pub'))}에서 술 취한 두 패거리가 의자를 집어 던지며 싸웁니다.`,
+    o:[['stop','직접 말린다','',c=>{if(c.roll(.6)){c.rep(.03);return '내 호통에 다들 잠잠해졌다'}c.health(-10);return '말리다 한 대 맞았다'}],['guard','경비를 부른다',c=>`약 ${won(c.wA*2)}`,c=>{c.cash(-c.wA*2);return '경비가 와서 끌어냈다'}],['bill','부서진 값을 물린다','',c=>{c.cash(c.wA*3);return '두 패거리에게 물건값을 받아 냈다'}]]});
+  E('bdPressSuit',{cat:'건물',need:c=>!!bdF(c,'press'),who:c=>wpick(adultsC().filter(a=>a!==c.me&&(a.rep??.5)>.5)),cd:YEAR,title:'⚖️ 오보 소송',text:c=>`${josa(c.n(c.x),'이','가')} ${bdF(c,'press').pname||'신문'} 기사가 거짓이라며 소송을 걸겠다고 합니다.`,
+    o:[['fix','정정 보도를 낸다','',c=>{c.rep(-.02);return '정정 보도로 마무리했다'}],['fight','끝까지 다툰다','반반',c=>{if(c.roll(.5)){c.rep(.04);return '기사가 사실로 인정됐다'}c.cash(-c.wA*8);return '져서 배상금을 물었다'}],['settle','돈으로 합의한다',c=>`약 ${won(c.wA*4)}`,c=>{c.cash(-c.wA*4);if(c.x)c.x.cash+=c.wA*4;return '합의금을 주고 끝냈다'}]]});
+  E('bdMedErr',{cat:'건물',need:c=>!!bdF(c,'heal'),who:c=>wpick(adultsC().filter(a=>a!==c.me)),cd:YEAR,title:'💉 의료 사고',text:c=>`${bName(bdF(c,'heal'))}에서 치료받던 ${josa(c.n(c.x),'이','가')} 상태가 나빠졌습니다. 가족이 몰려왔습니다.`,
+    o:[['pay','보상한다',c=>`약 ${won(c.wA*10)}`,c=>{c.cash(-c.wA*10);if(c.x)c.x.cash+=c.wA*10;return '보상하고 사과했다'}],['hide','기록을 고친다','들킬 위험',c=>{if(c.roll(.3)){c.rep(-.12);return '기록 조작이 들통났다'}return '조용히 넘어갔다'},{trait:'honesty'}],['blame','환자 탓을 한다','',c=>{c.rep(-.05);c.tie(c.x,-.4,'의료 사고');return '원한을 샀다'}]]});
+  E('bdSchoolFight',{cat:'건물',need:c=>bdMine(c.me).some(b=>bdHas(b,'gather')&&b.school),cd:YEAR,title:'📚 학교 분쟁',text:()=>'학부모들이 선생 한 명이 부잣집 아이만 감싼다며 들고일어났습니다.',
+    o:[['fire','그 선생을 내보낸다','',c=>{c.rep(.03);return '선생을 바꿨다'}],['defend','선생 편을 든다','',c=>{c.rep(-.02);return '학부모 일부가 아이를 데려갔다'}],['fund','장학금을 만든다',c=>`약 ${won(c.wA*6)}`,c=>{c.cash(-c.wA*6);c.rep(.05);return '가난한 아이에게도 장학금을 줬다'}]]});
+  E('bdStoreRats',{cat:'건물',need:c=>!!bdF(c,'store'),cd:YEAR,title:'🐀 창고의 쥐 떼',text:c=>`${bName(bdF(c,'store'))}에 쥐 떼가 들끓어 곡식이 줄고 있습니다.`,
+    o:[['cats','고양이와 덫을 놓는다',c=>`약 ${won(c.wA*2)}`,c=>{c.cash(-c.wA*2);return '쥐를 잡았다'}],['burn','훈증한다','화재 위험',c=>{if(c.roll(.15)){const b=bdF(c,'store');b.cond=Math.max(.1,b.cond-.4);return '불이 번져 창고가 반쯤 탔다'}return '쥐가 싹 사라졌다'}],['ignore','내버려 둔다','',c=>{c.me.inv.grain=Math.max(0,(c.me.inv.grain||0)*.8);return '곡식 일부를 잃었다'}]]});
+  E('bdArenaFix',{cat:'건물',need:c=>bdMine(c.me).some(b=>bdHas(b,'arena')||bdHas(b,'stage')),cd:YEAR,title:'🎲 승부 조작 제안',text:()=>'노름꾼이 다음 대회 결과를 미리 맞춰 주면 크게 쳐주겠다고 합니다.',
+    o:[['take','받는다',c=>`+${won(c.wA*20)}`,c=>{c.cash(c.wA*20);if(c.roll(.3)){c.rep(-.15);return '조작이 들통나 관중이 등을 돌렸다'}return '조용히 돈을 챙겼다'},{trait:'honesty'}],['report','고발한다','',c=>{c.rep(.05);return '노름꾼을 쫓아냈다'}],['no','거절한다','',()=>'거절했다']]});
+  E('bdFacBlast',{cat:'건물',need:c=>bdMine(c.me).some(b=>bdHas(b,'fac')||bdHas(b,'bigfac')),cd:YEAR*2,title:'💥 공장 폭발',text:()=>'공장 보일러가 터졌습니다. 일꾼 여럿이 다쳤습니다.',
+    o:[['care','치료비와 위로금을 댄다',c=>`약 ${won(c.wA*15)}`,c=>{c.cash(-c.wA*15);c.rep(.03);return '다친 일꾼들을 돌봤다'}],['cover','사고를 덮는다','',c=>{if(c.roll(.35)){c.rep(-.15);if(S.gov)S.gov.cases.push({t:'skim',who:c.me.id,amt:c.wA*5,ev:.5,d:S.day});return '은폐가 들통나 수사가 시작됐다'}return '사고가 묻혔다'},{trait:'honesty'}],['restart','바로 다시 돌린다','',c=>{c.rep(-.05);return '피 묻은 바닥을 닦고 다시 돌렸다'},{trait:'care'}]]});
+  E('bdInnGuest',{cat:'건물',need:c=>!!bdF(c,'shelter'),cd:YEAR,title:'🧳 수상한 손님',text:c=>`${bName(bdF(c,'shelter'))}에 묵는 손님이 밤마다 이상한 짐을 옮깁니다.`,
+    o:[['report','관청에 알린다','',c=>{c.rep(.03);return '밀수꾼이었다. 붙잡혔다'}],['blackmail','입막음 돈을 받는다',c=>`+${won(c.wA*8)}`,c=>{c.cash(c.wA*8);return '돈을 받고 모른 척했다'},{trait:'honesty'}],['ignore','신경 끈다','',()=>'내 알 바 아니었다']]});
+  E('bdLabLeak',{cat:'건물',need:c=>!!bdF(c,'lab'),cd:YEAR*2,title:'🧪 기술 유출',text:()=>'연구원 한 명이 연구 기록을 들고 경쟁 회사로 가려다 붙잡혔습니다.',
+    o:[['sue','고소한다','',c=>{if(S.gov)return '관아가 연구원을 처벌했다';return '마을 사람들 앞에서 망신을 줬다'}],['keep','연봉을 올려 붙잡는다',c=>`약 ${won(c.wA*6)}`,c=>{c.cash(-c.wA*6);return '다시 마음을 잡았다'}],['let','보내 준다','',c=>{S.rp=Math.max(0,(S.rp||0)-2);return '기술이 새 나갔다'}]]});
+  E('bdGuardBribe',{cat:'건물',need:c=>!!bdF(c,'guard'),cd:YEAR,title:'💰 경비원 뒷돈',text:()=>'내 경비 초소 경비원들이 도둑들에게서 뒷돈을 받고 눈감아 준다는 소문입니다.',
+    o:[['purge','싹 갈아 치운다',c=>`약 ${won(c.wA*4)}`,c=>{c.cash(-c.wA*4);c.rep(.03);return '경비원을 새로 뽑았다'}],['share','뒷돈을 나눠 받는다',c=>`+${won(c.wA*5)}`,c=>{c.cash(c.wA*5);c.rep(-.04);return '나도 한몫 챙겼다'},{trait:'honesty'}]]});
   const FOLLOW={};function F(id,k,list){(FOLLOW[id+':'+k]=FOLLOW[id+':'+k]||[]).push(...list)}
   const sOk=re=>(c,r)=>re.test(r),sNok=re=>(c,r)=>!re.test(r);
   // A. 형제 다툼 → 분가 → 가문 내전 / 독살 음모
@@ -7388,6 +7411,55 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   // 선거 개표: 매표·개표 조작을 반영(가문 모드에서 내가 후보일 때만)
   function p2ElecRig(cand,votes,turnout){const D=S.dyn,me=dynMe(),e=D&&D.elec;if(!e||!me)return;const i=cand.indexOf(me);if(i<0)return;const top=votes.reduce((b,v,j)=>j!==i&&v>(votes[b]??-1)?j:b,i===0?1:0);
     let mv=Math.min(e.buy||0,votes[top]||0);votes[top]-=mv;votes[i]+=mv;if(e.rig){const r=Math.round(turnout*.15);const t2=Math.min(r,votes[top]||0);votes[top]-=t2;votes[i]+=t2;if(wr()<.35){const G=S.gov;G.approval=Math.max(0,(G.approval??.5)-.25);G.cases.push({t:'rigging',who:me.id,amt:S.houseRef||100,ev:.6,d:S.day});D.rigOut=S.day}}D.elec=null}
+  // ===== 건물별 내 행동 (가문 모드 전용) =====
+  function bdMine(me){return S.bldgs.filter(b=>b.cond>.2&&(b.owner===me.id||(b.firm&&firmById(b.firm)?.ceo===me.id)))}
+  const bdHas=(b,f)=>(b.fx||[]).includes(f);
+  function bdTake(amt,not){const ad=adultsC().filter(a=>a!==not&&a.cash>dynWA()*3),pool=ad.reduce((t,a)=>t+a.cash,0);if(!(pool>0))return 0;const t=Math.min(amt,pool*.03);for(const a of ad){const x=t*a.cash/pool;a.cash-=x;SP(a,'rent',x)}return t}
+  function bdOpts(me,b){const wA=dynWA(),o=[],G=S.gov;const crit=adultsC().filter(x=>x!==me&&(x.rep??.5)>.55).sort((x,y)=>dynScore(y)-dynScore(x)).slice(0,3);
+    if(bdHas(b,'pub'))o.push(['feast',`마을 잔치 · ${won(wA*6)} · 평판↑`]);
+    if(bdHas(b,'b1'))o.push(['banquet',`유력자 연회 · ${won(wA*8)} · 높은 집안과 친분↑`]);
+    if(bdHas(b,'shelter'))o.push(['refuge',`떠돌이·피난민 받아 주기 · ${won(wA*3)} · 평판↑`]);
+    if(bdHas(b,'heal'))o.push(['free',`가난한 사람 무료 진료 · ${won(wA*5)} · 평판↑`]);
+    if(bdHas(b,'gather')){if(!b.school)o.push(['school','학교로 정식 개교 · 아이 교육↑']);o.push(['meet',`마을 회의 열기 · 내 말에 힘이 실림`])}
+    if(bdHas(b,'store')){o.push(['release','흉년 곡식 풀기 · 굶는 사람 먹이기 · 평판↑']);o.push(['hoard',`곡식 사재기 · ${won(wA*10)} · 곡식값↑ · 평판↓`])}
+    if(bdHas(b,'guard')){o.push(['patrol','순찰 강화 · 범죄자 붙잡기']);o.push(['extort','경비원을 풀어 상인 등치기 · 돈↑ 평판↓'])}
+    if(bdHas(b,'fac')||bdHas(b,'bigfac'))o.push(['push','증산 명령 · 돈↑ · 사고 위험 20%']);
+    if(bdHas(b,'arena')||bdHas(b,'stage'))o.push(['show',`${bdHas(b,'arena')?'큰 대회':'큰 공연'} 열기 · ${won(wA*10)} · 표값 수입 · 평판↑`]);
+    if(bdHas(b,'lab'))o.push(['labA','연구 방향: 농업 · 수확↑'],['labM','연구 방향: 의학 · 의학 발전 확률'],['labW','연구 방향: 군사 · 군사력↑']);
+    if(bdHas(b,'vault'))o.push(['hide','재산 숨기기 · 다음 세금·도둑을 피함']);
+    if(bdHas(b,'office'))o.push(['tenant','사무실 임대 영업 · 회사 세입자 모으기']);
+    if(bdHas(b,'press')){o.push(['praise','나를 띄우는 기사 · 평판·지지율↑'],['scoop','특종 취재 · 성공하면 돈·평판'],[b.pk==='gossip'?'serious':'tabloid',b.pk==='gossip'?'정론지로 바꾸기':'황색 신문으로 바꾸기 · 구독↑ 신뢰↓']);for(const x of crit)o.push(['exp'+x.id,`${nm(x)} 폭로 기사 · 명예훼손 소송 위험`]);o.push(['close','신문 폐간'])}
+    o.push(['feeUp','이용료 30% 올리기'],['feeDn','이용료 30% 내리기']);return o}
+  function bdActions(me,add){if(!isAdult(me))return;for(const b of bdMine(me).slice(0,20)){const a=add('bld:'+b.id,'내 건물',`${bName(b)}${b.pname?' · '+b.pname:''}`,`이용 ${b.users||0}명 · 이용료 ${won(b.fee||0)} · 최근 수입 ${won(b.revE||0)}/10일${b.school?' · 학교':''}`,dynWait('bld'+b.id));a.opts=bdOpts(me,b)}}
+  function bdAct(me,k){const [,bid,op]=k.split(':'),b=S.bldgs.find(x=>x.id===Number(bid)),D=S.dyn,wA=dynWA(),hr=S.houseRef||100,G=S.gov;if(!b||!bdMine(me).includes(b))throw Error('내 건물이 아닙니다');
+    const pay=n=>{if(me.cash<n)throw Error('돈이 모자랍니다');me.cash-=n;SP(me,'family',n);const ad=adultsC().filter(a=>a!==me);for(let i=0;i<Math.min(6,ad.length);i++)ad[Math.floor(wr()*ad.length)].cash+=n/Math.min(6,ad.length)};
+    const rep=d=>{me.rep=cl((me.rep??1)+d,0,1)},ap=d=>{if(G&&p2Ruler(me))G.approval=cl((G.approval??.5)+d,0,1)};D.cool['actbld'+b.id]=S.day+(op.startsWith('fee')?10:30);const N=bName(b);let t='';
+    if(op==='feeUp'||op==='feeDn'){b.fee=Math.max(.2,(b.fee||1)*(op==='feeUp'?1.3:.7));return `${N} 이용료를 ${won(b.fee)}로 ${op==='feeUp'?'올렸다':'내렸다'}`}
+    if(op==='feast'){pay(wA*6);rep(.05);for(const a of adultsC().slice(0,40)){a.fat=Math.max(0,(a.fat||0)-15);a.fun=Math.min(1,(a.fun||0)+.1)}ap(.02);return `${N}에서 마을 잔치를 열었다. 다들 취해 내 이름을 불렀다`}
+    if(op==='banquet'){pay(wA*8);for(const x of adultsC().filter(x=>x!==me).sort((x,y)=>dynScore(y)-dynScore(x)).slice(0,3))dynFamTie(x,.15,'연회');return '유력자들을 불러 연회를 열었다'}
+    if(op==='refuge'){pay(wA*3);let n=0;for(const a of adultsC().filter(a=>!a.home).slice(0,12)){a.innDay=S.day;a.health=Math.min(100,a.health+3);n++}rep(.04);return `떠돌이 ${n}명을 ${N}에 재워 줬다`}
+    if(op==='free'){pay(wA*5);let n=0;for(const a of S.agents.filter(a=>a.alive&&a.health<60&&(a.w||0)<median()).slice(0,10)){a.health=Math.min(100,a.health+10);n++}rep(.06);ap(.02);return `가난한 환자 ${n}명을 무료로 고쳐 줬다`}
+    if(op==='school'){b.school=true;rep(.04);mile('school',`첫 학교. ${josa(nm(me),'이','가')} 회관을 학교로 열었다`,[me.id]);return `${josa(N,'을','를')} 학교로 열었다`}
+    if(op==='meet'){rep(.03);if(G&&p2Ruler(me))ap(.03);else for(const x of adultsC().slice(0,20))if(wr()<.3)dynFamTie(x,.05,'마을 회의');return '마을 회의를 열어 내 뜻을 알렸다'}
+    if(op==='release'){const g=me.inv.grain||0;const hun=S.agents.filter(a=>a.alive&&a.hunger>=60);if(g<5||!hun.length)throw Error('풀 곡식이 없거나 굶는 사람이 없습니다');const each=Math.min(g*.8,hun.length*6)/hun.length;for(const a of hun)a.inv.grain=(a.inv.grain||0)+each;me.inv.grain-=each*hun.length;rep(.08);ap(.04);return `곡식을 풀어 ${hun.length}명을 먹였다`}
+    if(op==='hoard'){const pr=Math.max(.2,S.price.grain||1),q=Math.floor(wA*10/pr);pay(wA*10);me.inv.grain=(me.inv.grain||0)+q;S.price.grain=pr*1.06;rep(-.04);if(G&&wr()<.2)G.cases.push({t:'hoard',who:me.id,amt:wA*10,ev:.4,d:S.day});return `곡식 ${q}가마를 사재기했다. 곡식값이 들썩인다`}
+    if(op==='patrol'){const c=adultsC().filter(a=>a!==me&&(a.crimes||0)>0&&!((a.jailUntil||0)>S.day)).sort((x,y)=>(y.crimes||0)-(x.crimes||0))[0];if(!c)return '순찰을 돌았지만 잡을 사람이 없었다';c.jailUntil=S.day+YEAR/4;c.caught=(c.caught||0)+1;rep(.04);return `순찰 중에 ${josa(nm(c),'을','를')} 붙잡았다`}
+    if(op==='extort'){const g=bdTake(wA*8,me);me.cash+=g;rep(-.06);if(G&&wr()<.25)G.cases.push({t:'extort',who:me.id,amt:g,ev:.5,d:S.day});return `경비원들이 상인들에게서 ${won(g)}을 뜯어 왔다`}
+    if(op==='push'){const f=b.firm&&firmById(b.firm);const g=f?coDrain(f,wA*10):bdTake(wA*10,me);if(!f)me.cash+=g;if(wr()<.2){const w=wpick(S.agents.filter(a=>a.alive&&a.emp===me.id));if(w){w.health=Math.max(1,w.health-30);dynFamTie(w,-.2,'공장 사고')}rep(-.03);return `증산으로 ${won(g)}을 더 벌었지만 일꾼이 크게 다쳤다`}return `증산으로 ${won(g)}을 더 벌었다`}
+    if(op==='show'){pay(wA*10);const g=bdTake(wA*18,me);me.cash+=g;rep(.04);return `${bdHas(b,'arena')?'대회':'공연'}에 사람이 몰려 표값 ${won(g)}을 벌었다`}
+    if(op==='labA'){S.rp=(S.rp||0)+4;return '연구원들이 농사법을 파고들었다'}
+    if(op==='labM'){S.rp=(S.rp||0)+2;if((S.medT||0)<5&&wr()<.2){S.medT=(S.medT||0)+1;t=`연구소에서 의학 발전을 이뤘다: ${MED_L[S.medT]}`;dynChron(t,[me.id]);return t}return '의학 연구를 이어 갔다'}
+    if(op==='labW'){S.rp=(S.rp||0)+2;if(S.mil){S.mil.str=(S.mil.str||0)*1.05+1}return '군사 연구로 군대가 조금 강해졌다'}
+    if(op==='hide'){me.vaultUntil=S.day+YEAR;me.hideTax=S.day+YEAR/2;return '재산을 금고 깊숙이 숨겼다'}
+    if(op==='tenant'){const g=bdTake(wA*6,me);me.cash+=g;return `세입자를 모아 임대료 ${won(g)}을 받았다`}
+    if(bdHas(b,'press')){const pn=b.pname||'신문';
+      if(op==='praise'){rep(.05);ap(.05);if(wr()<.1){rep(-.08);return `${josa(pn,'이','가')} 주인 찬양 기사만 싣는다는 비웃음을 샀다`}return `${pn}에 나를 띄우는 기사를 실었다`}
+      if(op==='scoop'){if(wr()<.4){const g=bdTake(wA*12,me);me.cash+=g;rep(.06);return `${josa(pn,'이','가')} 특종을 터뜨렸다. 신문이 불티나게 팔렸다(${won(g)})`}return '취재가 헛걸음이었다'}
+      if(op==='tabloid'){b.pk='gossip';b.tabloid=true;const g=bdTake(wA*5,me);me.cash+=g;rep(-.03);return `${josa(pn,'을','를')} 황색 신문으로 바꿨다. 구독이 늘었다`}
+      if(op==='serious'){b.pk='watch';b.tabloid=false;rep(.03);return `${josa(pn,'을','를')} 정론지로 바꿨다`}
+      if(op==='close'){b.closed=S.day+YEAR*99;return `${josa(pn,'을','를')} 폐간했다`}
+      if(op.startsWith('exp')){const x=S.byId.get(Number(op.slice(3)));if(!x||!x.alive)throw Error('대상이 없습니다');x.rep=Math.max(0,(x.rep??.5)-.15);if(G&&G.chief===x.id)G.approval=Math.max(0,(G.approval??.5)-.06);dynFamTie(x,-.3,'폭로 기사');if(G&&wr()<.3){G.cases.push({t:'defame',who:me.id,amt:hr*.2,ev:.55,d:S.day});return `${josa(nm(x),'을','를')} 폭로했지만 명예훼손으로 고소당했다`}return `${pn}에 ${nm(x)} 폭로 기사를 실었다`}}
+    throw Error('모르는 행동입니다')}
   function dynWorldView(r){const D=S.dyn,T=S.trade,G=S.gov,our=S.mil?.str||0;const known=!!(T&&T.on&&D.realms);
     const approx=m=>r>=3?Math.round(m):m<our*.6?'우리보다 약함':m>our*1.6?'우리보다 강함':'우리와 비슷';
     const ch=G&&S.byId.get(G.king||G.chief);

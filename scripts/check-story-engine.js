@@ -5,7 +5,8 @@ const {SE,SE_TRIG,sCtx}=w._story;
 assert(SE_TRIG.some(e=>e.id==='newYearRite')&&SE_TRIG.some(e=>e.id==='threeGen'),'조건·계절 사건 목록');
 // 1) 계절 사건: 해가 바뀔 무렵(0~3일) 뜬다
 const run=(n,pick)=>{for(let i=0;i<n;i++){w.step();for(const p of D.pending.slice()){const k=pick&&pick(p);try{w.dynChoose(p.id,k||p.opts[0].k)}catch(e){}}}};
-let seen=null;for(let i=0;i<200&&!seen;i++){w.step();const p=D.pending.find(x=>x.kind==='story'&&x.ctx.sid==='newYearRite');if(p){seen={day:S.day%60,title:p.ctx.title};w.dynChoose(p.id,'skip')}else for(const q of D.pending.slice())try{w.dynChoose(q.id,q.opts[0].k)}catch(e){}}
+let seen=null;for(let i=0;i<600&&!seen;i++){w.step();const p=D.pending.find(x=>x.kind==='story'&&x.ctx.sid==='newYearRite');if(p){seen={day:S.day%60,title:p.ctx.title};w.dynChoose(p.id,'skip')}else for(const q of D.pending.slice())try{w.dynChoose(q.id,q.opts[0].k)}catch(e){}}
+// 다른 사건이 먼저 잡힐 수 있어 몇 해에 걸쳐 확인한다
 assert(seen&&seen.day<=3&&/🗓️/.test(seen.title),'설맞이 제사는 새해 무렵에 계절 표시와 함께');
 // 2) 가문 기억: 지난 선택 기록과 누적
 assert(D.storyHist.newYearRite&&D.storyHist.newYearRite.k==='skip','지난 선택 기록');assert.equal(D.mem.skipRite.v,1,'가문 기억 누적');
