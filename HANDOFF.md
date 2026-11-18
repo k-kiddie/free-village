@@ -230,3 +230,9 @@ node scripts/check-server.js / check-http.js / check-migration.js / check-lifecy
 - 수배 열기 `D.heat`: 범죄마다 오르고 `crTick`(열흘마다)에서 수사로 이어지거나 식는다. 돈세탁으로 크게 낮춤.
 - 범죄 사건 12개(`cr*`). 모듈 안 `adultsC()`는 같은 날 죽은 사람이 남아 있어 `adA()`(살아 있는 어른)로 바꿈.
 - 검사: `scripts/check-crime.js`.
+
+## 경찰·수사관·재판관, 의원 어두운 영업 (2026-11-18)
+- `duty:` 행동(정치 탭 '수사·재판'): 경찰관(`me.dynCop`)·수사관(`G.prosList`)·재판관(`G.judges`) 지원·그만두기, 범죄자 단속(체포·뒷돈), 권력자 내사, 보호비, 밀린 재판 처리. 월급 `duTick`.
+- 내가 직을 맡으면 남의 사건이 수사·재판에 오를 때 `duty` 선택지가 뜬다(`dynCase` → `duCase`): 증거대로·엄하게·봐주기·뇌물·누명 씌우기.
+- 의원 건물 행동 추가(`hp_`): 불법 시술, 진통제 빼돌리기, 가짜 진단서, 건강보험 부풀리기, 특실.
+- 사건 12개(`du*`, `hp*`). 검사: `scripts/check-duty.js`.
