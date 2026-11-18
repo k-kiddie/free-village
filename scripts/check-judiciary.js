@@ -14,7 +14,7 @@ while(S.day%10!==4){G().regime='rep';G().chief=me.id;w.step()}G().regime='rep';G
 for(const a of ad())a.age=Math.max(a.age,40*60);
 step(15);assert(G().jr,'사법부 상태');assert(G().cj,'대법원장');
 // 빈자리: 대법원장이 제청 → 내가 임명권자로 재제청 요구 → 결국 임명
-G().jr.law.expand=true;const ids0=new Set(G().judges.map(j=>j.id));let asked=false,done=false;
+D.pending=D.pending.filter(p=>!p.kind.startsWith('jr'));G().cj=ad()[10].id;G().jr.cjUntil=S.day+1000;G().jr.law.noNomTemp=0;G().jr.law.noNom=false;G().jr.vac={stage:'nom',d:S.day,cand:null,ren:0};G().jr.law.expand=true;const ids0=new Set(G().judges.map(j=>j.id));let asked=false,done=false;
 for(let i=0;i<300&&!done;i++){G().regime='rep';G().chief=me.id;G().regent=null;w.step();for(const q of D.pending.slice()){if(q.kind==='jrRuler'&&!asked){asked=true;w.dynChoose(q.id,'renom');continue}try{w.dynChoose(q.id,q.kind==='jrRuler'?'accept':q.opts[0].k)}catch(e){}}done=G().judges.some(j=>!ids0.has(j.id))}
 assert(asked,'재제청 선택지');assert(done,'결국 재판관 임명');
 // 위헌법률심판: 실제 폐지까지

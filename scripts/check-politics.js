@@ -6,7 +6,7 @@ const {w,S,D,me}=rich(1301);assert(S.gov,'정부');
 const ad=()=>S.agents.filter(a=>a.alive&&w.isAdult(a)&&a!==me);
 S.gov.regime='rep';S.gov.king=null;S.gov.chief=me.id;S.gov.policy.deathPen=true;S.gov.policy.referendum=true;S.gov.const=null;
 const party=S.groups.find(g=>g.mode!=='gang')||null;
-const cool=()=>{for(const k of Object.keys(D.cool))if(/^actp2/.test(k))D.cool[k]=0;me.jailUntil=0;me.cash=1e7};
+const cool=()=>{for(const k of Object.keys(D.cool))if(/^actp2/.test(k))D.cool[k]=0;me.jailUntil=0;me.cash=1e7;S.gov.tre=Math.max(S.gov.tre||0,1e7);if(S.gov.bud)for(const k of Object.keys(S.gov.bud.lines)){S.gov.bud.lines[k]=1e8;S.gov.bud.spent[k]=0}};
 const A=k=>w.dynActions().find(a=>a.k===k);
 const run=(k,v)=>{cool();const a=A(k);assert(a,k+' 목록');assert(a.ok,k+' 가능: '+a.why);if(v!=null){assert(a.opts?.some(o=>String(o[0])===String(v)),k+' 선택지 '+v+' / '+(a.opts||[]).map(o=>o[0]).join(','))}return w.dynAct(v!=null?k+':'+v:k)};
 // 의회 꾸리기: 내 정당 + 야당
@@ -15,7 +15,7 @@ w.dynAct('party');const my=S.groups.find(g=>g.leader===me.id&&g.mode!=='gang');a
 const opp=ad().slice(0,4),ally=ad().slice(4,8);S.gov.council=[...opp,...ally].map(a=>a.id);
 const other={...JSON.parse(JSON.stringify(my)),id:Math.max(0,...S.groups.map(g=>g.id))+1,name:'시험당',leader:opp[0].id,members:[],tre:50,ideo:0};S.groups.push(other);
 for(const a of opp){a.grp=null}for(const a of ally){a.grp=my.id;my.members.push(a.id)}for(const a of opp.slice(0,2)){a.grp=other.id;other.members.push(a.id)}
-const tax0=S.gov.policy.tax||0;run('pol2:bud','taxup');assert(S.gov.policy.tax>tax0);run('pol2:bud','taxdn');run('pol2:bud','aust');const t0=S.gov.tre=Math.max(S.gov.tre,1e4);run('pol2:bud','release');assert(S.gov.tre<t0);
+const tax0=S.gov.policy.tax||0;run('pol2:bud','taxup');assert(S.gov.policy.tax>tax0);run('pol2:bud','taxdn');run('pol2:bud','aust');if(S.gov.bud)for(const k of Object.keys(S.gov.bud.lines)){S.gov.bud.lines[k]=1e8;S.gov.bud.spent[k]=0}const t0=S.gov.tre=Math.max(S.gov.tre,1e4);run('pol2:bud','release');assert(S.gov.tre<t0);
 run('pol2:shield');assert(S.gov.impeachShield>S.day);
 run('pol2:const');run('pol2:amend','seatUp');
 run('pol2:secret');assert(S.gov.inst.secret);for(let i=0;i<20;i++)w.step();assert(S.gov.inst.secret,'민주 체제에서도 내가 만든 비밀경찰은 유지');

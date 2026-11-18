@@ -10,7 +10,7 @@ assert(w.dynActions().find(a=>a.k==='firm:new').companyNameSpec.optional);
 assert.throws(()=>run('firm:new','<script>'),/회사 이름/);
 assert(!me.firm,'잘못된 이름으로 회사를 설립하지 않음');
 run('firm:new','동현 무역: 100%');
-const f=S.firms.find(x=>x.id===me.firm);assert(f);assert.equal(f.name,'동현 무역: 100%');assert(f.dynName);
+const f=S.firms.find(x=>x.id===me.firm);assert(f);assert.equal(f.name,'동현 무역: 100%');assert(f.dynName);assert.equal(f.totalShares,10000);assert.deepEqual(f.sh,{[me.id]:10000},'단독 설립은 지분 매각 없이 100% 소유');assert.equal(f.raised,0);assert.equal(f.listed,undefined);
 assert(D.chron.some(x=>JSON.stringify(x).includes(f.name)),'설립 기록에 지정한 이름');
 const shares=JSON.stringify(f.sh),cash=f.cash;
 (S.unions=S.unions||[]).push({firm:f.id,fname:f.name,emp:me.id});

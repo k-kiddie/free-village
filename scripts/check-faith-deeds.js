@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict');
 const {createWorld}=require('../engine.js');
 const w=createWorld(801,150);w.dynStart();w.dynConfigureStart({age:32,background:'성직자 집안'});
-const S=w.S,D=S.dyn,me=S.byId.get(D.pid);me.cash=1e7;w.dynAct('lord');assert.equal(S.gov.regime,'mon','영주 자처로 정부 수립');
+const S=w.S,D=S.dyn,me=S.byId.get(D.pid);me.cash=1e7;for(const a of w.S.agents){a.g.comply=1;a.g.civic=0}me.rep=1;w.dynAct('lord');assert.equal(S.gov.regime,'mon','영주 자처로 정부 수립');
 w.dynAct('extra:found:charity+honest:한빛');const fa=S.faiths.find(f=>f.name==='한빛교');fa.tre=1e6;
 const ad=()=>S.agents.filter(a=>a.alive&&a.age>=14*60);
 for(const a of ad().slice(0,40))if(a!==me)a.faith=fa.id;

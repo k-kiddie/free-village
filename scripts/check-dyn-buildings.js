@@ -14,7 +14,7 @@ const ad=S.agents.filter(a=>a.alive&&w.isAdult(a)).length;if(ad<150)assert.match
 const staff=S.agents.filter(a=>a.alive&&w.isAdult(a)&&a!==me&&!a.emp).slice(0,7);for(const x of staff){x.emp=me.id;x.ct={t:'reg',e:me.id,w:1,d:S.day}}
 S.medT=1;S.iron=1;S.tall=1;
 assert.equal(A('fac').why,'');assert.equal(A('heal').why,'');assert.equal(A('bigfac').ok||/집터|짓고/.test(A('bigfac').why),true);
-const build=k=>{const n0=S.bldgs.filter(b=>b.owner===me.id&&b.fx.includes(k)).length;const r=w.dynAct('biz:build:'+k);assert(S.sites.some(x=>x.dynOwner===me.id),k+' 공사 시작');
+const build=k=>{let contractor=S.agents.find(a=>a.alive&&a!==me&&w.isAdult(a)&&!a.site&&a.emp!==me.id);assert(contractor,'검사에 필요한 외부 시공자');contractor.emp=null;contractor.ct=null;contractor.study=null;contractor.soldier=null;contractor.armyUntil=0;contractor.jailUntil=0;const n0=S.bldgs.filter(b=>b.owner===me.id&&b.fx.includes(k)).length;const r=w.dynAct('biz:build:'+k);assert(S.sites.some(x=>x.dynOwner===me.id),k+' 공사 시작');
   assert(A('b1').why.includes('이미'),'공사는 한 번에 하나');
   for(let i=0;i<200&&S.sites.some(x=>x.dynOwner===me.id);i++){w.step();for(const q of D.pending.slice())try{w.dynChoose(q.id,q.opts[0].k)}catch(e){}}
   const b=S.bldgs.filter(b=>b.owner===me.id&&b.fx.includes(k));assert(b.length>n0,k+' 완공되어 내 건물');return b.at(-1)};
