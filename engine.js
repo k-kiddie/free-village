@@ -4684,8 +4684,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const p=cl(.15+(share-.22)*1.6+(avgF-.45)*.8+(crisis?.2:0)-(avgC-.5)*.5+((me.rep??.5)-.5)*.2+(S.gov?0:.1)+(S.dyn.faithRep?.[fa.id]||0)*.15,.05,.85);
     return {share,fol,p,crisis,ok:share>=.22}}
   function dynFaithActions(me,add){const D=S.dyn,G=S.gov,wa=dynWA(),fa=faithOf(me),ad=adultsC(),adult=isAdult(me)?'':'어른이 되어야 함';const mine=fa&&fa.leader===me.id;
-    if(!mine){const cost=wa*10;const o=add('extra:found','종교','새 종교 창시',`교리 2~3개를 골라 교단을 엶 · 창시 비용 ${won(cost)} · 가족과 신앙심 깊은 주민이 따라올 수 있음${fa?` · 지금 믿는 ${fa.name}을 떠남`:''}`,adult||(S.faiths.length>=8?'마을에 교단이 너무 많음(최대 8개)':'')||(me.cash<cost?'창시 비용이 모자람':'')||dynWait('found'));
-      o.faithSpec={docs:[...Object.keys(DOCN).map(k=>({k,n:DOCN[k],d:DOCD[k]})),...Object.keys(DOCN_X).map(k=>({k,n:DOCN_X[k],d:DOCD[k],x:1}))],min:2,max:3}}
+    if(!mine){const cost=wa*10;const o=add('extra:found','종교','새 종교 창시',`교리를 2개 이상(원하는 만큼) 골라 교단을 엶 · 창시 비용 ${won(cost)} · 가족과 신앙심 깊은 주민이 따라올 수 있음${fa?` · 지금 믿는 ${fa.name}을 떠남`:''}`,adult||(S.faiths.length>=8?'마을에 교단이 너무 많음(최대 8개)':'')||(me.cash<cost?'창시 비용이 모자람':'')||dynWait('found'));
+      o.faithSpec={docs:[...Object.keys(DOCN).map(k=>({k,n:DOCN[k],d:DOCD[k]})),...Object.keys(DOCN_X).map(k=>({k,n:DOCN_X[k],d:DOCD[k],x:1}))],min:2,max:Object.keys(DOCN).length+Object.keys(DOCN_X).length}}
     if(!mine)return;
     const est=dynTheoEst(me,fa),pc=wa*3;
     add('extra:preach','종교','전도 활동',`${fa.name} · 신도 ${fa.members||est.fol}명(어른의 ${Math.round(est.share*100)}%) · 비용 ${won(pc)} · 교리가 맞는 주민일수록 잘 따라옴${G&&G.stateFaith&&G.stateFaith!==fa.id?' · 국교가 따로 있어 박해받을 수 있음':''}`,adult||(me.cash<pc?'비용이 모자람':'')||dynWait('preach'));
@@ -4694,7 +4694,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     add('extra:theo',G?'정부 세우기':'정부 세우기',G?'종교 혁명(신정)':'신정 국가 세우기',`${G?'정권을 무너뜨리고':'교단의 힘으로 정부를 세워'} 내가 교주로서 다스림 · 성공 가능성 약 ${Math.round(est.p*100)}%${est.crisis?' · 지금은 위기라 유리':''} · 자금 ${won(tc)} · 실패하면 신도 일부가 떠나고 ${G?'갇힐 수 있음':'평판이 떨어짐'}`,why)}
   function dynFaithAct(me,op,arg,name){const D=S.dyn,wa=dynWA(),ad=adultsC();
     if(op==='found'){const docs=String(arg||'').split('+').filter(Boolean);
-      if(docs.length<2||docs.length>3||new Set(docs).size!==docs.length||docs.some(d=>!DOCN[d]&&!DOCN_X[d]))throw Error('교리를 2~3개 골라 주세요');
+      if(docs.length<2||new Set(docs).size!==docs.length||docs.some(d=>!DOCN[d]&&!DOCN_X[d]))throw Error('교리를 2개 이상 골라 주세요');
       for(const [x,y] of DYN_DOCCLASH)if(docs.includes(x)&&docs.includes(y))throw Error(`${docName(x)}와(과) ${docName(y)}은(는) 함께 고를 수 없습니다`);
       if(docs.filter(d=>DYN_SEXDOC.includes(d)).length>1)throw Error('금욕·자유연애·일부다처·합동결혼·탐닉 중에서는 하나만 고를 수 있습니다');
       let nm2=String(name??'').trim();if(nm2){if(!/^[가-힣]{1,6}$/.test(nm2))throw Error('교단 이름은 한글 1~6자로 적어 주세요');if(!/교$/.test(nm2))nm2+='교'}
