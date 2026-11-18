@@ -236,3 +236,7 @@ node scripts/check-server.js / check-http.js / check-migration.js / check-lifecy
 - 내가 직을 맡으면 남의 사건이 수사·재판에 오를 때 `duty` 선택지가 뜬다(`dynCase` → `duCase`): 증거대로·엄하게·봐주기·뇌물·누명 씌우기.
 - 의원 건물 행동 추가(`hp_`): 불법 시술, 진통제 빼돌리기, 가짜 진단서, 건강보험 부풀리기, 특실.
 - 사건 12개(`du*`, `hp*`). 검사: `scripts/check-duty.js`.
+
+## 성인 요소 (2026-11-18)
+- 장면 묘사는 하지 않는다(문이 닫히는 수준까지). 시스템만: `adult:` 행동 — 유혹하기(기존 `a.affair` 외도 체계에 연결, 숨겨진 아이 `adBaby`), 관계 정리, 하룻밤(성병 `a.std`), 향락 파티, 후궁·남총(`x.dynConc`, 통치자·왕족), 기방·업소 운영(`b.dynBrothel`, 성매매 정책 `prostLaw`에 따라 합법·단속), 성인 잡지(`b.dynAdultMag`, 검열), 원정 향락 관광, 미인계(`D.mem.dirt_<id>` 약점), 성 접대 로비(미투 위험), 스캔들 폭로·협박.
+- `adTick`(열흘마다): 업소·잡지 수입·단속, 후궁 소생. 사건 13개(`ad*`). 검사: `scripts/check-adult.js`.
