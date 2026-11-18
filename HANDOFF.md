@@ -197,3 +197,9 @@ node scripts/check-server.js / check-http.js / check-migration.js / check-lifecy
 - #11 새 기능 사건 71개(병역·이주민·종교·신정·왕권·은행·정보기관·조직·공직), #12 기본·복합 줄거리 12·특별 17·계절 6·직업별 27(총 110개). 이야기 사건 392개.
 - 점검: `check-draft-policy`, `check-faith-found`, `check-faith-deeds`, `check-story-engine`, `check-story-fuzz`(모든 사건 선택지 실행) 추가. 매 PR마다 원래 마을 300명·900일 exportState가 main과 일치함을 확인.
 - AWS: 서버 저장소가 `claude/modest-volta-zqs2wm` 브랜치에 있어 main을 못 받던 것을 `main`으로 바꿈. 서버에서 수정돼 있던 engine.js는 `/opt/engine.js.server-backup-20261118`, `/opt/engine-server-changes-20261118.patch`, git stash에 보관. #7 이후 반영은 `sudo systemctl restart village` 필요.
+
+## 회사 경영 확장 (2026-11-18)
+- 가문 모드 전용 `co:` 행동(영지 탭 '회사 경영'·'회사 확장'·'회사 · 어두운 경영'): 임금 인상·삭감·성과급, 생산 품목 추가·변경, 설비 5단계, 연구·특허(3년), 광고, 직원 복지, 장학 재단, 지점 6곳, 상장, 우호적·적대적 인수, 가족 승계·임원, 지분 매각·청산, 경영권 장악, 어두운 경영 5종(분식·탈세·담합·하청·비자금).
+- 회사별 상태는 `f.co`. 매월(`S.day%30===7`) `coTick`이 사기·경영 효과·복지·지점비·특허 사용료·비리 발각을 처리한다. 경영 효과로 버는 돈은 경쟁사와 주민 지갑에서 옮겨 와 돈이 새로 생기지 않는다.
+- 회사 사건 21개(`co*`: 파업, 경쟁사, 납품 계약, 사고, 인재 빼가기, 세무 조사, 적대적 인수, 후계 다툼, 내부 고발 등). 현황판은 view의 `co` 배열 → god-client `dynCoHTML`.
+- 검사: `scripts/check-company.js`. 원래 마을 해시 불변 확인. `check-dynasty`(256행)·`check-stocks`(w.ipo 없음)는 main에서도 실패하던 기존 문제다.
