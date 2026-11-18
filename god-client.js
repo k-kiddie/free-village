@@ -97,7 +97,7 @@ function dynKV(rows){return `<div class="kv">${rows.filter(Boolean).map(([k,val]
 function dynPanelHTML(v){
   const m=v.me;if(!m)return '<p class="muted">캐릭터 정보가 없습니다.</p>';
   if(dynTab==='me')return `<div class="sec"><h4>${dynEsc(m.name)}</h4>${dynKV([['나이·성별',`${m.age}세 · ${m.sex==='F'?'여':'남'}`],['건강',Math.round(m.health)+'점'],['배고픔',Math.round(m.hunger)],
-      m.happy!=null&&['행복',Math.round(m.happy*100)+'점'],['평판',Math.round((m.rep??1)*100)],['스트레스',(v.stress||0)+'/100'],v.clergy&&['교단 지위',dynEsc(v.clergy)],['학력',EDU_L[m.edu||0]],['업종',m.occ?OCC_L[m.occ]:'없음'],
+      m.happy!=null&&['행복',Math.round(m.happy*100)+'점'],['평판',Math.round((m.rep??1)*100)],['스트레스',(v.stress||0)+'/100'],v.clergy&&['교단 지위',dynEsc(v.clergy)],['병역',m.drafted?'복무 중':m.altServ?'대체 복무 중':m.served?'군필':'미필'],['학력',EDU_L[m.edu||0]],['업종',m.occ?OCC_L[m.occ]:'없음'],
       ['고용주',m.emp?dynPerson(m.emp):'없음'],m.staff&&['고용한 사람',m.staff+'명'],m.grp&&['소속',dynEsc(m.grp.name)+(m.grp.leader?' (우두머리)':'')],m.caught&&['전과',m.caught+'번'],m.jail&&['처지','수감 중']])}
       <button data-person="${m.id}">자세한 인물 카드</button></div>
       <div class="sec"><h4>초반 생계 · 일 고르기</h4><label class="bud">희망하는 일 <select data-bud="job"><option value="-1" ${v.budget.job==null||v.budget.job<0?'selected':''}>성향대로 자동 선택</option>${(v.jobs||[]).map(j=>`<option value="${j.k}" ${v.budget.job===j.k?'selected':''}>${dynEsc(j.n)}${j.wage?` · ${money(j.wage.min)}~${money(j.wage.max)}/일 예상`:''}</option>`).join('')}</select>
@@ -176,12 +176,13 @@ function dynOpen(p,force){
   const start=p.kind==='start',m=dynView?.me;
   box.innerHTML=`<div class="dynbox"><h3>${start?'가문 모드 시작':p.kind==='death'?(dynView&&dynView.over?'⚰️ 가문 단절':'⚰️ 가장의 죽음'):p.title?dynEsc(p.title):'🔔 선택'}</h3><p style="white-space:pre-line">${dynEsc(p.text)}</p>
     ${start&&m?`<label>성 <input id="dynSur" maxlength="2" value="${dynEsc(m.sur)}"></label><label>이름 <input id="dynGiven" maxlength="3" value="${dynEsc(m.given)}"></label>
-      <label>시작 방식 <select id="dynStartMode"><option value="general">일반 시작 · 기존 인물과 가족·재산 유지</option><option value="custom">캐릭터 꾸미기 · 성격·기술을 직접 설정</option></select></label><div id="dynStartCustom" hidden>
+      <label>시작 방식 <select id="dynStartMode"><option value="general">일반 시작 · 기존 인물과 가족·재산 유지</option><option value="custom">캐릭터 꾸미기 · 새 인물을 직접 만들어 시작</option></select></label><div id="dynStartCustom" hidden>
       <label>성별 <select id="dynSex"><option value="M" ${m.sex==='M'?'selected':''}>남성</option><option value="F" ${m.sex==='F'?'selected':''}>여성</option></select></label>
       <label>나이 <input id="dynAge" type="number" min="18" max="45" value="${m.age}"></label>
-      <label>가족 조건 <select id="dynFamilyStart"><option value="keep">조건 자유 · 선택 인물의 관계 유지</option><option value="single">미혼·자녀 없음</option><option value="partner">배우자 있음</option><option value="children">자녀 있음</option></select></label>
-      <label>시작 재산 <select id="dynWealthStart"><option value="keep">조건 자유 · 선택 인물의 실제 재산</option><option value="poor">가난한 편 · 5일 품삯 이하</option><option value="modest">살림 안정 · 5~30일 품삯</option><option value="wealthy">넉넉한 편 · 30일 품삯 초과</option></select></label>
+      <label>가족 조건 <select id="dynFamilyStart"><option value="single">혼자 이주</option><option value="partner">배우자와 함께 이주</option><option value="children">배우자·자녀와 함께 이주</option></select></label>
+      <label>시작 재산 <select id="dynWealthStart"><option value="keep">일반 이주민 정착금</option><option value="poor">가난한 편 · 1~4일 품삯</option><option value="modest">살림 안정 · 8~25일 품삯</option><option value="wealthy">넉넉한 편 · 40~80일 품삯</option></select></label>
       <label>외모 <input id="dynLooks" type="number" min="0" max="100" value="${Math.round((m.looks??.5)*100)}"></label>
+      <label>병역 <select id="dynServed"><option value="no">미필 · 징병제가 있으면 영장이 나올 수 있음</option><option value="yes">군필 · 징병 면제, 경계심·체력 조금 높음</option></select></label>
       <label>학력 <select id="dynEdu">${['없음','기본','사교육','고등','대학'].map((x,i)=>`<option value="${i}" ${i===(m.edu||0)?'selected':''}>${x}</option>`).join('')}</select></label>
       <label>출신 배경 <select id="dynBackground"><option>평범한 주민</option><option>농촌</option><option>장터</option><option>기술자 집안</option><option>유학 경험</option><option>이주민</option><option>정보기관 직원</option></select></label>
       <label>성격 · 야망 <input id="dynBoss" type="number" min="0" max="100" value="${Math.round((m.g?.boss??.2)*100)}"></label><label>성격 · 공익심 <input id="dynCivic" type="number" min="0" max="100" value="${Math.round((m.g?.civic??.3)*100)}"></label>
@@ -190,7 +191,7 @@ function dynOpen(p,force){
       <label>성격 · 낭만 <input id="dynRoma" type="number" min="0" max="100" value="${Math.round((m.g?.roma??.5)*100)}"></label><label>성격 · 신앙심 <input id="dynFaith" type="number" min="0" max="100" value="${Math.round((m.g?.faith??.35)*100)}"></label>
       <label>기술 · 농사 <input id="dynFarm" type="number" min="0" max="100" value="${Math.round((m.skill?.[0]??.1)*100)}"></label><label>기술 · 장인 <input id="dynCraft" type="number" min="0" max="100" value="${Math.round((m.skill?.[9]??.1)*100)}"></label>
       <label>기술 · 장사 <input id="dynTrade" type="number" min="0" max="100" value="${Math.round((m.skill?.[12]??.1)*100)}"></label>
-      <p class="stopnote">가족·재산 조건에 맞는 기존 성인 주민을 시작 인물로 고릅니다. 재산은 실제 주민의 것을 사용해 돈을 새로 만들지 않습니다.</p></div>`:''}
+      <p class="stopnote">설정한 대로 새 인물이 마을에 이주해 옵니다(기존 주민은 그대로). 시작 재산은 정착금으로 새로 지급되고, 배우자·자녀를 고르면 가족도 함께 이주합니다.</p></div>`:''}
     <div class="err" id="dynErr"></div>
     ${p.opts.map(o=>`<button class="opt" data-k="${dynEsc(o.k)}">${dynEsc(o.label)}${o.hint?`<small>예상 · ${dynEsc(o.hint)}</small>`:''}${o.stress?.points?`<small>${dynEsc(o.stress.reason)}에 어긋남 · 스트레스 +${o.stress.points}점</small>`:''}</button>`).join('')}
     ${start?'':'<button class="opt" data-later="1">나중에 고르기 (창 닫기)<small>지도·가문 정보를 먼저 볼 수 있습니다. 위의 알림을 누르면 다시 열립니다.</small></button>'}
@@ -200,7 +201,7 @@ function dynOpen(p,force){
   box.querySelectorAll('.opt[data-k]').forEach(b=>b.onclick=async()=>{
     box.querySelectorAll('.opt').forEach(x=>x.disabled=true);
     try{
-      if(start&&m&&startMode?.value==='custom'){const character={sur:$('#dynSur').value,given:$('#dynGiven').value,sex:$('#dynSex').value,age:+$('#dynAge').value,family:$('#dynFamilyStart').value,wealth:$('#dynWealthStart').value,looks:+$('#dynLooks').value,edu:+$('#dynEdu').value,background:$('#dynBackground').value,boss:+$('#dynBoss').value,civic:+$('#dynCivic').value,care:+$('#dynCare').value,cheat:100-(+$('#dynCheat').value),join:+$('#dynJoin').value,lux:+$('#dynLux').value,roma:+$('#dynRoma').value,faith:+$('#dynFaith').value,farm:+$('#dynFarm').value,craft:+$('#dynCraft').value,trade:+$('#dynTrade').value};await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'configureStart',character})})}
+      if(start&&m&&startMode?.value==='custom'){const character={sur:$('#dynSur').value,given:$('#dynGiven').value,sex:$('#dynSex').value,age:+$('#dynAge').value,family:$('#dynFamilyStart').value,wealth:$('#dynWealthStart').value,served:$('#dynServed').value,looks:+$('#dynLooks').value,edu:+$('#dynEdu').value,background:$('#dynBackground').value,boss:+$('#dynBoss').value,civic:+$('#dynCivic').value,care:+$('#dynCare').value,cheat:100-(+$('#dynCheat').value),join:+$('#dynJoin').value,lux:+$('#dynLux').value,roma:+$('#dynRoma').value,faith:+$('#dynFaith').value,farm:+$('#dynFarm').value,craft:+$('#dynCraft').value,trade:+$('#dynTrade').value};await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'configureStart',character})})}
       else if(start&&m){const sur=$('#dynSur')?.value.trim(),given=$('#dynGiven')?.value.trim();if(sur&&given&&(sur!==m.sur||given!==m.given))await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'rename',sur,given})})}
       box.hidden=true;await dynSend({action:'choose',id:p.id,k:b.dataset.k});
     }catch(e){box.hidden=false;$('#dynErr').textContent=e.message;box.querySelectorAll('.opt').forEach(x=>x.disabled=false)}
