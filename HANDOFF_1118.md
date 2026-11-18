@@ -408,3 +408,9 @@ node scripts/check-building-acts.js | check-crime.js | check-duty.js | check-adu
 - 이름 동현. 산소공장 전기정비팀. 이 게임(자유방임 마을)은 취미 프로젝트다.
 - 폰 브라우저로 플레이한다. 서버는 AWS EC2 시드니(`i-0ceabbb81f8eba6da`, `/opt/free-village`, `village.service`). 플레이할 때만 켠다.
 - 선호: 결과 위주의 짧은 보고, 한국어. 기능은 "다 넣는" 걸 좋아하고, 넣기 전에 무엇을 넣는지 듣고 싶어 한다.
+
+## 후속 세션 — 회사 이름 지정과 추가 작업 지시
+- 후속 확정 범위와 순서는 `WORK_PLAN_1118.md` 참조. 사용자가 회사 이름 변경 뒤 나머지도 하나씩 전부 진행하도록 지시했다.
+- 가문 모드의 회사 설립에 이름 입력, 경영 회사별 개명을 추가했다. `companyNameSpec` 화면 입력과 `co:rename:<회사id>:<URI인코딩이름>`, `firm:new:<URI인코딩이름>`을 사용한다.
+- `f.dynName`이 있으면 업종 전환은 계속 처리하되 지정 이름을 자동으로 덮어쓰지 않는다. 기존 저장에는 이 필드가 없어 기존 동작을 유지한다.
+- `scripts/check-company-names.js`: 이름·권한·중복·저장·업종 변경·화면 입력 요청 검증.
