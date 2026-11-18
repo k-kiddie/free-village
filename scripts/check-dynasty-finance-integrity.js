@@ -1,0 +1,11 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {createWorld}=require('../engine.js');
+const w=createWorld(1818,100);w.dynStart();const pending=w.S.dyn.pending[0];w.dynChoose(pending.id,'go');
+const me=w.S.byId.get(w.S.dyn.pid),bank=w.S.agents.find(a=>a.alive&&a.id!==me.id);assert(bank);
+me.cash=0;bank.cash=3;bank.dres=0;w.S.deps=[{bank:bank.id,s:me.id,amt:100,rate:0,day:w.S.day}];
+assert(w.dynActions().some(a=>a.k==='dep:out'),'예금 인출 행동');w.dynAct('dep:out');assert.equal(me.cash,3,'은행의 지급 가능 현금만 반환');assert.equal(w.S.deps[0].amt,97,'미지급 예금은 장부에 남음');
+bank.cash=97;w.dynAct('dep:out');assert.equal(me.cash,100,'남은 예금도 지급');assert.equal(w.S.deps.length,0,'전액 지급 뒤에만 장부에서 제거');
+const before={...w.S.dyn.budget};assert.throws(()=>w.dynSetBudget({life:0,edu:'오류'}),/지출 설정 값/);assert.deepEqual(w.S.dyn.budget,before,'잘못된 입력은 설정 일부도 바꾸지 않음');
+w.dynSetBudget({life:0,edu:2});assert.equal(w.S.dyn.budget.life,0);assert.equal(w.S.dyn.budget.edu,2);
+console.log('부분 예금 인출·예금 잔액·지출 설정 원자성 확인 완료');

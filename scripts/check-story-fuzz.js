@@ -2,10 +2,9 @@
 const assert=require('node:assert/strict');
 const {createWorld}=require('../engine.js');
 function rich(seed){
-  const w=createWorld(seed,180);w.dynStart();w.dynConfigureStart({age:36,background:'정보기관 직원',family:'children',wealth:'wealthy',served:'yes'});
+  const w=createWorld(seed,180);w.dynStart();w.dynConfigureStart({age:36,background:'정보기관 직원',family:'children',wealth:'wealthy',served:'yes',status:'king'});
   const S=w.S,D=S.dyn,me=S.byId.get(D.pid);me.cash=1e7;me.dynRoyal=1;me.pardoned=true;me.crimes=1;
   for(let i=0;i<40;i++)w.step();for(const p of D.pending.slice())try{w.dynChoose(p.id,p.opts[0].k)}catch(e){}
-  try{w.dynAct('lord')}catch(e){}
   try{w.dynAct('extra:found:charity+honest:시험')}catch(e){}
   const fa=S.faiths.find(f=>f.leader===me.id);const ad=S.agents.filter(a=>a.alive&&a.age>=14*60);
   if(fa){fa.tre=1e5;for(const a of ad.slice(0,60))if(a!==me)a.faith=fa.id;fa.members=60;D.faithRisk={[fa.id]:.5};D.faithDark={[fa.id]:{kind:'embezzle',amt:50,d:S.day}}}
@@ -28,6 +27,7 @@ for(const seed of [1101,1102]){
     try{if(e.realm){const T=(S.trade&&S.trade.towns)||[];if(T[0])ctx.t=T[0].name}if(e.who){const x=e.who(sCtx(me,ctx));if(x)ctx.x=x.id;else ok=false}else if(e.chain){const x=S.agents.find(a=>a.alive&&a!==me&&a.age>=18*60);if(x)ctx.x=x.id}if(e.need&&!e.need(sCtx(me,ctx)))ok=false;if(e.trig&&!e.trig(sCtx(me,ctx)))ok=false}catch(err){ok=false}
     if(ok)needOk++;
     for(const o of e.o){c=sCtx(me,{...ctx});
+      if(ok&&o[4]?.when&&!o[4].when(c))continue;
       try{e.text(c);if(typeof o[2]==='function')o[2](c);const r=o[3](c);if(typeof r!=='string')throw Error('결과 문장이 문자열이 아님: '+r);ran++}catch(err){if(ok)errs.push(`${id}:${o[0]} — ${err.message}`)}}
     me.cash=Math.max(me.cash,1e6);me.health=Math.max(me.health,60);me.alive=true;me.jailUntil=0}
   for(let i=0;i<30;i++){w.step();for(const p of D.pending.slice())try{w.dynChoose(p.id,p.opts[0].k)}catch(e){}}

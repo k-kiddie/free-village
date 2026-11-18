@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),Module=require('node:module');
 const filename=path.resolve(__dirname,'../engine.js'),m=new Module(filename);m.filename=filename;m.paths=module.paths;
-m._compile(fs.readFileSync(filename,'utf8').replace('return{rulingN,','return{ipo,die,oneShot,tradeCompanyShares,payStockDividend,settleClosedFirm,rulingN,'),filename);
+m._compile(fs.readFileSync(filename,'utf8').replace('return{dynSetStory,','return{dynSetStory,ipo,die,oneShot,tradeCompanyShares,payStockDividend,settleClosedFirm,'),filename);
 const close=(a,b,label)=>assert(Math.abs(a-b)<1e-6,label);
 const old=m.exports.createWorld(11,100),o=old.S.agents.find(old.isAdult);
 old.S.firms.push({id:1,pre:'검증',suf:'공업',name:'검증공업',ceo:o.id,sh:{[o.id]:60,[old.S.agents.find(a=>a!==o).id]:40},price:10,p30:10,peak:10,cash:100,bld:[],hist:[10],born:0,lines:['mfg'],divE:0});

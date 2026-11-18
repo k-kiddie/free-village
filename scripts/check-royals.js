@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),Module=require('node:module');
 const filename=path.resolve(__dirname,'../engine.js'),m=new Module(filename);m.filename=filename;m.paths=module.paths;
-const code=fs.readFileSync(filename,'utf8').replace('const R=()=>rnd(),rr=','let R=()=>rnd();const rr=').replace('return{rulingN,','return{_setRandom:f=>{R=f},succeed,royalTick,die,rulingN,');m._compile(code,filename);
+const code=fs.readFileSync(filename,'utf8').replace('const R=()=>rnd(),rr=','let R=()=>rnd();const rr=').replace('return{dynSetStory,','return{dynSetStory,_setRandom:f=>{R=f},succeed,royalTick,die,');m._compile(code,filename);
 function fixture(){const w=m.exports.createWorld(42,100),A=w.S.agents;for(const a of A){a.parents=[];a.kids=[];a.partner=null;a.banned=false}
   const [grand,parent,king,eldest,younger,grandchild,sibling,nephew,cousin,uncle,spouse,guardian]=A;
   [80,60,40,20,18,1,45,22,30,50,35,50].forEach((age,i)=>{A[i].age=age*60;A[i].family=100});

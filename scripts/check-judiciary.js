@@ -5,13 +5,17 @@ const src=require('fs').readFileSync(__dirname+'/check-story-fuzz.js','utf8');co
 const {w,S,D,me}=rich(1801);const G=()=>S.gov;
 G().regime='rep';G().king=null;G().chief=me.id;
 {const g0=S.groups.find(g=>g.id===me.grp);if(g0){g0.members=(g0.members||[]).filter(x=>x!==me.id);if(g0.leader===me.id)S.groups=S.groups.filter(g=>g!==g0)}me.grp=null}w.dynAct('party');
-const ad=()=>S.agents.filter(a=>a.alive&&w.isAdult(a)&&a!==me);G().council=ad().slice(0,7).map(a=>a.id);for(const a of ad().slice(0,4))a.grp=me.grp;
+const ad=()=>S.agents.filter(a=>a.alive&&w.isAdult(a)&&a!==me);for(const a of ad())a.age=Math.max(a.age,40*60);G().prosList=[];G().council=ad().slice(0,7).map(a=>a.id);for(const a of ad().slice(0,4))a.grp=me.grp;
 G().judges=ad().slice(10,13).map(a=>({id:a.id,until:S.day+600,by:null}));G().cj=null;
 const step=n=>{for(let i=0;i<n;i++){w.step();for(const q of D.pending.slice())try{w.dynChoose(q.id,q.opts[0].k)}catch(e){}}};
+// 25세 후보가 전혀 없을 때 빈 선택지가 생겨 세계가 멈추지 않아야 한다.
+for(const a of S.agents)if(a!==me)a.age=24*60;G().cj=G().judges[0].id;G().jr={vac:{stage:'nom',d:S.day,cand:null,ren:0},rev:[],law:{noNomTemp:1},log:[],cjUntil:S.day+1000,cjAsk:1};
+while(S.day%10!==4){G().regime='rep';G().chief=me.id;w.step()}G().regime='rep';G().chief=me.id;w.step();assert(!D.pending.some(q=>q.kind==='jrNom'),'후보가 없으면 빈 제청창을 띄우지 않음');assert.equal(G().jr.vac.stage,'nom','후보 부족 시 제청 절차 유지');assert(!G().jr.vac.wait,'후보 부족으로 세계를 멈추지 않음');
+for(const a of ad())a.age=Math.max(a.age,40*60);
 step(15);assert(G().jr,'사법부 상태');assert(G().cj,'대법원장');
 // 빈자리: 대법원장이 제청 → 내가 임명권자로 재제청 요구 → 결국 임명
 G().jr.law.expand=true;const ids0=new Set(G().judges.map(j=>j.id));let asked=false,done=false;
-for(let i=0;i<300&&!done;i++){w.step();for(const q of D.pending.slice()){if(q.kind==='jrRuler'&&!asked){asked=true;w.dynChoose(q.id,'renom');continue}try{w.dynChoose(q.id,q.kind==='jrRuler'?'accept':q.opts[0].k)}catch(e){}}done=G().judges.some(j=>!ids0.has(j.id))}
+for(let i=0;i<300&&!done;i++){G().regime='rep';G().chief=me.id;G().regent=null;w.step();for(const q of D.pending.slice()){if(q.kind==='jrRuler'&&!asked){asked=true;w.dynChoose(q.id,'renom');continue}try{w.dynChoose(q.id,q.kind==='jrRuler'?'accept':q.opts[0].k)}catch(e){}}done=G().judges.some(j=>!ids0.has(j.id))}
 assert(asked,'재제청 선택지');assert(done,'결국 재판관 임명');
 // 위헌법률심판: 실제 폐지까지
 const cool=()=>{for(const k of Object.keys(D.cool))if(/^actjr/.test(k))D.cool[k]=0;me.cash=1e6;me.jailUntil=0};
