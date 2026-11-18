@@ -1498,7 +1498,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const sold=al.filter(a=>a.soldier&&a.armyUntil>S.day);for(const a of al)if(a.soldier&&!(a.armyUntil>S.day)){if(a.drafted){a.drafted=0;X('discharge')}a.soldier=null}
     if(M.lvl>=2&&G){const tgt=Math.round(ad.length*(P.draft?.06:.025)*[.7,1,1.4][P.milBudget??1]*(S.war?1.5:1));
       if(sold.length<tgt){const need=tgt-sold.length;let got=0;
-        if(P.draft){const exempt=S.dyn?new Set([G.king,G.chief,G.regent,...(G.council||[]),...Object.values(G.min||{}).map(m=>m&&m.mn)].filter(Boolean)):null;const pool=ad.filter(a=>(a.sex==='M'||P.draftSex)&&a.age>=20*YEAR&&a.age<28*YEAR&&!a.soldier&&!a.served&&!a.disab&&!a.study&&!(exempt&&exempt.has(a.id)));for(const a of pool){if(got>=need)break;
+        if(P.draft){const exempt=S.dyn?new Set([G.king,G.chief,G.regent,...(G.council||[]),...Object.values(G.min||{}).map(m=>m&&m.mn)].filter(Boolean)):null;const royalFam=S.dyn&&dynRoyalFam();const pool=ad.filter(a=>(a.sex==='M'||P.draftSex)&&a.age>=20*YEAR&&a.age<28*YEAR&&!a.soldier&&!a.served&&!a.disab&&!a.study&&!(exempt&&exempt.has(a.id))&&!(royalFam&&a.family===royalFam));for(const a of pool){if(got>=need)break;
             if(a.g.faith>.7&&R()<.5){if(P.altService){a.altServ=S.day+YEAR*3;a.served=1;X('altServ');continue}X('draftEvade');fileC('draftEvade',a,hr*.1,.8);mile('consObj',`병역 거부. 신앙 때문에 총을 들 수 없다는 ${josa(nm(a),'이','가')} 감옥에 갔다`,[a.id]);a.served=1;continue}
             const par=a.parents.map(id=>S.byId.get(id)).find(p=>p&&p.alive&&p.cash>hr&&p.g.cheat>.3);if(par&&R()<.3){par.cash-=hr*.3;X('draftBribe');a.served=1;mile('draftBribe',`병역 비리. 부자 ${josa(nm(par),'이','가')} 뒷돈을 써서 아들 ${josa(nm(a),'을','를')} 군대에서 빼냈다`,[par.id,a.id]);if(R()<.2)fileC('draftBribe',par,hr*.6,.6);continue}
             a.soldier='army';a.drafted=1;a.served=1;a.armyUntil=S.day+YEAR*(P.draftYears||2);a.emp=null;got++}if(got)mile('draft',`징병. 스무 살 ${P.draftSex?'젊은이들이':'남자들이'} ${P.draftYears||2}년씩 군대에 끌려가기 시작했다`,[])}
@@ -4871,6 +4871,17 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(D.faithRep&&D.faithRep[fa.id])D.faithRep[fa.id]*=.97;
       if((D.faithMutual?.[fa.id]||0)>S.day&&fa.tre>0){const xs=ad.filter(a=>a.faith===fa.id).sort((x,y)=>x.cash-y.cash).slice(0,5),amt=fa.tre*.02;if(xs.length){fa.tre-=amt;for(const a of xs){a.cash+=amt/xs.length;a.src.grant=(a.src.grant||0)+amt/xs.length}}}
       if(fa.dynLock===D.house&&me&&me.alive&&me.faith===fa.id){const L=S.byId.get(fa.leader);if(!L||!L.alive||L.faith!==fa.id||L.family!==me.family)fa.leader=me.id}}}
+  // ===== 왕족 자원입대 (가문 마을) =====
+  // 왕족 = 군주정에서 지금 통치자의 집안(family). 징병에서 빠지지만 스스로 입대하면 평판·지지율이 오른다.
+  function dynRoyalFam(){const G=S.gov;if(!G||!['mon','cmon'].includes(regime()))return null;const r=S.byId.get(G.king||G.chief);return r&&r.alive?r.family:null}
+  function dynRoyalCands(me){const fam=dynRoyalFam(),G=S.gov;if(!fam)return [];const kin=dynFamily(me);
+    return [me,...kin.kids,...kin.siblings,...kin.grand].filter(x=>x&&x.alive&&x.family===fam&&x.age>=18*YEAR&&x.age<40*YEAR&&!x.soldier&&!x.served&&!x.disab&&x.id!==G.king&&x.id!==G.chief&&x.id!==G.regent)}
+  function dynRoyalActions(me,add){const G=S.gov;if(!dynRoyalFam()||!isAdult(me))return;const army=!!(S.mil&&S.mil.lvl>=2);
+    for(const x of dynRoyalCands(me))add('royal:enlist:'+x.id,'가족',`👑 ${x===me?'내가':nm(x)+'이(가)'} 자원입대`,`왕족은 징병이 면제되지만 스스로 군대에 가면 평판·지지율↑ · ${S.war?'전쟁 중이라 효과 크지만 위험':'복무 '+(G.policy.draftYears||2)+'년'}`,army?'':'상비군이 있어야 함')}
+  function dynRoyalAct(me,k){const G=S.gov,id=Number(k.split(':')[2]),x=S.byId.get(id);if(!x||!dynRoyalCands(me).includes(x))throw Error('입대할 수 있는 왕족이 아닙니다');if(!(S.mil&&S.mil.lvl>=2))throw Error('상비군이 없습니다');
+    const war=!!S.war;x.soldier='army';x.drafted=1;x.served=1;x.royalVol=1;x.armyUntil=S.day+YEAR*(G.policy.draftYears||2);x.emp=null;
+    const up=war?.12:.07;me.rep=cl((me.rep??.6)+up,0,1);if(x!==me)x.rep=cl((x.rep??.6)+up,0,1);G.approval=Math.min(1,(G.approval??.5)+(war?.08:.05));if(S.mil)S.mil.morale=Math.min(1,(S.mil.morale||.5)+(war?.1:.05));
+    const t=`왕족 ${josa(nm(x),'이','가')} 스스로 군대에 들어갔다${war?' · 전쟁 중이라 백성들이 크게 감격했다':''}`;log('pol',t,[x.id]);mile('royalVolunteer',`왕족의 자원입대. ${t}`,[x.id]);dynChron(t,[me.id,x.id]);return t}
   function dynExtraAct(me,k){
     const D=S.dyn,G=S.gov,wa=dynWA();
     const [kind,op,arg,id]=k.split(':');
@@ -4972,7 +4983,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(agency&&(!secMinistry||agency.exposed))add('spyorg:disband','첩보','비밀 정보조직 해산','조직을 없애고 요원들을 돌려보냄');
     }
     if(!((me.jailUntil||0)>S.day))dynMoreActions(me,add);
-    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r);dynMore2Actions(me,add,r);dynBizActions(me,add);dynLaw2Actions(me,add);dynExtraActions(me,add);dynFaithActions(me,add);dynFaithDeedActions(me,add)}
+    if(isAdult(me)&&!((me.jailUntil||0)>S.day)){const r=dynRank();dynDipActions(me,add,r);dynSpyActions(me,add,r);dynMore2Actions(me,add,r);dynBizActions(me,add);dynLaw2Actions(me,add);dynExtraActions(me,add);dynFaithActions(me,add);dynFaithDeedActions(me,add);dynRoyalActions(me,add)}
     if(isAdult(me)&&!((me.jailUntil||0)>S.day))dynEcoActions(me,add,out);
     if(isAdult(me)&&!((me.jailUntil||0)>S.day)){
       if(D.gig)add('gig:quit','일자리','계약을 그만둔다',`${D.gig.label} · ${Math.max(0,D.gig.end-S.day)}일 남음 · 실제 일한 날만 임금 지급`);
@@ -5011,6 +5022,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     else if(/^law(?:2|val):/.test(k))text=dynLaw2(me,k);
     else if(/^(goal|extra):/.test(k))text=dynExtraAct(me,k);
     else if(/^(fgood|fdark):/.test(k))text=dynFaithDeed(me,k);
+    else if(/^royal:/.test(k))text=dynRoyalAct(me,k);
     else if(k==='runChief'||k==='runCouncil'){const kind=k==='runChief'?'chief':'council',f=dynFee(kind);me.cash-=f;SP(me,'bribe',f);D.run={...(D.run||{}),[kind]:true};text=`${kind==='chief'?chiefTitle():'의원'} 선거에 출마 등록했다(선거비 ${won(f)})`}
     D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}
   // 선거 후보 명단에 출마 등록한 플레이어를 넣는다(당락은 엔진 투표).
@@ -6730,6 +6742,10 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     o:[['debate','공개 논쟁을 벌인다','',c=>{if(c.roll(.5)){dynFRepAdd(c.me.faith,.06);return '논쟁에서 이겨 거울교 신도 몇이 넘어왔다'}return '논쟁이 흐지부지 끝났다'}],['brawl','패싸움을 막지 않는다','',c=>{for(const m of sMem(c))if(c.roll(.08))m.health=Math.max(1,m.health-12);dynFRepAdd(c.me.faith,-.05);if(S.gov)fileC('assault',c.me,c.wA*2,.3);return '거리에서 패싸움이 벌어졌다'}]]});
   E('xNudeVillage',{cat:'이단',special:1,once:1,trig:c=>{const f=sFa(c);if(!f||!f.doc.includes('nude'))return false;const ad=adultsC();return ad.length>20&&ad.filter(a=>a.faith===f.id).length>ad.length*.5},title:'🌿 자연으로 돌아간 마을',text:()=>'마을 어른 절반 넘게 맨몸교 신도가 됐습니다. 마지막 포목점이 문을 닫았습니다.',
     o:[['law','옷을 입을 자유도 지키자고 선포한다','',c=>{c.rep(.08);return '"입을 자유, 벗을 자유" 선언이 나왔다'}],['impose','온 마을에 교리를 따르라 한다','',c=>{c.appr(-.06);for(const a of adultsC())if(!a.faith&&c.roll(.1))a.faith=c.me.faith;return '마을 전체가 교리를 따르게 됐다. 반발도 거세다'}]]});
+  E('royalEnlistAsk',{cat:'왕권',cd:YEAR*3,need:c=>dynRoyalCands(c.me).some(x=>x!==c.me)&&!!(S.mil&&S.mil.lvl>=2),who:c=>wpick(dynRoyalCands(c.me).filter(x=>x!==c.me)),title:'🎖️ 왕족의 입대 고민',text:c=>`${josa(c.n(c.x),'이','가')} "왕족이라 군대를 빠지는 게 부끄럽다"며 자원입대를 하겠다고 합니다.${S.war?' 지금은 전쟁 중입니다.':''}`,
+    o:[['go','보낸다','평판·지지율↑ · 위험',c=>{try{return dynRoyalAct(c.me,'royal:enlist:'+c.x.id)}catch(e){return e.message}}],['rear','후방 보직으로 보낸다',c=>`약 ${won(c.wA*5)} · 들키면 역효과`,c=>{c.cash(-c.wA*5);try{dynRoyalAct(c.me,'royal:enlist:'+c.x.id)}catch(e){return e.message}c.x.rearPost=1;if(c.roll(.25)){c.rep(-.12);c.appr(-.05);return '편한 후방 보직이 들통나 "무늬만 입대"라는 비난을 받았다'}return '후방 보직으로 입대시켰다'},{trait:'honesty'}],['no','말린다','',c=>{if(S.war){c.rep(-.03);return '말렸다. 전쟁 중이라 수군거림이 돈다'}return '말렸다'}]]});
+  E('royalAtFront',{cat:'왕권',cd:YEAR*2,need:c=>!!S.war&&dynFamily(c.me).kids.concat([c.me]).some(x=>x&&x.alive&&x.royalVol&&x.soldier&&x.armyUntil>S.day),who:c=>dynFamily(c.me).kids.concat([c.me]).find(x=>x&&x.alive&&x.royalVol&&x.soldier&&x.armyUntil>S.day),title:'⚔️ 전선의 왕족',text:c=>`자원입대한 ${josa(c.n(c.x),'이','가')} 최전선에 배치됐다는 소식입니다. 장군이 후방으로 빼 줄지 묻습니다.`,
+    o:[['stay','병사들과 함께 싸우게 둔다','',c=>{if(c.roll(.2)){if(c.x)c.x.health=Math.max(1,c.x.health-40);c.rep(.15);c.appr(.1);return '중상을 입었지만 영웅이 되어 돌아왔다'}c.rep(.08);if(S.mil)S.mil.morale=Math.min(1,(S.mil.morale||.5)+.1);return '왕족이 앞장서자 병사들의 사기가 치솟았다'}],['pull','몰래 후방으로 뺀다','',c=>{if(c.roll(.3)){c.rep(-.1);return '빼돌린 게 알려져 망신을 샀다'}return '조용히 후방으로 옮겼다'},{trait:'honesty'}]]});
   // ---------- 3단계 표본: 계절 사건·특별 사건·몇 년 뒤 돌아오는 사건 ----------
   E('newYearRite',{cat:'가족',season:[0,3],cd:YEAR-5,title:'🎋 설맞이 제사',text:c=>`새해 첫날입니다. 조상께 올릴 설 제사를 어떻게 할까요?${(c.mem.get('skipRite')||0)>=2?' 집안 어른들이 몇 해째 제사를 건너뛴 걸 두고 수군거립니다.':''}`,
     o:[['grand','성대하게 지낸다',c=>`약 ${won(c.wA*6)} · 평판↑ 친척 관계↑`,c=>{c.cash(-c.wA*6);c.rep(.03);c.mem.set('skipRite',0);c.mem.add('riteKept');for(const k of dynFamily(c.me).siblings)c.tie(k,.05,'설 제사');return '온 집안이 모여 조상께 절했다'}],
