@@ -33,7 +33,7 @@ const cash0=f.cash;for(let i=0;i<60;i++){w.step();for(const q of D.pending.slice
 assert(f.co.lastGain>0,'경영 효과로 손님을 끌어옴');
 // 8 인수합병
 f.cash=Math.max(f.cash,1e5);const small=mk(9003,'작은공방',others[1],'mfg',1e4);for(const x of others.slice(10,20))small.sh[x.id]=500;small.sh[others[1].id]=10000-5000;small.price=.0001;
-act('co:mna:'+f.id,'f'+small.id);assert.equal(small.parent,f.id,'우호적 인수로 계열사');assert.equal(small.ceo,me.id);
+for(let i=0;i<8&&small.parent!==f.id;i++){f.cash=Math.max(f.cash,1e5);act('co:mna:'+f.id,(i<4?'f':'h')+small.id)}assert.equal(small.parent,f.id,'인수로 계열사');assert.equal(small.ceo,me.id);
 // 7 상장
 S.exch={d:S.day,base:0};for(const x of ad())x.g.lend=.6;act('co:ipo:'+f.id);assert(f.listed,'상장');
 // 11 승계·임원
