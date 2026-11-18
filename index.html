@@ -5141,6 +5141,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     corpNegotiation(c,k,me){const D=S.dyn,firm=firmById(c.firm);if(k==='withdraw'){D.corpProposal=null;return '기업 대출 협상을 철회했다'}if(k==='renegotiate'){D.corpProposal=null;return '조건을 다시 입력해 기업에 재제안할 수 있다'}if(!firm||firm.gone||!me?.alive)throw Error('기업이나 대출 신청자가 사라졌습니다');const t=k==='sealCounter'?c.counter:c.terms;if(!t||!Number.isFinite(t.amount)||!Number.isFinite(t.rate)||!Number.isFinite(t.term))throw Error('협상 조건을 확인할 수 없습니다');const bank=(S.banks||[]).find(b=>b.alive!==false&&b.own===me.id),dep=bank?S.deps.filter(d=>d.bank===me.id).reduce((t,d)=>t+d.amt,0):0,reserve=bank?Math.max(bank.capital||0,dep*(bank.ops?.reserveRatio??.15)):0,free=Math.max(0,me.cash+(me.dres||0)-reserve);if(free<t.amount*1.3+20)throw Error(`대출 실행 유동성 ${won(t.amount*1.3+20)}이 필요합니다`);if(S.corpLoans?.some(l=>l.firm===firm.id&&l.status==='active'))throw Error('이미 진행 중인 기업 대출이 있습니다');let coll=t.collateral||null;if(coll){const b=S.bldgs.find(x=>x.id===coll.building&&x.firm===firm.id&&!x.corpLien);if(!b)throw Error('담보 건물이 이미 설정되어 있습니다');b.corpLien=S.nextLoan||1}
       const id=S.nextLoan++,inst=t.amount*t.rate/(1-Math.pow(1+t.rate,-t.term)),L={id,l:me.id,firm:firm.id,bal:t.amount,rate:t.rate,inst,term:t.term,paid:0,missed:0,coll,start:S.day,next:S.day+10,status:'active',kind:'기업 대출'};S.corpLoans=S.corpLoans||[];S.corpLoans.push(L);const fromReserve=bank?Math.min(Math.max(0,(me.dres||0)-Math.max(0,reserve-me.cash)),t.amount):0;if(fromReserve)me.dres-=fromReserve;me.cash-=t.amount-fromReserve;firm.cash=(firm.cash||0)+t.amount;firm.debt=(firm.debt||0)+t.amount;firm.finance=firm.finance||{interestExpense:0,defaults:0};if(coll){const b=S.bldgs.find(x=>x.id===coll.building);if(b)b.corpLien=id}const ledger=bankLedger(me.id);if(ledger)ledger.corpOutstanding=(ledger.corpOutstanding||0)+t.amount;D.corpProposal=null;dynChron(`${josa(nm(me),'이','가')} ${firm.name}과 ${won(t.amount)} 기업 대출을 체결하다`,[me.id,firm.ceo]);return `${firm.name}과 기업 대출 계약 체결 · ${won(t.amount)} · 열흘 ${(t.rate*100).toFixed(2)}% · ${t.term}회 상환${coll?' · 회사 건물 담보':''}`},
     story(c0,k,me){const e=SE[c0.sid];if(!e)return '지난 일이다';const o=e.o.find(z=>z[0]===k);if(!o)return '지난 일이다';const c=sCtx(me,c0);let r;try{r=o[3](c)}catch(err){r='일이 흐지부지됐다'}
+      {const D=S.dyn,h=D.storyHist?.[e.id];D.storyHist={...D.storyHist,[e.id]:{k,d:S.day,n:(h?.n||0)+1,ks:[...new Set([...(h?.ks||[]),k])].slice(-6)}}}
+      if(e.special){const D=S.dyn;D.specials=[...(D.specials||[]),{d:S.day,gen:D.gen,title:e.title,choice:o[1],res:r}].slice(-60)}
       for(const [cid,p,days,cond] of FOLLOW[e.id+':'+k]||[])if(SE[cid]&&(!cond||cond(c,r))&&wr()<p)c.chain(cid,days);
       dynChron(`${e.title.replace(/^\S+\s/,'')}: ${o[1]} → ${r}`,[me.id,...(c.x?[c.x.id]:[])]);return r},
     prince(c,k,me){const G=S.gov,x=S.byId.get(c.who);if(!x||!x.alive||!G)return '이미 지난 일이다';G.royalRivals=(G.royalRivals||[]).filter(id=>id!==x.id);
@@ -5903,8 +5905,10 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   // ===== 가문 모드 이야기 사건 (크루세이더 킹즈·문명 느낌). S.dyn에서만 쓰인다 =====
   // 사건 표: 등장인물·나라는 지금 마을에서 뽑고, 결과는 엔진 수치(현금·평판·행복·건강·관계·지지율·금고·긴장·연구)로 반영한다.
   // 빈도: 보통 5~7일, 적게 10~14일, 많이 3~4일에 하나(대기 선택지가 있으면 기다림). 후속 사건은 정해진 날에 먼저 뜬다.
-  const SE={};const SE_LIST=[];
-  function E(id,o){o.id=id;SE[id]=o;if(!o.chain)SE_LIST.push(o)}
+  const SE={};const SE_LIST=[];const SE_TRIG=[];
+  // 사건 정의 확장(3단계): trig(c)=상황이 맞으면 터지는 사건, season=[해마다 시작일,끝일](1년=60일), special=특별 사건(⭐ 표시·연대기 기록), once=마을에 한 번,
+  // need에서 c.did(사건,선택)·c.mem.has(키)로 가문 기억을 읽고, c.later(사건,최소일,최대일)로 몇 년 뒤 돌아오는 사건을 예약한다.
+  function E(id,o){o.id=id;SE[id]=o;if(o.trig||o.season)SE_TRIG.push(o);else if(!o.chain)SE_LIST.push(o)}
   const sBy=id=>S.byId.get(id);
   function sKids(me,lo,hi){return (me.kids||[]).map(sBy).filter(k=>k&&k.alive&&k.age>=lo*YEAR&&k.age<hi*YEAR)}
   function sNonKin(me,f){const kin=dynKin();const c=adultsC().filter(a=>a.id!==me.id&&!kin.has(a.id)&&(!f||f(a)));return c.length?wpick(c):null}
@@ -5917,6 +5921,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       appr(d){if(G)G.approval=cl((G.approval??.5)+d,0,1)},tre(n){if(G){if(n<0)n=-Math.min(G.tre,-n);G.tre+=n}return n},
       tens(d){if(t)t.tension=cl((t.tension||0)+d,0,1)},roll(p){return wr()<p},
       chain(id,days,extra){D.story.q.push({id,at:S.day+days,ctx:{...ctx,...(extra||{})}})},
+      later(id,lo,hi,extra){const d=lo+Math.floor(wr()*(Math.max(lo,hi)-lo+1));D.story.q.push({id,at:S.day+d,ctx:{...ctx,...(extra||{})},late:1})},
+      mem:{get:k=>D.mem?.[k]?.v,has:k=>!!D.mem?.[k],set(k,v,ids){D.mem={...D.mem,[k]:{v:v??1,d:S.day,gen:D.gen,ids:ids||[]}}},add(k,n){const o=D.mem?.[k];D.mem={...D.mem,[k]:{v:(o?.v||0)+(n??1),d:S.day,gen:D.gen,ids:o?.ids||[]}}},del(k){if(D.mem)delete D.mem[k]},since:k=>D.mem?.[k]?S.day-D.mem[k].d:Infinity},
+      did(sid,k){const h=D.storyHist?.[sid];return !!h&&(k==null||h.k===k||(h.ks||[]).includes(k))},
       chron(s){dynChron(s,[me.id,...(x?[x.id]:[])])},n:p=>p?nm(p):'누군가'};return c}
   const RANKN=r=>dynRank()>=r;
   // ---------- 1. 가족 ----------
@@ -6272,18 +6279,42 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     o:[['educate','손실 위험도 알린다','평판 최대 +4점',c=>{c.rep(.04);return '수익과 손실을 함께 공개했다'}],
        ['promote','홍보비를 받고 열풍에 편승한다',c=>`현금 +${won(c.wA*7)} · 평판 최대 −5점`,c=>{c.cash(c.wA*7);c.rep(-.05);return '홍보비를 받았고 주민들의 비판을 받았다'},{trait:'honesty'}]]});
 
+  // ---------- 3단계 표본: 계절 사건·특별 사건·몇 년 뒤 돌아오는 사건 ----------
+  E('newYearRite',{cat:'가족',season:[0,3],cd:YEAR-5,title:'설맞이 제사',text:c=>`새해 첫날입니다. 조상께 올릴 설 제사를 어떻게 할까요?${(c.mem.get('skipRite')||0)>=2?' 집안 어른들이 몇 해째 제사를 건너뛴 걸 두고 수군거립니다.':''}`,
+    o:[['grand','성대하게 지낸다',c=>`약 ${won(c.wA*6)} · 평판↑ 친척 관계↑`,c=>{c.cash(-c.wA*6);c.rep(.03);c.mem.set('skipRite',0);c.mem.add('riteKept');for(const k of dynFamily(c.me).siblings)c.tie(k,.05,'설 제사');return '온 집안이 모여 조상께 절했다'}],
+       ['simple','식구끼리 조촐하게','',c=>{c.happy(.02);c.mem.set('skipRite',0);return '조촐하게 차례를 지냈다'}],
+       ['skip','올해는 건너뛴다','친척들 눈총',c=>{c.mem.add('skipRite');if((c.mem.get('skipRite')||0)>=3)c.chain('ancestorDispleasure',20);return '제사를 건너뛰었다'}]]});
+  E('ancestorDispleasure',{chain:1,title:'꿈에 나타난 조상',text:()=>'세 해째 제사를 거른 뒤로 집안 어른들이 조상이 꿈에 나타나 노했다며 걱정합니다.',
+    o:[['atone','속죄 제사를 올린다',c=>`약 ${won(c.wA*10)}`,c=>{c.cash(-c.wA*10);c.mem.set('skipRite',0);c.rep(.02);return '정성껏 속죄 제사를 올렸다'}],['laugh','미신이라며 웃어넘긴다','친척 관계↓',c=>{for(const k of dynFamily(c.me).siblings)c.tie(k,-.1,'제사 문제');return '웃어넘겼다. 친척들이 등을 돌렸다'}]]});
+  E('threeGen',{cat:'가문',special:1,once:1,trig:()=>S.dyn.gen>=3,title:'3대를 잇다',text:c=>`${S.dyn.house}가 3대째 이어졌습니다. 시조 이래 쌓아 온 이름을 어떻게 기릴까요?`,
+    o:[['book','족보를 펴낸다',c=>`약 ${won(c.wA*20)} · 평판·위신↑`,c=>{c.cash(-c.wA*20);c.rep(.08);S.dyn.prestige=(S.dyn.prestige||0)+10;c.mem.set('genealogy',S.day);return '족보를 펴내 가문의 내력을 남겼다'}],
+       ['feast','마을 잔치를 연다',c=>`약 ${won(c.wA*12)}`,c=>{c.cash(-c.wA*12);c.rep(.05);for(let i=0;i<4;i++)c.tie(sNonKin(c.me),.06,'3대 잔치');return '마을 사람들이 3대 가문을 축하했다'}],
+       ['quiet','조용히 넘긴다','',c=>{c.happy(.02);return '조용히 조상께 고했다'}]]});
+  E('kindnessRepaid',{chain:1,title:'은혜 갚을 때',text:c=>`오래전 우리 집이 어려울 때 쌀을 보내 주었던 ${c.n(c.x)} 집안이 이제 형편이 기울었다는 소식입니다.`,
+    o:[['repay','은혜를 갚는다',c=>`약 ${won(c.wA*10)}`,c=>{const g=c.cash(-c.wA*10);if(c.x)c.x.cash-=g;c.tie(c.x,.3,'은혜를 갚음');c.rep(.04);c.mem.set('repaidKindness',1,c.x?[c.x.id]:[]);return '받은 은혜를 몇 배로 갚았다'}],
+       ['forget','모른 척한다','평판↓',c=>{c.rep(-.04);c.tie(c.x,-.2,'은혜를 잊음');return '모른 척했다. 마을이 수군거린다'}]]});
+  F('poorKindness','thank',[['kindnessRepaid',.7,YEAR*4]]);F('poorKindness','work',[['kindnessRepaid',.4,YEAR*4]]);
   // ---------- 선택 처리 ----------
   function dynStoryPick(me){const D=S.dyn,r=dynRank();const pool=[];
     for(const e of SE_LIST){if((D.story.cd[e.id]||0)>S.day)continue;if(e.r!=null&&r<e.r)continue;if(e.cat==='외교'&&!(S.trade&&S.trade.on&&D.realms))continue;pool.push(e)}
     for(let tries=0;tries<12&&pool.length;tries++){const i=Math.floor(wr()*pool.length),e=pool[i];pool.splice(i,1);const ctx={sid:e.id,title:e.title};const c=sCtx(me,ctx);
       try{if(e.need&&!e.need(c))continue;if(e.realm){const t=sRealm();if(!t)continue;ctx.t=t.name}if(e.who){const x=e.who(sCtx(me,ctx));if(!x)continue;ctx.x=x.id}return {e,ctx}}catch(err){continue}}
     return null}
-  function dynStoryPush(e,ctx,me){const c=sCtx(me,ctx);let text;try{text=e.text(c)}catch(err){return false}ctx.title=e.title;
+  function dynStoryPush(e,ctx,me){const c=sCtx(me,ctx);let text;try{text=e.text(c)}catch(err){return false}ctx.title=(e.special?'⭐ 특별 · ':e.season?'🗓️ ':'')+e.title;
     const opts=e.o.map(([k,label,hint])=>({k,label,hint:typeof hint==='function'?hint(c):hint||''}));dynPush('story',text,opts,ctx);return true}
   const STORY_GAP={1:[10,14],2:[5,7],3:[3,4]};
+  // 조건·계절·특별 사건: 닷새마다 확인. 특별 사건이 먼저, 같은 등급이면 무작위. 한 번 뜨면 쿨다운(기본 1년), once면 다시 안 뜸.
+  function dynStoryTrig(me){const D=S.dyn,st=D.story,r=dynRank(),doy=S.day%YEAR;const cand=[];
+    for(const e of SE_TRIG){if((st.cd[e.id]||0)>S.day||(e.once&&st.done?.[e.id]))continue;if(e.r!=null&&r<e.r)continue;if(e.cat==='외교'&&!(S.trade&&S.trade.on&&D.realms))continue;
+      if(e.season){const [a,b]=e.season;if(!(a<=b?doy>=a&&doy<=b:doy>=a||doy<=b))continue}cand.push(e)}
+    cand.sort((x,y)=>(y.special?1:0)-(x.special?1:0)||wr()-.5);
+    for(const e of cand){const ctx={sid:e.id,title:e.title};try{const c=sCtx(me,ctx);if(e.trig&&!e.trig(c))continue;if(e.need&&!e.need(c))continue;if(e.realm){const t=sRealm();if(!t)continue;ctx.t=t.name}if(e.who){const x=e.who(sCtx(me,ctx));if(!x)continue;ctx.x=x.id}}catch(err){continue}
+      if(e.p!=null&&wr()>e.p)continue;return {e,ctx}}
+    return null}
   function dynStoryTick(me){const D=S.dyn;D.story=D.story||{next:S.day+3,freq:2,cd:{},q:[],n:0};const st=D.story;if(D.pending.length||st.freq===0)return;
     // 후속 사건 먼저
-    const qi=st.q.findIndex(q=>q.at<=S.day);if(qi>=0){const q=st.q.splice(qi,1)[0];const e=SE[q.id];if(e){const c=sCtx(me,q.ctx);if(q.ctx.x!=null&&(!c.x?.alive||c.x===me))return;q.ctx.sid=e.id;dynStoryPush(e,q.ctx,me);return}}
+    const qi=st.q.findIndex(q=>q.at<=S.day);if(qi>=0){const q=st.q.splice(qi,1)[0];const e=SE[q.id];if(e){const c=sCtx(me,q.ctx);if(q.ctx.x!=null&&(!c.x?.alive||c.x===me)){if(!(q.late&&e.heirOk))return;delete q.ctx.x}q.ctx.sid=e.id;dynStoryPush(e,q.ctx,me);return}}
+    if(S.day%5===0){const t=dynStoryTrig(me);if(t){st.cd[t.e.id]=S.day+(t.e.cd||YEAR);if(t.e.once)st.done={...st.done,[t.e.id]:S.day};st.n++;if(dynStoryPush(t.e,t.ctx,me))return}}
     if(S.day<st.next)return;const g=STORY_GAP[st.freq]||STORY_GAP[2];st.next=S.day+g[0]+Math.floor(wr()*(g[1]-g[0]+1));
     const p=dynStoryPick(me);if(!p)return;st.cd[p.e.id]=S.day+(p.e.cd||YEAR*2);st.n++;dynStoryPush(p.e,p.ctx,me)}
   function dynSetStory(f){const D=S.dyn;D.story=D.story||{next:S.day+3,freq:2,cd:{},q:[],n:0};D.story.freq=[0,1,2,3].includes(+f)?+f:2;if(D.story.freq)D.story.next=Math.min(D.story.next,S.day+(STORY_GAP[D.story.freq][0]));return {freq:D.story.freq}}
@@ -6351,7 +6382,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       grp:g?{id:g.id,name:g.name,leader:g.leader===a.id}:null,emp:dynP(emp),staff:S.agents.filter(x=>x.alive&&x.emp===a.id).length,crimes:a.crimes||0,caught:a.caught||0,jail:!!a.jail,banned:!!a.banned,pardoned:!!a.pardoned,served:!!a.served,drafted:!!a.drafted,altServ:(a.altServ||0)>S.day};
     out.gangBusiness=g?.mode==='gang'&&g.leader===a.id&&g.dynOps?{businesses:g.dynOps.businesses||[],loyalty:g.dynOps.loyalty||0,risk:g.dynOps.risk||0,daily:g.dynOps.daily||{},tre:g.tre||0,reports:(g.dynOps.reports||[]).slice(0,6)}:null;
     out.family={parents:f.parents.map(dynP),siblings:f.siblings.map(dynP),partner:dynP(f.partner),kids:f.kids.map(dynP),grand:f.grand.map(dynP)};
-    out.goals=a.alive&&!D.over?dynGoals(a):[];{const fa=faithOf(a);out.faithInfo=fa?{name:fa.name,members:fa.members||0,tre:fa.tre||0,docs:fa.doc.map(d=>DOCN[d]),leader:fa.leader===a.id,rep:dynFRep(fa.id),repName:dynFRepName(dynFRep(fa.id)),state:!!(S.gov&&S.gov.stateFaith===fa.id),lock:!!fa.dynLock,mutual:(D.faithMutual?.[fa.id]||0)>S.day,rumor:(D.faithRisk?.[fa.id]||0)>.4}:null}out.stress=a.dynStress||0;out.clergy=faithOf(a)?.leader===a.id?'교단 지도자':D.clergy?.[a.id]===a.faith&&a.faith?'성직자':null;out.spyCareer=D.spyCareer?{title:'정보기관 직원',experience:D.spyExperience||0,missionsUnlocked:true}:null;out.spyAgency=D.spyAgency?{size:D.spyAgency.members?.length||0,upkeep:D.spyAgency.upkeep||0,loyalty:Math.round(100*(D.spyAgency.members||[]).reduce((t,x)=>t+(x.loyalty||0),0)/Math.max(1,D.spyAgency.members?.length||0)),risk:D.spyAgency.risk||0,exposed:!!D.spyAgency.exposed,reports:(D.spyReports||[]).slice(-8).reverse()}:null;
+    out.goals=a.alive&&!D.over?dynGoals(a):[];out.specials=(D.specials||[]).slice(-20);{const fa=faithOf(a);out.faithInfo=fa?{name:fa.name,members:fa.members||0,tre:fa.tre||0,docs:fa.doc.map(d=>DOCN[d]),leader:fa.leader===a.id,rep:dynFRep(fa.id),repName:dynFRepName(dynFRep(fa.id)),state:!!(S.gov&&S.gov.stateFaith===fa.id),lock:!!fa.dynLock,mutual:(D.faithMutual?.[fa.id]||0)>S.day,rumor:(D.faithRisk?.[fa.id]||0)>.4}:null}out.stress=a.dynStress||0;out.clergy=faithOf(a)?.leader===a.id?'교단 지도자':D.clergy?.[a.id]===a.faith&&a.faith?'성직자':null;out.spyCareer=D.spyCareer?{title:'정보기관 직원',experience:D.spyExperience||0,missionsUnlocked:true}:null;out.spyAgency=D.spyAgency?{size:D.spyAgency.members?.length||0,upkeep:D.spyAgency.upkeep||0,loyalty:Math.round(100*(D.spyAgency.members||[]).reduce((t,x)=>t+(x.loyalty||0),0)/Math.max(1,D.spyAgency.members?.length||0)),risk:D.spyAgency.risk||0,exposed:!!D.spyAgency.exposed,reports:(D.spyReports||[]).slice(-8).reverse()}:null;
     out.actions=dynActions();out.jobs=DYN_JOBS.map(([k,n,h])=>({k,n,h,days:'매일 재평가 · 선택은 바꿀 때까지 유지',wage:k===WORK?{min:Math.max(.5,(S.wageAvg||1)*.7),max:Math.max(.5,(S.wageAvg||1)*1.25)}:null,legal:k!==STEAL}));out.act=a.act;out.vault=D.vault||0;out.spent=D.spent||null;out.wageAvg=S.wageAvg||0;out.run=D.run||{};out.title=dynPolTitle(a);out.regime=S.gov?regime():'none';
     const ministry=dynMinisterPost(a);out.ministry=ministry?{...ministry,budget:S.gov?.bud?.lines?.[ministry.keys.includes('def')?'def':ministry.keys.includes('edu')?'edu':'adm']||0,army:ministry.keys.includes('def')&&S.mil?{level:S.mil.lvl,strength:S.mil.str||0,morale:S.mil.morale||0}:null}:null;out.ministerLobby=D.ministerLobby?.pid===a.id?D.ministerLobby:null;out.privateMilitia=D.privateMilitia?{size:D.privateMilitia.members?.length||0,loyalty:D.privateMilitia.loyalty||0,upkeep:D.privateMilitia.upkeep||0,risk:D.privateMilitia.risk||0,exposed:!!D.privateMilitia.exposed}:null;
     out.credit=S.loans.filter(l=>l.l===a.id).map(l=>({id:l.id,borrower:S.byId.get(l.b)?nm(S.byId.get(l.b)):'-',balance:l.bal,rate:l.rate,missed:l.missed||0,collateral:l.coll?.house?'집 담보':l.coll?.plot!=null?'농지 담보':'무담보',kind:l.kind}));out.corpCredit=(S.corpLoans||[]).filter(l=>l.l===a.id||firmById(l.firm)?.ceo===a.id).map(l=>({id:l.id,firm:firmById(l.firm)?.name||'-',role:l.l===a.id?'대출해 줌':'빌림',balance:l.bal,rate:l.rate,term:l.term,missed:l.missed||0,status:l.status,collateral:l.coll?'회사 건물':'무담보'}));const ownBank=(S.banks||[]).find(b=>b.own===a.id&&b.alive!==false),bf=ownBank?.finance||{};out.bank=ownBank?{id:ownBank.id,name:ownBank.name,capital:ownBank.capital||0,cash:a.cash,reserve:a.dres||0,deposits:S.deps.filter(d=>d.bank===a.id).reduce((t,d)=>t+d.amt,0),loans:S.loans.filter(l=>l.l===a.id).reduce((t,l)=>t+l.bal,0)+(S.corpLoans||[]).filter(l=>l.l===a.id&&l.status==='active').reduce((t,l)=>t+l.bal,0),corporateLoans:(S.corpLoans||[]).filter(l=>l.l===a.id&&l.status==='active').reduce((t,l)=>t+l.bal,0),interestIncome:bf.interestIncome||0,depositExpense:bf.depositExpense||0,badDebt:bf.badDebt||0,foreclosures:bf.foreclosures||0,net:((bf.interestIncome||0)-(bf.depositExpense||0)-(bf.badDebt||0)),baseRate:S.cbank?.base??(S.loans.length?S.loans.reduce((t,l)=>t+l.rate,0)/S.loans.length:.02),loanRate:ownBank.ops?.loanRate??(a.g.lendRate||.03),depositRate:ownBank.ops?.depositRate??(a.g.lendRate||.03)*.4,reserveRatio:ownBank.ops?.reserveRatio??.15}:null;
@@ -6359,7 +6390,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const circle=dynCircle();out.news=S.events.filter(e=>e.type!=='mile'&&e.ids.some(i=>circle.has(i))).slice(-25).reverse();
     return out}
   currencyState();
-  return{dynSetStory,_story:{SE,FOLLOW,sCtx,dynStoryPick,sRealm},dynTargetActions,dynStart,dynConfigureStart,dynRename,dynChoose,dynAct,dynActions,dynSetBudget,dynVault,dynView,dynRank,dynCanSee,dynCanTab,dynTabs,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
+  return{dynSetStory,_story:{SE,FOLLOW,sCtx,dynStoryPick,sRealm,SE_TRIG,dynStoryTrig},dynTargetActions,dynStart,dynConfigureStart,dynRename,dynChoose,dynAct,dynActions,dynSetBudget,dynVault,dynView,dynRank,dynCanSee,dynCanTab,dynTabs,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
 }
 if(typeof module!=='undefined')module.exports={GAME_VERSION,SHARE_COUNT,shareCount,votingShares,marketCap,formatMoney,REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};
 
