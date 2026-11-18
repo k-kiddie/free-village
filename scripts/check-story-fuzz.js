@@ -26,7 +26,7 @@ for(const seed of [1101,1102]){
     const ctx={sid:id,title:e.title};let c=sCtx(me,ctx),ok=true;
     try{if(e.realm){const T=(S.trade&&S.trade.towns)||[];if(T[0])ctx.t=T[0].name}if(e.who){const x=e.who(sCtx(me,ctx));if(x)ctx.x=x.id;else ok=false}else if(e.chain){const x=S.agents.find(a=>a.alive&&a!==me&&a.age>=18*60);if(x)ctx.x=x.id}if(e.need&&!e.need(sCtx(me,ctx)))ok=false;if(e.trig&&!e.trig(sCtx(me,ctx)))ok=false}catch(err){ok=false}
     if(ok)needOk++;
-    for(const o of e.o){c=sCtx(me,{...ctx});
+    for(const o of e.o){if(S.gov){S.gov.tre=1e9;S.gov.bud={d:S.day,total:7e9,lines:Object.fromEntries(['adm','welf','pub','def','pol','edu','health'].map(k=>[k,1e9])),spent:{}}}c=sCtx(me,{...ctx});
       if(ok&&o[4]?.when&&!o[4].when(c))continue;
       try{e.text(c);if(typeof o[2]==='function')o[2](c);const r=o[3](c);if(typeof r!=='string')throw Error('결과 문장이 문자열이 아님: '+r);ran++}catch(err){if(ok)errs.push(`${id}:${o[0]} — ${err.message}`)}}
     me.cash=Math.max(me.cash,1e6);me.health=Math.max(me.health,60);me.alive=true;me.jailUntil=0}

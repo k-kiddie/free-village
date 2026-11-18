@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const { Worker } = require('node:worker_threads');
 const {createLifecycle}=require('./server-lifecycle');
 
+const BOOT_ID=crypto.randomBytes(8).toString('hex');
 const PORT = Math.max(1, Number(process.env.PORT) || 80);
 // 두 마을: 원래 자유방임 마을('/')과 가문 모드 마을('/god'). 1GB 서버를 위해 한 번에 한 Worker만 메모리에 둔다.
 const WORLDS = {
@@ -39,7 +40,7 @@ function spawnWorld(name){
   });
   liveWorkers++;
   w.worker.on('message',msg=>{
-    if(msg.type==='view'){w.latestView={day:msg.day,etag:`"view-${name}-${w.gen}-${msg.revision}"`,body:Buffer.from(msg.body)};if(!w.ready){w.ready=true;resolveReady()}}
+    if(msg.type==='view'){w.latestView={day:msg.day,etag:`"view-${BOOT_ID}-${name}-${w.gen}-${msg.revision}"`,body:Buffer.from(msg.body)};if(!w.ready){w.ready=true;resolveReady()}}
     else if(msg.type==='reply'){
       const p=w.waiting.get(msg.id);if(!p)return;w.waiting.delete(msg.id);
       if(msg.replyType==='error')p.reject(new Error(msg.value));else p.resolve(msg.value);

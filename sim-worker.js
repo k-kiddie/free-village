@@ -44,6 +44,7 @@ function restore() {
     world = createWorld(seed, population);
     world.importState(saved.state);
     lastSavedDay = world.S.day;
+    autoStop=saved.settings?.autoStop||'none';speed=saved.settings?.speed||1;
     // 1단계에서 만든 가문 모드 마을(S.dyn 없음)은 이어서 내 캐릭터를 정한다.
     if(isDynasty&&!world.S.dyn&&typeof world.dynStart==='function'){world.dynStart();lastSavedDay=-1}
     return true;
@@ -81,7 +82,7 @@ function makeView() {
   mapState.shops=S.shops.map(sh=>({...sh,busy:busyShops.has(sh.slot)}));
   mapState.fx=S.fx.slice(-7);mapState.day=day;
   return {
-    version:1, world:worldName, seed, population:agents.length, day, year:Math.floor(day/YEAR)+1,stopped,canImport:!isDynasty&&lastSavedDay<0&&day===0,jump:jumpTotal?{total:jumpTotal,left:pendingDays}:null,
+    version:1, world:worldName, revision:viewRevision+1, autoStop, seed, population:agents.length, day, year:Math.floor(day/YEAR)+1,stopped,canImport:!isDynasty&&lastSavedDay<0&&day===0,jump:jumpTotal?{total:jumpTotal,left:pendingDays}:null,
     season:world.season(), running, speed, leader:S.leader,
     hud:{ adults:adultN, homeless, houses:S.houses.length, wageAvg:S.wageAvg, price:S.price, top:S.leader?world.W(S.byId.get(S.leader)):0, miles:S.miles, savedDay:lastSavedDay },
     map:mapState, geometry:{geo:S.geo,mapBig:S.mapBig,plots:engine.PLOTS,expl:engine.EXPL},
@@ -108,7 +109,7 @@ async function save() {
   try {
     const state = world.exportState();
     fs.mkdirSync(saveDir, { recursive:true });
-    const bytes=await writeSnapshot(saveFile,{version:1,seed,population,state});
+    const bytes=await writeSnapshot(saveFile,{version:1,seed,population,state,settings:{autoStop,speed}});
     lastSavedDay = world.S.day;
     parentPort.postMessage({ type:'saved', day:world.S.day, bytes });
     lastViewDay=-1;sendView(true);
@@ -185,12 +186,13 @@ async function handleMessage(msg) {
   if (msg.type === 'command') {
     try {
       const c=msg.command||{};
+      panelDay=-1;panelCache.clear();
       if(c.action==='play') { running=true; stopped=null;markStop();clockAt=Date.now(); }
       else if(c.action==='pause') { running=false; pendingDays=0; dayFraction=0;jumpTotal=0; }
-      else if(c.action==='speed') speed=Math.max(1,Math.min(100,Math.floor(Number(c.value)||1)));
-      else if(c.action==='autostop'){if(!['none','mile','season','year'].includes(c.value))throw Error('알 수 없는 멈춤 기준');autoStop=c.value;markStop();}
+      else if(c.action==='speed') {lastSavedDay=-1;speed=Math.max(1,Math.min(100,Math.floor(Number(c.value)||1)));}
+      else if(c.action==='autostop'){lastSavedDay=-1;if(!['none','mile','season','year'].includes(c.value))throw Error('알 수 없는 멈춤 기준');autoStop=c.value;markStop();}
       else if(c.action==='advance') { if(!Number.isFinite(c.days)||c.days<1||c.days>3650)throw Error('건너뛸 날짜가 올바르지 않습니다');running=false;pendingDays=Math.floor(c.days);jumpTotal=pendingDays;stopped=null; }
-      else if(c.action==='new') { running=false;pendingDays=0;dayFraction=0;seed=Number(c.seed)||(isDynasty?randomSeed():((seed*7919+13)%99991+1));population=isDynasty?defaultPopulation:Math.max(1,Math.min(10000,Math.floor(Number(c.population)||5000)));world=newWorld();lastViewDay=-1;lastSavedDay=-1;panelDay=-1;panelCache.clear();await save();sendView(true); }
+      else if(c.action==='new') { running=false;pendingDays=0;dayFraction=0;jumpTotal=0;stopped=null;stopMark=null;seed=Number(c.seed)||(isDynasty?randomSeed():((seed*7919+13)%99991+1));population=isDynasty?defaultPopulation:Math.max(1,Math.min(10000,Math.floor(Number(c.population)||5000)));world=newWorld();lastViewDay=-1;lastSavedDay=-1;panelDay=-1;panelCache.clear();await save();sendView(true); }
       else if(c.action==='save') await save();
       else if(isDynasty&&c.action==='choose'){const r=world.dynChoose(c.id,String(c.k||''));lastSavedDay=-1;clockAt=Date.now();lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}
       else if(isDynasty&&c.action==='story'){const r=world.dynSetStory(c.freq);lastSavedDay=-1;lastViewDay=-1;sendView(true);answer(msg.id,'command',{running,speed,day:world.S.day,result:r});return}

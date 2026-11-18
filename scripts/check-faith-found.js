@@ -28,7 +28,7 @@ assert(ok,'신정 국가 수립');const G=w.S.gov;assert.equal(G.stateFaith,fa.i
 assert(!w.dynActions().some(a=>a.k==='extra:theo'),'이미 신정이면 혁명 행동 없음');
 
 // 5) 군주정에서 종교 혁명
-const m=createWorld(703,150);m.dynStart();m.dynConfigureStart({age:35});const k=m.S.byId.get(m.S.dyn.pid);k.cash=1e7;m.dynAct('lord');assert.equal(m.S.gov.regime,'mon','영주 자처로 군주정');
+const m=createWorld(703,150);m.dynStart();m.dynConfigureStart({age:35});const k=m.S.byId.get(m.S.dyn.pid);k.cash=1e7;for(const a of m.S.agents){a.g.comply=1;a.g.civic=0}k.rep=1;m.dynAct('lord');assert.equal(m.S.gov.regime,'mon','영주 자처로 군주정');
 m.dynAct('extra:found:honest+work:');const fb=faithOf2(m,k);let ok2=false;for(let i=0;i<40&&!ok2;i++){share(m,fb,.45);reset(m,k);m.dynAct('extra:theo');ok2=m.S.gov.regime==='theo'}
 assert(ok2,'군주정에서 종교 혁명');assert.equal(m.S.gov.king,null);assert.equal(m.S.gov.chief,k.id);
 for(let i=0;i<30;i++)m.step();assert(m.S.byId.get(k.id),'혁명 뒤 30일 진행');

@@ -45,7 +45,7 @@ const p0=f.price;act(`co:dark:${f.id}:dress`);assert(f.price>p0);act(`co:dark:${
 let exposed=false;for(let i=0;i<1800&&!exposed;i++){f.co.risk=1.4;w.step();exposed=!!f.co.exposed;for(const q of D.pending.slice())try{w.dynChoose(q.id,q.opts[q.opts.length-1].k)}catch(e){}}
 assert(exposed,'어두운 경영이 들통남');
 // 경영권 장악
-if(!S.firms.includes(rival)){rival.bld=[];S.firms.push(rival)}rival.alive=true;rival.ceo=others[0].id;rival.sh={[others[0].id]:4000,[me.id]:6000};act('co:seize:'+rival.id);assert.equal(rival.ceo,me.id,'과반 지분으로 경영권 장악');
+if(!S.firms.includes(rival)){rival.bld=[];S.firms.push(rival)}rival.alive=true;rival.ceo=others[0].id;rival.totalShares=10000;rival.shareVersion=74;rival.sh={[others[0].id]:4000,[me.id]:6000};act('co:seize:'+rival.id);assert.equal(rival.ceo,me.id,'과반 지분으로 경영권 장악');
 // 10 매각·청산
 act('co:sell:'+rival.id,'sell');assert(!(rival.sh[me.id]>0)||rival.sh[me.id]<6000,'지분 매각');
 const g=mk(9004,'정리상회',me,'agri',500);g.sh={[me.id]:10000};act('co:sell:'+g.id,'close');assert(!S.firms.includes(g),'청산');

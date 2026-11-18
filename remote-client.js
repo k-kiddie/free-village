@@ -37,7 +37,7 @@ function initRemote(){
   W0={isAdult:a=>a.age>=ADULT,season:()=>view?.season||0,grpById:id=>(S.groups||[]).find(g=>g.id===id),houseById:id=>S.houses.find(h=>h.id===id),bName:b=>b.name||'건물'};
   select=id=>{sel=id;$('#card').hidden=false;lastCard='';renderCard();if(tab==='rich'){lastPanel='';renderPanel()}};
   renderPanel=async()=>{
-    if(!view)return;const key=[seed,S.day,tab,logF,tab==='rich'?sel:''].join(':');if(key===lastPanel)return;
+    if(!view)return;const key=[seed,etag||view.revision,S.day,tab,logF,tab==='rich'?sel:''].join(':');if(key===lastPanel)return;
     const token=++panelToken;const wanted=tab;
     try{const o=await api(API+'/api/panel?'+new URLSearchParams({tab,filter:logF,selected:sel||''}));if(token!==panelToken||wanted!==tab)return;
       $('#panel').innerHTML=o.html;lastPanel=key;postPanel($('#panel'));
@@ -46,7 +46,7 @@ function initRemote(){
     }catch(e){if(token===panelToken)setSave('err',e.message)}
   };
   renderCard=async()=>{
-    if(!view||!sel)return;const key=[seed,S.day,sel].join(':');if(key===lastCard)return;const token=++cardToken,id=sel;
+    if(!view||!sel)return;const key=[seed,etag||view.revision,S.day,sel].join(':');if(key===lastCard)return;const token=++cardToken,id=sel;
     try{const o=await api(API+'/api/resident/'+id);if(token!==cardToken||sel!==id)return;$('#card').innerHTML=o.html;lastCard=key;
       $('#card').querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>select(+b.dataset.person));
       $('#cx').onclick=()=>{sel=null;++cardToken;$('#card').hidden=true;lastPanel='';renderPanel()};
@@ -65,11 +65,11 @@ function initRemote(){
   };
   async function poll(){if(pollBusy||!isVisible())return;pollBusy=true;
     try{const r=await fetch(API+'/api/view',{headers:etag?{'if-none-match':etag}:{},cache:'no-store'});if(r.status===304)return;if(!r.ok){if(r.status===503){setSave('busy','마을 준비 중…');return}throw Error('서버 요청 실패')}
-      const o=await r.json();etag=r.headers.get('etag')||'';const changed=seed!==o.seed;seed=o.seed;view=o;S=o.map;
+      const o=await r.json();++panelToken;++cardToken;etag=r.headers.get('etag')||'';const changed=seed!==o.seed;seed=o.seed;view=o;S=o.map;
       S.byId=new Map(S.agents.map(a=>[a.id,a]));S.miles=o.hud.miles;S.events=[];
       setMap(!!o.geometry.mapBig);restoreGeo(o.geometry.geo);PLOTS.length=0;PLOTS.push(...o.geometry.plots);EXPL.length=0;EXPL.push(...o.geometry.expl);
       fitMap();if(changed){sel=null;$('#card').hidden=true;lastPanel='';lastCard='';markStop()}
-      running=o.running;speed=o.speed;bgKey='';
+      running=o.running;speed=o.speed;autoStop=o.autoStop||'none';$('#autoStop').value=autoStop;bgKey='';
       if(o.stopped){const key=seed+':'+o.day;if(lastStop!==key){lastStop=key;showStop(o.stopped)}}
       if(window.DYN&&typeof dynHook==='function')dynHook(o);
       renderUI();render();await migrateLocal();
