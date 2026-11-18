@@ -4795,7 +4795,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     coNote(f,text);return text}
   function coView(me){if(!me)return [];const out=[];const seen=new Set();
     for(const f of [...coMine(me),...dynMajorFirms(me)]){if(seen.has(f.id))continue;seen.add(f.id);const o=f.co||{},staff=coStaff(f),c=S.byId.get(f.ceo);
-      out.push({id:f.id,name:f.name,mine:f.ceo===me.id,ceo:c?nm(c):'-',lines:firmLines(f).map(l=>LINE_L[l]),rev:(f.revM||0)*3,prof:(f.profE||0)*3,gain:o.lastGain||0,cash:f.cash||0,debt:coDebt(f),staff:staff.length,wage:staff.length?staff.reduce((t,x)=>t+(x.ct?.w||0),0)/staff.length:0,price:f.price,cap:marketCap(f),stake:coStake(me,f),listed:!!f.listed,
+      out.push({id:f.id,name:f.name,mine:f.ceo===me.id,ceo:c?nm(c):'-',lines:firmLines(f).map(l=>LINE_L[l]),rev:(f.revM||0)*3,prof:(f.profE||0)*3,gain:o.lastGain||0,cash:f.cash||0,debt:coDebt(f),staff:staff.length,wage:staff.length?staff.reduce((t,x)=>t+(x.ct?.w||c?.lastWage||S.wageAvg||0),0)/staff.length:0,price:f.price,cap:marketCap(f),stake:coStake(me,f),listed:!!f.listed,
         morale:o.morale??null,fac:o.fac||0,pat:(f.co?coPats(f):[]).map(p=>p.n),ad:o.adUntil>S.day?o.ad:0,br:o.br||0,wel:!!o.wel,fund:!!o.fund,risk:o.risk||0,strike:o.strike>S.day,parent:f.parent?firmById(f.parent)?.name||null:null,subs:S.firms.filter(x=>x.parent===f.id).map(x=>x.name),heir:o.heir?nm(S.byId.get(o.heir)):null,exec:(o.exec||[]).map(id=>nm(S.byId.get(id))),log:(o.log||[]).slice(-4)})}
     return out}
   function dynFamTie(p,d,why){if(!p)return;const D=S.dyn;D.ties=D.ties||{};const fm=p.family,o=D.ties[fm]||{v:0,name:dynFamName(fm,p),d:S.day,why:''};D.ties[fm]={...o,v:cl(o.v+d,-1,1),d:S.day,why:why||o.why}}
