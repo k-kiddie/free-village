@@ -476,3 +476,9 @@ node scripts/check-building-acts.js | check-crime.js | check-duty.js | check-adu
 ### 2026-11-18 회계·사건·회사 정합성 후속 수정
 
 공적 예산/개인 자금 분리, 직위·관할별 집행 권한, 사건의 실제 거래, 실패 원복, 저장·캐시 및 설립자 지분 100% 시작을 보완했다. 상세 범위와 검증은 [REVIEW_FIXES.md](REVIEW_FIXES.md)를 참조한다. API 인증은 사용자 지시에 따라 제외했다. 운영 저장 및 AWS 배포는 수행하지 않았다.
+
+## 2026-11-19 "새로 할 수 있게 된 일" 목록 버그 수정
+- 증상: 정부가 없는 새 판에서도 이전 판의 `왕실 국정 보고 받기`·`공개 처형`이 소식 맨 위에 보였다.
+- 원인: 목록을 브라우저 `localStorage`의 `v-dynever`/`v-dynnew` 한 곳에만 저장하고 지우지 않았다.
+- 수정: `dynView().game`(시드-시조-시작일)으로 판을 구분해 `v-dynacts`에 판별로 저장하고, 예전 전역 키는 지운다. 표시할 때는 지금 `ok`인 행동만, 현재 이름으로 보여 준다.
+- 검사: `node scripts/check-new-acts.js`

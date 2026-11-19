@@ -579,13 +579,20 @@ function dynFitMap(){const box=$('#dMap');if(!box)return;const inner=dynMapMode=
   box.querySelectorAll('.mapsw,.zoomui').forEach(e=>e.style.display=size===2?'none':'')}
 
 // 새로 할 수 있게 된 일: 처음으로 가능해진 행동을 소식 맨 위에 모아 보여 준다(기다림이 풀린 것은 빼고)
-let dynEver=null,dynNewActs=[];
-try{dynEver=new Set(JSON.parse(localStorage.getItem('v-dynever')||'[]'));dynNewActs=JSON.parse(localStorage.getItem('v-dynnew')||'[]')}catch(e){dynEver=new Set()}
-function dynTrackNew(v){const base=k=>k.split(':').slice(0,2).join(':');let ch=false;const first=dynEver.size===0;
-  for(const a of v.actions||[]){if(!a.ok)continue;const b=base(a.k);if(dynEver.has(b))continue;dynEver.add(b);ch=true;if(!first)dynNewActs.unshift({d:S.day,label:a.label,group:a.group,tab:dynTabOfGroup(a.group)})}
-  if(ch){dynNewActs=dynNewActs.slice(0,12);try{localStorage.setItem('v-dynever',JSON.stringify([...dynEver]));localStorage.setItem('v-dynnew',JSON.stringify(dynNewActs))}catch(e){}}}
-function dynNewActsHTML(){if(!dynNewActs.length)return '';const TL=Object.fromEntries(DYN_TABS.map(t=>[t[0],t[1]+' '+t[2]]));
-  return `<div class="sec"><h4>✨ 새로 할 수 있게 된 일</h4>${dynNewActs.map(n=>`<button class="act" data-goto="${n.tab}">${dynEsc(n.label)}<small>${fmtD(n.d)} · ${dynEsc(TL[n.tab]||'')} 메뉴 · ${dynEsc(n.group)}</small></button>`).join('')}</div>`}
+// 목록은 판(시드·시조·시작일)마다 따로 기억한다. 판이 바뀌면 새로 시작하고, 지금 실제로 할 수 있는 행동만 보여 준다.
+const DYN_NEW_KEY='v-dynacts';
+let dynNewGame=null,dynEver=new Set(),dynNewActs=[],dynNewShown=[];
+try{localStorage.removeItem('v-dynever');localStorage.removeItem('v-dynnew')}catch(e){}
+const dynActBase=k=>String(k||'').split(':').slice(0,2).join(':');
+function dynNewLoad(game){dynNewGame=game;dynEver=new Set();dynNewActs=[];
+  try{const o=JSON.parse(localStorage.getItem(DYN_NEW_KEY)||'null');if(o&&o.game===game){dynEver=new Set(o.ever||[]);dynNewActs=(o.news||[]).filter(n=>n&&n.k)}}catch(e){}}
+function dynNewSave(){try{localStorage.setItem(DYN_NEW_KEY,JSON.stringify({game:dynNewGame,ever:[...dynEver],news:dynNewActs}))}catch(e){}}
+function dynTrackNew(v){const game=v.game||'';if(game!==dynNewGame)dynNewLoad(game);let ch=false;const first=dynEver.size===0,ready=new Map();
+  for(const a of v.actions||[]){if(!a.ok)continue;const b=dynActBase(a.k);if(!ready.has(b))ready.set(b,a);if(dynEver.has(b))continue;dynEver.add(b);ch=true;if(!first)dynNewActs.unshift({k:b,d:S.day,label:a.label,group:a.group,tab:dynTabOfGroup(a.group)})}
+  if(ch){dynNewActs=dynNewActs.slice(0,12);dynNewSave()}
+  dynNewShown=dynNewActs.filter(n=>ready.has(n.k)).map(n=>({...n,label:ready.get(n.k).label,group:ready.get(n.k).group,tab:dynTabOfGroup(ready.get(n.k).group)}))}
+function dynNewActsHTML(){if(!dynNewShown.length)return '';const TL=Object.fromEntries(DYN_TABS.map(t=>[t[0],t[1]+' '+t[2]]));
+  return `<div class="sec"><h4>✨ 새로 할 수 있게 된 일</h4>${dynNewShown.map(n=>`<button class="act" data-goto="${n.tab}">${dynEsc(n.label)}<small>${fmtD(n.d)} · ${dynEsc(TL[n.tab]||'')} 메뉴 · ${dynEsc(n.group)}</small></button>`).join('')}</div>`}
 // 인물 카드에 "이 사람에게" 행동 버튼을 붙인다(서버가 대상·지위에 맞게 고른 것만)
 let dynCardFor=null,dynCardActs=null,dynCardBusy=false;
 async function dynCardActions(force){const card=$('#card');if(!card||card.hidden||sel==null)return;if(card.querySelector('#dynTgt')&&!force&&dynCardFor===sel)return;
