@@ -4557,8 +4557,20 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   }
   function dynChron(text,ids){const D=S.dyn;D.chron.push({d:S.day,gen:D.gen,text,ids:ids||[]});if(D.chron.length>400)D.chron.splice(0,D.chron.length-400)}
   function dynCool(kind,days){const D=S.dyn;if((D.cool[kind]||0)>S.day)return false;D.cool[kind]=S.day+days;return true}
+  // 받은 일함: 급한 일만 시간을 멈추고, 나머지는 쌓아 두었다가 원할 때 처리한다(기한이 지나면 무시한 결과)
+  const DYN_URGENT=new Set(['start','death','birth','caught','war','invaded','conquest','regime','draft','fire','epidemic','famine','sick']);
+  const DYN_IGNORE_RE=/거절|무시|외면|모른\s?척|넘긴다|넘어간다|그냥 둔다|그냥 지나|관여하지|지켜본다|사양|미룬다|내버려|흘려|피한다|가만히/;
+  function dynInboxTick(me){const D=S.dyn;for(const p of D.pending.slice()){if(!p.inbox||p.due==null||p.due>S.day)continue;
+      if(p.kind==='notice'){D.pending.splice(D.pending.indexOf(p),1);continue}
+      const o=p.opts.find(o=>DYN_IGNORE_RE.test(o.label)&&o.available!==false);const title=p.ctx?.title||p.text.slice(0,24);let text='';
+      if(p.kind==='story')dynStoryLike(p,-.15);
+      if(o){try{text=dynChoose0(p.id,o.k).text}catch(e){text=''}}
+      const i=D.pending.indexOf(p);if(i>=0)D.pending.splice(i,1);
+      D.res={d:S.day,kind:p.kind,text:`📥 기한이 지나 넘어갔다 · ${title}${text?' → '+text:' · 흐지부지됐다'}`,changes:D.res?.d===S.day?D.res.changes:[]};dynChron(`${title}: 답하지 않아 넘어갔다`,[me.id])}}
+  // 반응 학습: 매번 첫 선택만 누르거나 기한을 넘기는 종류는 덜, 고민해 고르는 종류는 더 자주
+  function dynStoryLike(p,d){const D=S.dyn,e=SE[p.ctx?.sid];if(!e)return;D.story.like=D.story.like||{};D.story.like[e.cat]=cl((D.story.like[e.cat]||0)+d,-.7,1)}
   function dynPush(kind,text,opts,ctx){const D=S.dyn;if(D.pending.some(p=>p.kind===kind&&JSON.stringify(p.ctx)===JSON.stringify(ctx||{})))return null;
-    const p={id:D.nextP++,kind,d:S.day,text,opts:opts.map(o=>({...o,fundingLabel:o.fundingLabel||(kind==='intel'&&o.k==='bribe'?'국가 치안 예산':/내 재산|개인|사재/.test(o.label)?'개인 자금':undefined)})),ctx:ctx||{}};D.pending.push(p);return p}
+    const inbox=!DYN_URGENT.has(kind),p={id:D.nextP++,kind,d:S.day,inbox,due:inbox?S.day+(kind==='notice'?7:12):null,text,opts:opts.map(o=>({...o,fundingLabel:o.fundingLabel||(kind==='intel'&&o.k==='bribe'?'국가 치안 예산':/내 재산|개인|사재/.test(o.label)?'개인 자금':undefined)})),ctx:ctx||{}};D.pending.push(p);return p}
   function dynStart(){
     let c=S.agents.filter(a=>a.alive&&isAdult(a)).sort((x,y)=>dynScore(y)-dynScore(x)||x.id-y.id)[0];if(!c)throw Error('성인 주민이 없습니다');
     S.dyn={v:1,pid:c.id,house:c.sur+'씨 가문',houseAuto:true,founder:c.id,heir:null,gen:1,start:S.day,prestige:0,budget:{life:2,edu:1,save:.1,give:0,debt:0},
@@ -6056,6 +6068,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function dynChoose0(id,k){const D=S.dyn;if(!D)throw Error('가문 모드가 아닙니다');
     const i=D.pending.findIndex(p=>p.id===Number(id));if(i<0)throw Error('이미 처리된 선택지입니다');
     const p=D.pending[i];if(!p.opts.some(o=>o.k===k))throw Error('없는 선택입니다');
+    if(p.kind==='story'&&!String(k).startsWith('__'))dynStoryLike(p,p.opts.findIndex(o=>o.k===k)===0?-.03:.06);
     const me=dynMe(),before=dynChoiceStats(me,p),stress=dynStressCost(me,p,k),oldStory=D.storyHist;
     const text=DYN_H[p.kind](p.ctx,k,me);
     const current=D.pending.indexOf(p);if(current!==-1)D.pending.splice(current,1);
@@ -7773,9 +7786,17 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(e.valid&&!e.valid(c))return null;
     return ctx;
   }
+  // 지금 하는 일·처지와 맞는 이야기는 자주, 상관없는 일상 이야기는 한동안 조용할 때만
+  const STORY_FILLER=new Set(['마을','기이','계절','생활']);
+  function dynStoryRel(me){const D=S.dyn,G=S.gov,on=new Set(['직업','일']),f=dynFamily(me),r=dynRank(),quiet=S.day-(D.story?.lastAny??-99)>=20;
+    if(coMine(me).length||me.emp)on.add('회사').add('장사');if(D.shark||(S.banks||[]).some(b=>b.own===me.id)||S.loans.some(l=>l.l===me.id||l.b===me.id))on.add('돈').add('경제');
+    if(faithOf(me))on.add('종교').add('이단');if(r>=3||dynFullOffice(me)||G&&(G.council||[]).includes(me.id))on.add('정치').add('공직').add('왕권').add('사법');
+    if((D.heat||0)>.2||me.grp||(me.crimes||0)>0)on.add('범죄').add('조직').add('수사');if(f.partner||f.kids.length)on.add('가족').add('가문').add('상속');
+    if(!f.partner||me.affair)on.add('연애').add('관계').add('인맥');if((coMine(me).some(c=>c.merc))||S.war||me.drafted)on.add('용병').add('전쟁').add('병역').add('외교');if(bdMine(me).length)on.add('건물');
+    return e=>on.has(e.cat)?2.5:STORY_FILLER.has(e.cat)?(quiet?1:.35):.8}
   function dynStoryPick(me){const st=S.dyn.story,r=dynRank(),executive=dynExecutive(me);
     const pool=SE_LIST.filter(e=>(st.cd[e.id]||0)<=S.day&&dynStoryEligible(e,me,r));
-    const weight=e=>sWeight(e)*(executive&&(e.executive||STORY_EXEC.has(e.id)||e.cat==='정치')?3:1);
+    const rel=dynStoryRel(me),like=st.like||{},weight=e=>sWeight(e)*(executive&&(e.executive||STORY_EXEC.has(e.id)||e.cat==='정치')?3:1)*rel(e)*(1+(like[e.cat]||0));
     for(let tries=0;tries<18&&pool.length;tries++){
       let left=wr()*pool.reduce((sum,e)=>sum+weight(e),0),i=0;
       for(;i<pool.length-1;i++){left-=weight(pool[i]);if(left<=0)break}
@@ -7795,12 +7816,13 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   }
   const STORY_GAP={1:[15,20],2:[8,12],3:[4,6]};
   function dynStoryTrig(me){
-    const st=S.dyn.story,r=dynRank(),doy=S.day%YEAR;
+    const st=S.dyn.story,r=dynRank(),doy=S.day%YEAR,rel=dynStoryRel(me),like=st.like||{};
     const candidates=[];
     for(const e of SE_TRIG){
       if((st.cd[e.id]||0)>S.day||(e.once&&Object.hasOwn(st.done||{},e.id))||!dynStoryEligible(e,me,r))continue;
       if(e.season){const [a,end]=e.season,b=Math.max(end,a+4);if(!(a<=b?doy>=a&&doy<=b:doy>=a||doy<=b))continue}
-      candidates.push({e,priority:(e.special?2:e.executive?1:0)+wr()});
+      const rw=rel(e)*(1+(like[e.cat]||0));if(!e.special&&rw<.5&&wr()<.65)continue;
+      candidates.push({e,priority:(e.special?2:e.executive?1:0)+wr()*rw});
     }
     candidates.sort((a,b)=>b.priority-a.priority);
     for(const {e} of candidates){
@@ -7813,7 +7835,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const D=S.dyn;
     D.story=D.story||{next:S.day+3,freq:2,cd:{},q:[],n:0};
     const st=D.story;
-    if(D.pending.length||st.freq===0)return;
+    if(st.freq===0||D.pending.some(p=>!p.inbox)||D.pending.filter(p=>p.inbox&&p.kind!=='notice').length>=4)return;
     for(let i=0;i<st.q.length;){
       if(st.q[i].at>S.day){i++;continue}
       const [q]=st.q.splice(i,1),e=SE[q.id];
@@ -7824,7 +7846,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(S.day%5===0&&S.day-(st.lastTrig??-99)>=10){
       const t=dynStoryTrig(me);
       if(t&&dynStoryPush(t.e,t.ctx,me)){
-        st.lastTrig=S.day;st.cd[t.e.id]=S.day+(t.e.cd||YEAR);st.n++;
+        st.lastTrig=S.day;st.lastAny=S.day;{const [lo]=STORY_GAP[st.freq]||STORY_GAP[2];st.next=Math.max(st.next,S.day+lo)}st.cd[t.e.id]=S.day+(t.e.cd||YEAR);st.n++;
         if(t.e.once)st.done={...st.done,[t.e.id]:S.day};
         return;
       }
@@ -7833,7 +7855,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const [lo,hi]=STORY_GAP[st.freq]||STORY_GAP[2];
     st.next=S.day+lo+Math.floor(wr()*(hi-lo+1));
     const p=dynStoryPick(me);
-    if(p&&dynStoryPush(p.e,p.ctx,me)){st.cd[p.e.id]=S.day+(p.e.cd||YEAR*2);st.n++}
+    if(p&&dynStoryPush(p.e,p.ctx,me)){st.cd[p.e.id]=S.day+(p.e.cd||YEAR*2);st.n++;st.lastAny=S.day}
   }
   function dynSetStory(f){const D=S.dyn;D.story=D.story||{next:S.day+3,freq:2,cd:{},q:[],n:0};D.story.freq=[0,1,2,3].includes(+f)?+f:2;if(D.story.freq)D.story.next=Math.min(D.story.next,S.day+(STORY_GAP[D.story.freq][0]));return {freq:D.story.freq}}
   function dynWorldTick(){const D=S.dyn,T=S.trade;if(!T||!T.towns||!T.towns.length)return;D.realms=D.realms||{};
@@ -8479,7 +8501,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         heir:R0.heir?{name:rName(R0.heir),age:rAge(R0.heir),sex:R0.heir.sex}:null,hist:R0.hist.slice(-6).reverse()}}).filter(Boolean);
     {const sf=G&&G.stateFaith&&(S.faiths||[]).find(f=>f.id===G.stateFaith);if(sf)us.faith=sf.name}
     return {known:true,us,realms,far:farView(r),marks:farMarks(),fw:S.fw&&S.fw.until>S.day?{a:S.fw.a,b:S.fw.b}:null,news:(D.wnews||[]).slice(-12).reverse()}}
-  function dynTick(){const D=S.dyn,me=dynMe();dynLeavePrivateEmployment(dynReigningMonarch());dynLeavePrivateEmployment(me);dynWorldTick();if(D.over)return;if(me&&D.gig)dynGigTick(me);if(me)dynMilitiaTick(me);if(me)dynSpyOrgTick(me);if(me)dynUnderworldTick(me);dynTierTick();coTick(me);crTick(me);duTick(me);adTick(me);jrTick(me);wfTick(me);mcTick();ecTick();scTick();rrTick(me);if(me&&me.alive){dynDutyTick(me);dynSiteTick(me);dynStressTick(me);dynFaithTick(me);dynStoryTick(me)}if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
+  function dynTick(){const D=S.dyn,me=dynMe();dynLeavePrivateEmployment(dynReigningMonarch());dynLeavePrivateEmployment(me);dynWorldTick();if(D.over)return;if(me&&D.gig)dynGigTick(me);if(me)dynMilitiaTick(me);if(me)dynSpyOrgTick(me);if(me)dynUnderworldTick(me);dynTierTick();coTick(me);crTick(me);duTick(me);adTick(me);jrTick(me);wfTick(me);mcTick();ecTick();scTick();rrTick(me);if(me&&me.alive){dynInboxTick(me);dynDutyTick(me);dynSiteTick(me);dynStressTick(me);dynFaithTick(me);dynStoryTick(me)}if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
     if(me&&W(me)>D.peak.w)D.peak.w=W(me);
     if(me&&me.alive){const tt=dynPolTitle(me);if(D.title===undefined)D.title=tt;else if(tt!==D.title){const t=tt?`${josa(nm(me),'이','가')} ${josa(tt,'이','가')} 됐습니다`:`${josa(nm(me),'이','가')} ${D.title} 자리에서 물러났습니다`;D.title=tt;dynChron(t,[me.id]);dynPush('notice',t,[{k:'ok',label:'확인'}],{d:S.day})}
       if(S.day%5===0&&!((me.jailUntil||0)>S.day))dynBudgetTick(me);
@@ -8552,7 +8574,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
           const x=/^p[0-9]+$/.test(o.k)?S.byId.get(Number(o.k.slice(1))):null;
           return {...o,...(p.kind==='story'?dynStoryFinance(SE[p.ctx.sid],sCtx(a,{...p.ctx,choice:o.k}),o.k):{}),label:dynWithRole(o.label,x),stress:dynStressCost(a,p,o.k)};
         });
-        return {id:p.id,kind:p.kind,d:p.d,text:p.text,opts,title:ctx.title||null,cast};
+        return {id:p.id,kind:p.kind,d:p.d,inbox:!!p.inbox,due:p.due??null,text:p.text,opts,title:ctx.title||null,cast};
       }),story:{freq:D.story&&D.story.freq!=null?D.story.freq:2,n:(D.story&&D.story.n)||0},chron:D.chron.slice(-40),past:D.past,notices:S.miles.slice(-8)};
     if(!a)return out;const f=dynFamily(a);const g=a.grp&&grpById(a.grp);const publicDuty=dynEmploymentBlocked(a);const emp=!publicDuty&&a.emp&&S.byId.get(a.emp);
     out.me={...dynP(a),sur:a.sur,given:a.given,health:a.health,hunger:a.hunger,happy:a.happy,rep:a.rep,edu:a.edu||0,skill:{farm:a.skill?.[FARM]||0,craft:a.skill?.[CRAFT]||0,trade:a.skill?.[TRADE]||0},g:{boss:a.g.boss,civic:a.g.civic,care:a.g.care,cheat:a.g.cheat},looks:a.looks,occ:a.occ||null,faith:a.faith||null,
