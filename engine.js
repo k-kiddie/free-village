@@ -7786,9 +7786,17 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function crCase(me,t,amt,ev){const G=S.gov;if(G&&wr()<ev){G.cases.push({t,who:me.id,amt:Math.max(1,amt),ev:Math.min(.9,ev+.1),d:S.day});return true}return false}
   function crHeat(d){const D=S.dyn;D.heat=cl((D.heat||0)+d,0,3)}
   function crRich(me){return adA().filter(a=>a.alive&&a!==me&&!dynKin().has(a.id)&&a.cash>dynWA()*10).sort((x,y)=>y.cash-x.cash).slice(0,5)}
+  // 높으신 분 털기: 현금이 적은 서민 마을이라도 직위·신분·회사·국고를 노릴 수 있게 한다(돈은 실제 계정에서만 옮긴다)
+  function crBigTitle(x){const G=S.gov;if(G&&(G.king===x.id||G.chief===x.id))return '통치자';const t=dynPolTitle(x);if(t)return t;if(x.dynNoble)return x.dynNoble;const c=duRole(x);if(c==='judge'||c==='pros')return {judge:'재판관',pros:'검사'}[c];if(S.mil?.gen===x.id)return '장군';const f=S.firms.find(f=>!f.gone&&f.ceo===x.id);if(f)return f.name+' 대표';const fa=faithOf(x);if(fa?.leader===x.id)return fa.name+' 교단 지도자';return ''}
+  function crBigLoot(x){return Math.min((x.cash||0)*.45,dynWA()*80)}
+  function crBig(me){const kin=dynKin(),pool=adA().filter(a=>a.alive&&a!==me&&!kin.has(a.id)&&!((a.jailUntil||0)>S.day));const top=new Set(pool.slice().sort((x,y)=>W(y)-W(x)||x.id-y.id).slice(0,3).map(a=>a.id));
+    return pool.map(x=>({x,title:crBigTitle(x)||(top.has(x.id)?'마을 갑부':'')})).filter(o=>o.title&&crBigLoot(o.x)>=dynWA()).sort((a,b)=>crBigLoot(b.x)-crBigLoot(a.x)||a.x.id-b.x.id).slice(0,6)}
+  function crBigFirms(me){return S.firms.filter(f=>!f.gone&&f.ceo!==me.id&&!dynKin().has(f.ceo)&&Math.min((f.cash||0)*.35,dynWA()*120)>=dynWA()*2).sort((a,b)=>(b.cash||0)-(a.cash||0)||a.id-b.id).slice(0,3)}
   function crPoor(me){return adA().filter(a=>a.alive&&a!==me&&!dynKin().has(a.id)&&(a.w||0)<median()*.5&&!a.enslavedBy&&!((a.jailUntil||0)>S.day)).sort((x,y)=>(x.w||0)-(y.w||0)).slice(0,5)}
   function crActions(me,add){if(!isAdult(me))return;const D=S.dyn,wA=dynWA(),G=S.gov,W=k=>dynWait('cr'+k),rich=crRich(me),poor=crPoor(me),heat=Math.round((D.heat||0)*100);const hs=` · 수배 열기 ${heat}`;
     let a=add('crime:rob','어두운 길 · 범죄','강도',`부잣집을 털어 크게 챙김 · 실패하면 다치거나 붙잡힘${hs}`,rich.length?W('rob'):'털 만한 부자가 없음');a.opts=rich.map(x=>['p'+x.id,`${nm(x)} 집 털기`]);
+    {const big=crBig(me),firms=crBigFirms(me),treLoot=G?Math.min((G.tre||0)*.15,wA*150):0,opts=[...big.map(({x,title})=>['p'+x.id,`${nm(x)} (${title}) 저택 · 최대 ${won(crBigLoot(x))}`]),...firms.map(f=>['f'+f.id,`${f.name} 금고 · 최대 ${won(Math.min(f.cash*.35,wA*120))}`]),...(treLoot>=wA*3&&G.chief!==me.id&&G.king!==me.id?[['tre',`국고 털기 · 최대 ${won(treLoot)} · 매우 위험`]]:[])];
+      a=add('crime:heist','어두운 길 · 범죄','높으신 분 털기',`관리·귀족·회사 대표·갑부의 저택, 회사 금고, 국고를 노리는 한탕 · 경비가 세서 성공률이 낮고 들키면 중죄${hs}`,opts.length?W('heist'):'털 만한 높으신 분이 없음');a.opts=opts}
     a=add('crime:steal','어두운 길 · 범죄','좀도둑질',`시장에서 슬쩍 · 작게 벌고 덜 위험${hs}`,W('steal'));
     const foes=adA().filter(x=>x!==me&&(D.ties?.[x.family]?.v||0)<-.2).slice(0,4).concat(rich.slice(0,2));a=add('crime:beat','어두운 길 · 범죄','폭행',`손을 봐 줌 · 상대는 크게 다침 · 원한↑${hs}`,foes.length?W('beat'):'손볼 상대가 없음');a.opts=[...new Map(foes.map(x=>[x.id,x])).values()].map(x=>['p'+x.id,nm(x)]);
     const g=me.grp&&grpById(me.grp);if(g?.mode==='gang'&&g.leader===me.id)add('crime:raid','어두운 길 · 범죄','강도단 습격',`패거리 ${g.members.length}명을 이끌고 상인 행렬을 털어 큰돈 · 사상자가 날 수 있음${hs}`,g.members.length<4?'조직원이 4명 이상이어야 함':W('raid'));
@@ -7807,6 +7815,13 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   }
   function crAct(me,k){const [,op,arg0]=k.split(':'),arg=arg0||'',D=S.dyn,wA=dynWA(),G=S.gov,hr=S.houseRef||100;const cool=(n,d)=>{D.cool['actcr'+n]=S.day+d};const who=()=>{const x=S.byId.get(Number(arg.slice(1)));if(!x||!x.alive)throw Error('대상이 없습니다');return x};const rep=d=>{me.rep=cl((me.rep??1)+d,0,1)};let t='';
     if(op==='rob'){const x=who();cool('rob',30);const p=.45+((me.g.war??.5)-.5)*.4+(x.vaultUntil>S.day?-.25:0)+(x.guardUntil>S.day?-.15:0);if(wr()<p){const g=Math.min(x.cash*.3,wA*30);x.cash-=g;me.cash+=g;crHeat(.35);dynFamTie(x,-.4,'강도');crCase(me,'robbery',g,.25);t=`${nm(x)} 집을 털어 ${won(g)}을 챙겼다`}else{me.health=Math.max(1,me.health-15);crHeat(.2);if(crCase(me,'robbery',wA*5,.5))t='들켜서 다치고 쫓기는 신세가 됐다';else t='털다 들켜 몸만 다치고 도망쳤다'}return t}
+    if(op==='heist'){cool('heist',45);const skill=((me.g.war??.5)-.5)*.3+((me.g.cheat??.5)-.5)*.2+Math.min(.1,(me.crimes||0)*.02);let g=0,src='',p=0,ev=.4,victim=null,take=null;
+      if(arg==='tre'){if(!G)throw Error('국고가 없습니다');p=.22+skill;ev=.7;src='국고';g=Math.min((G.tre||0)*.15,wA*150);take=v=>{G.tre-=v}}
+      else if(arg[0]==='f'){const f=firmById(Number(arg.slice(1)));if(!f||f.gone)throw Error('회사가 없습니다');p=.35+skill;ev=.45;src=f.name+' 금고';g=Math.min((f.cash||0)*.35,wA*120);take=v=>{f.cash-=v};victim=S.byId.get(f.ceo)}
+      else{const x=who(),title=crBigTitle(x)||'마을 갑부';victim=x;p=.42+skill-(title==='통치자'?.15:title!=='마을 갑부'?.07:0)-((x.vaultUntil||0)>S.day?.2:0)-((x.guardUntil||0)>S.day?.12:0);ev=title==='통치자'?.6:.45;src=`${nm(x)}(${title}) 저택`;g=crBigLoot(x);take=v=>{x.cash-=v;x.robbed=S.day}}
+      p=cl(p,.08,.8);if(!(g>0))throw Error('챙길 것이 없습니다');
+      if(wr()<p){take(g);me.cash+=g;crHeat(.5);if(victim)dynFamTie(victim,-.5,'저택 털이');crCase(me,'robbery',g,ev*.6);log('crime',`${josa(src,'이','가')} 털렸다. ${won(g)}이 사라졌다`,[me.id,...(victim?[victim.id]:[])]);dynChron(`${josa(src,'을','를')} 털어 ${won(g)}을 챙기다`,[me.id]);return `${josa(src,'을','를')} 털어 ${won(g)}을 챙겼다! 소문이 퍼지기 전에 몸을 사리자`}
+      me.health=Math.max(1,me.health-20);crHeat(.4);rep(-.05);if(victim)dynFamTie(victim,-.3,'저택 침입');return crCase(me,'robbery',g,ev)?`${src}에 들어갔다가 경비에게 붙잡힐 뻔했다. 다치고 수사 대상이 됐다`:`${src} 경비에 막혀 다친 채 빈손으로 도망쳤다`}
     if(op==='steal'){cool('steal',15);if(wr()<.7){const g=bdTake(wA*3,me);me.cash+=g;crHeat(.08);return `시장에서 ${won(g)}을 슬쩍했다`}crHeat(.1);rep(-.03);crCase(me,'robbery',wA,.3);return '손목을 잡혀 망신을 당했다'}
     if(op==='beat'){const x=who();cool('beat',30);x.health=Math.max(1,x.health-25);dynFamTie(x,-.5,'폭행');crHeat(.15);rep(-.04);crCase(me,'assault',wA*3,.35);return `${josa(nm(x),'을','를')} 흠씬 두들겨 팼다`}
     if(op==='raid'){const g0=grpById(me.grp);cool('raid',60);const n=g0.members.length;const gain=bdTake(wA*(10+n*3),me);me.cash+=gain*.6;g0.tre=(g0.tre||0)+gain*.4;crHeat(.5);if(wr()<.3){const m=S.byId.get(wpick(g0.members.filter(id=>id!==me.id)));if(m){die(m,'습격 중 사망')}t=`상인 행렬을 털어 ${won(gain)}을 챙겼지만 조직원 하나를 잃었다`}else t=`상인 행렬을 털어 ${won(gain)}을 챙겼다`;crCase(me,'robbery',gain,.3);log('crime','상인 행렬이 패거리에게 털렸다',[me.id]);return t}
@@ -8276,7 +8291,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       debt:owe.reduce((t,l)=>t+l.bal,0),debtN:owe.length,lent:lent.reduce((t,l)=>t+l.bal,0),lentN:lent.length,dep:deps.reduce((t,d)=>t+d.amt,0),w:W(a),incAvg:a.incAvg||0,home:a.home||null}}
   const DYN_RANK=['평민','부자·사업가','조직 간부','의원·귀족','최고 권력자','관전'];
   function dynView(){const D=S.dyn;if(!D)return null;const a=S.byId.get(D.pid);const r=dynRank();
-    const out={regent:dynP(D.regent&&S.byId.get(D.regent)),house:D.house,gen:D.gen,start:D.start,over:D.over,watch:D.watch,rank:r,rankName:DYN_RANK[r],tabs:D.over?null:dynTabs(r),budget:D.budget,heir:D.heir,res:D.res,peak:D.peak,
+    const out={game:`${(S.seed||0)>>>0}-${D.founder}-${D.start}`,regent:dynP(D.regent&&S.byId.get(D.regent)),house:D.house,gen:D.gen,start:D.start,over:D.over,watch:D.watch,rank:r,rankName:DYN_RANK[r],tabs:D.over?null:dynTabs(r),budget:D.budget,heir:D.heir,res:D.res,peak:D.peak,
       pending:D.pending.map(p=>{
         const ctx=p.ctx||{},ids=p.kind==='story'?[ctx.x,ctx.y]:[ctx.who,ctx.from,ctx.sus,ctx.ruler,ctx.orph];
         const cast=[...new Set(ids)].map(id=>S.byId.get(id)).filter(x=>x&&x!==a).map(dynP);
