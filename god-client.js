@@ -300,7 +300,7 @@ const DYN_SCENE_ART_INDEX=Object.freeze({
   family:0,romance:9,festival:10,market:48,workshop:49,factory:50,fire:36,flood:37,drought:38,epidemic:39,debate:31,
   famine:11,technology:59,school:52,travel:47,funeral:3,council:16,court:17,election:18,intrigue:19,revolt:24,
   battle:32,siege:33,victory:34,refugee:35,investigation:20,prison:60,religion:62,season:6,transport:61,crime:40,
-  interior:8,ceremony:1,nature:63,performance:29,business:48,addiction:54,ambition:23,arena:42,bank:51,
+  interior:8,ceremony:1,nature:63,performance:29,business:64,addiction:54,ambition:23,arena:42,bank:51,
   companyRival:55,construction:58,childhood:5,diplomacy:27,drugParty:57,grudge:4,homecoming:12,hostageRescue:41,
   judicialPressure:21,landCourt:14,neighborAid:46,nightlife:13,poisonEvidence:2,pressroom:30,quackClinic:53,
   recruitment:44,resignation:22,spy:25,succession:28,successionLessons:15,venueAftercare:26,warCouncil:43,intimate:7
@@ -326,6 +326,7 @@ function dynPixelPerson(person,x,y,pose='stand'){
 function dynVenueSceneArt(scene,p){
   const index=DYN_SCENE_ART_INDEX[scene];
   if(index==null)return '';
+  if(index===64){const title=String(p?.title||'장사 장면').replace(/^[^가-힣A-Za-z0-9]+/,'');return `<svg viewBox="0 0 1672 941" role="img" aria-label="${dynEsc(title)} · 픽셀 장면" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><image href="/scene-art/business.webp" x="0" y="0" width="1672" height="941" preserveAspectRatio="none"/></svg>`}
   const sheet=Math.floor(index/16),tile=index%16,col=tile%4,row=Math.floor(tile/4),x=col*418,y=row*235.25;
   const title=String(p?.title||'이야기 장면').replace(/^[^가-힣A-Za-z0-9]+/,'');
   return `<svg viewBox="${x} ${y} 418 235.25" role="img" aria-label="${dynEsc(title)} · 픽셀 장면" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><image href="/scene-art/atlas-${sheet}.webp" x="0" y="0" width="1672" height="941" preserveAspectRatio="none"/></svg>`;
