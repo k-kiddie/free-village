@@ -497,3 +497,4 @@ node scripts/check-building-acts.js | check-crime.js | check-duty.js | check-adu
 - 서버: 서비스에 코드 받기 단계가 없어 #43에 멈춰 있던 것을 확인하고 드롭인으로 추가(CLAUDE.md AWS 항목).
 - 알려진 남은 일: 원래 마을에도 같은 물가 비율 오해가 지지율 계산에 있음(원래 마을 결과 변경이라 동현 승인 필요). 노조를 이끄는 기능은 아직 없음.
 - 검사: check-daily-work, check-inbox, check-preach, check-gov-org, check-policy-labels, check-orgs, check-heist, check-new-acts (+ 기존 검사 보완: check-duty·check-heresy·check-dynasty·check-dynasty-government·check-relationships·check-mobile-ui).
+- 2026-11-19 추가(동현 요청): 받은 일함을 없애고 **모든 선택지가 시간을 멈추고 바로 뜬다**(기한 없음, 고를 때까지 대기). 예전 저장의 받은 일은 첫 진행 때 멈춤 선택지로 바뀐다. 관련성 가중·반응 학습·쓸데없는 사건 정리는 그대로라 빈도는 이전보다 낮다(2년 14건 측정).

@@ -4560,7 +4560,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   // 받은 일함: 급한 일만 시간을 멈추고, 나머지는 쌓아 두었다가 원할 때 처리한다(기한이 지나면 무시한 결과)
   const DYN_URGENT=new Set(['start','death','birth','caught','war','invaded','conquest','regime','draft','fire','epidemic','famine','sick']);
   const DYN_IGNORE_RE=/거절|무시|외면|모른\s?척|넘긴다|넘어간다|그냥 둔다|그냥 지나|관여하지|지켜본다|사양|미룬다|내버려|흘려|피한다|가만히/;
-  function dynInboxTick(me){const D=S.dyn;for(const p of D.pending)dynStoryRecheck(p);for(const p of D.pending.slice()){if(!p.inbox||p.due==null||p.due>S.day)continue;
+  // 2026-11-19 동현 요청: 놓치는 사건이 없도록 모든 선택지가 시간을 멈추고 뜬다(받은 일함·기한 없음). 예전 저장의 받은 일은 멈춤 선택지로 바꾼다
+  function dynInboxTick(me){const D=S.dyn;for(const p of D.pending){if(p.inbox){p.inbox=false;p.due=null}}for(const p of D.pending)dynStoryRecheck(p);for(const p of D.pending.slice()){if(!p.inbox||p.due==null||p.due>S.day)continue;
       if(p.kind==='notice'){D.pending.splice(D.pending.indexOf(p),1);continue}
       const o=p.opts.find(o=>DYN_IGNORE_RE.test(o.label)&&o.available!==false);const title=p.ctx?.title||p.text.slice(0,24);let text='';
       if(p.kind==='story')dynStoryLike(p,-.15);
@@ -4570,7 +4571,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   // 반응 학습: 매번 첫 선택만 누르거나 기한을 넘기는 종류는 덜, 고민해 고르는 종류는 더 자주
   function dynStoryLike(p,d){const D=S.dyn,e=SE[p.ctx?.sid];if(!e)return;D.story.like=D.story.like||{};D.story.like[e.cat]=cl((D.story.like[e.cat]||0)+d,-.7,1)}
   function dynPush(kind,text,opts,ctx){const D=S.dyn;if(D.pending.some(p=>p.kind===kind&&JSON.stringify(p.ctx)===JSON.stringify(ctx||{})))return null;
-    const inbox=!DYN_URGENT.has(kind),p={id:D.nextP++,kind,d:S.day,inbox,due:inbox?S.day+(kind==='notice'?7:12):null,text,opts:opts.map(o=>({...o,fundingLabel:o.fundingLabel||(kind==='intel'&&o.k==='bribe'?'국가 치안 예산':/내 재산|개인|사재/.test(o.label)?'개인 자금':undefined)})),ctx:ctx||{}};D.pending.push(p);return p}
+    const inbox=false,p={id:D.nextP++,kind,d:S.day,inbox,due:null,text,opts:opts.map(o=>({...o,fundingLabel:o.fundingLabel||(kind==='intel'&&o.k==='bribe'?'국가 치안 예산':/내 재산|개인|사재/.test(o.label)?'개인 자금':undefined)})),ctx:ctx||{}};D.pending.push(p);return p}
   function dynStart(){
     let c=S.agents.filter(a=>a.alive&&isAdult(a)).sort((x,y)=>dynScore(y)-dynScore(x)||x.id-y.id)[0];if(!c)throw Error('성인 주민이 없습니다');
     S.dyn={v:1,pid:c.id,house:c.sur+'씨 가문',houseAuto:true,founder:c.id,heir:null,gen:1,start:S.day,prestige:0,budget:{life:2,edu:1,save:.1,give:0,debt:0},
@@ -7871,7 +7872,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   }
   function dynStoryOptions(e,c){return e.o.filter(o=>!o[4]?.when||o[4].when(c))}
   // 받은 일함에 쌓인 이야기는 며칠 뒤 고를 수 있으므로, 그 사이 조건이 바뀐 선택지는 막는다
-  function dynStoryRecheck(p){if(p.kind!=='story'||!p.inbox)return;const e=SE[p.ctx?.sid],me=dynMe();if(!e||!me)return;let okKeys;try{okKeys=new Set(dynStoryOptions(e,sCtx(me,p.ctx)).map(o=>o[0]))}catch(err){return}
+  function dynStoryRecheck(p){if(p.kind!=='story')return;const e=SE[p.ctx?.sid],me=dynMe();if(!e||!me)return;let okKeys;try{okKeys=new Set(dynStoryOptions(e,sCtx(me,p.ctx)).map(o=>o[0]))}catch(err){return}
     for(const o of p.opts){if(String(o.k).startsWith('__'))continue;if(!okKeys.has(o.k)){o.available=false;o.stale=true}else if(o.stale){delete o.stale;delete o.available}}
     if(p.opts.every(o=>o.available===false)&&!p.opts.some(o=>o.k==='__defer'))p.opts.push({k:'__defer',label:'상황이 바뀌어 넘어간다',fundingLabel:'금전 지출 없음'})}
   function dynStoryPush(e,ctx,me){
@@ -7903,7 +7904,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const D=S.dyn;
     D.story=D.story||{next:S.day+3,freq:2,cd:{},q:[],n:0};
     const st=D.story;
-    if(st.freq===0||D.pending.some(p=>!p.inbox)||D.pending.filter(p=>p.inbox&&p.kind!=='notice').length>=4)return;
+    if(st.freq===0||D.pending.length)return;
     for(let i=0;i<st.q.length;){
       if(st.q[i].at>S.day){i++;continue}
       const [q]=st.q.splice(i,1),e=SE[q.id];
