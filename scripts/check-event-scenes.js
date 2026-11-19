@@ -22,6 +22,7 @@ assert.equal(SE.publicBudgetHearing.scene,'council','후반에 정의된 공공 
 assert.equal(SE.publicLocalRelief.scene,'neighborAid','후반에 정의된 주민 구호 사건도 이웃 구호 장면 연결');
 assert.equal(SE.hiddenHeir.scene,'family','숨겨진 상속자는 교육 장면이 아닌 가족 장면');
 assert.equal(SE.heirHouseAftermath.scene,'family','숨겨진 혈육의 후일담도 가족 장면');
+assert.equal(SE.newYearRite.scene,'season','설맞이 제사는 계절 사건 장면');
 // 숨겨진 상속자 줄거리는 같은 인물을 증거·가문 분가·후일담까지 전달한다.
 const heirStory=D.story=D.story||{q:[]},heirCtx={sid:'hiddenHeir',actor:me.id};
 heirStory.q=[];
@@ -58,6 +59,13 @@ const artStart=client.indexOf('function dynVenueSceneArt(scene,p){'),artEnd=clie
 assert(artStart>=0&&artEnd>artStart,'장면 그림 렌더러');
 const sceneArt=new Function('dynPixelPerson',client.slice(artStart,artEnd)+';return dynVenueSceneArt;')(()=>''),rendered=new Set();
 for(const scene of sceneKinds){if(scene==='intimate')continue;const svg=sceneArt(scene,{scenePeople:[]});assert.match(svg,/<svg[^>]+aria-label=/,`${scene} 그림 생성`);rendered.add(svg)}
+const riteArt=sceneArt('season',{title:'🗓️ 🎋 설맞이 제사',scenePeople:[]});
+assert.match(riteArt,/가족이 모여 조상께 제사를 올리는 픽셀 장면/,'설맞이 제사가 전용 가족 장면으로 그려짐');
+assert.match(riteArt,/viewBox="0 0 640 360"/,'설날 삽화가 가로 화면을 채우는 비율');
+assert.match(client,/aspect-ratio:16\/9/,'휴대폰 장면 그림 비율');assert.match(client,/preserveAspectRatio="xMidYMid slice"/,'도트 장면이 화면 빈칸 없이 채워짐');
+const speakerStart=client.indexOf('function dynSceneSpeaker(p){'),speakerEnd=client.indexOf('\nfunction dynTypeSceneText',speakerStart);
+const sceneSpeaker=new Function(client.slice(speakerStart,speakerEnd)+';return dynSceneSpeaker;')();
+assert.equal(sceneSpeaker({title:'🗓️ 🎋 설맞이 제사'}),'설맞이 제사','인물이 없는 장면도 사건 제목을 대사 표지에 사용');
 const intimateStart=client.indexOf('function dynIntimateSceneArt(p){'),intimateEnd=client.indexOf('\nfunction dynSceneArt',intimateStart);
 const intimateArt=new Function('dynPixelPerson',client.slice(intimateStart,intimateEnd)+';return dynIntimateSceneArt;')(()=>'' )({scenePeople:[]});rendered.add(intimateArt);
 assert.equal(rendered.size,sceneKinds.size,'63개 장면의 도트 그림이 서로 구별됨');
