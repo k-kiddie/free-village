@@ -92,6 +92,8 @@ function dynRender(){
   P.innerHTML=html;
   P.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>select(+b.dataset.person));dynBindActions(P);dynBindBudget(P);
   P.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>dynGoTo(b.dataset.goto,b.dataset.focus));
+  P.querySelectorAll('[data-org]').forEach(b=>b.onclick=()=>{dynOrgSel=b.dataset.org;dynGoTo('org')});
+  P.querySelectorAll('[data-org-side]').forEach(b=>b.onclick=()=>{dynOrgSide=b.dataset.orgSide;P._html=null;dynRender()});
   P.querySelectorAll('[data-find]').forEach(b=>b.onclick=dynFindActions);
   P.querySelectorAll('[data-wback]').forEach(b=>b.onclick=()=>{dynWSel=null;dynRender();if(dynMapMode==='world')dynDrawWorld()});
   P.querySelectorAll('[data-realm]').forEach(b=>b.onclick=()=>{dynWSel=b.dataset.realm;dynSetMap('world');dynRender();$('#dynSheet').scrollTop=0});
@@ -100,6 +102,7 @@ function dynKV(rows){return `<div class="kv">${rows.filter(Boolean).map(([k,val]
 function dynPanelHTML(v){
   const m=v.me;if(!m)return '<p class="muted">캐릭터 정보가 없습니다.</p>';
   if(dynTab==='home')return dynHomeHTML(v);
+  if(dynTab==='org')return dynOrgHTML(v);
   if(dynTab==='me')return `<div class="sec"><h4>${dynEsc(m.name)}</h4>${dynKV([['나이·성별',`${m.age}세 · ${m.sex==='F'?'여':'남'}`],['건강',Math.round(m.health)+'점'],['배고픔',Math.round(m.hunger)],
       m.happy!=null&&['행복',Math.round(m.happy*100)+'점'],['평판',Math.round((m.rep??1)*100)],['스트레스',(v.stress||0)+'/100'],v.clergy&&['교단 지위',dynEsc(v.clergy)],['병역',m.drafted?'복무 중':m.altServ?'대체 복무 중':m.served?'군필':'미필'],['학력',EDU_L[m.edu||0]],['업종',m.occ?OCC_L[m.occ]:'없음'],
       !m.publicDuty&&['고용주',m.emp?dynPerson(m.emp):'없음'],m.staff&&['고용한 사람',m.staff+'명'],m.grp&&['소속',dynEsc(m.grp.name)+(m.grp.leader?' (우두머리)':'')],m.caught&&['전과',m.caught+'번'],m.jail&&['처지','수감 중']])}
@@ -150,6 +153,18 @@ function dynBindBudget(P){P.querySelectorAll('[data-bud]').forEach(el=>el.onchan
     try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'vault',dir,frac:+frac})});await dynSend({action:'save'})}catch(e){alert(e.message)}finally{b.disabled=false}})}
 const dynUrg=v=>(v?.pending||[]).filter(p=>!p.inbox),dynInb=v=>(v?.pending||[]).filter(p=>p.inbox).sort((a,b)=>(a.due??0)-(b.due??0));
 function dynInboxHTML(v){const IB=dynInb(v);if(!IB.length)return '';return `<div class="sec inbox"><h4>📥 받은 일 <small>${IB.length}건 · 시간은 계속 흐릅니다</small></h4>${IB.map(p=>{const left=p.due!=null?p.due-S.day:null;return `<button class="act${left!=null&&left<=3?' warn':''}" data-inbox="${p.id}">${dynEsc(p.title||p.text.slice(0,30))}<small>${left!=null?(left>0?left+'일 남음':'오늘까지'):''}${p.kind==='notice'?' · 알림':''}</small></button>`}).join('')}</div>`}
+// 내 조직: 단체마다 정보와 양지/음지 행동을 한곳에
+let dynOrgSel=null,dynOrgSide='light';
+function dynOrgKey(k,p){return p.endsWith(':')?k.startsWith(p):k===p||k.startsWith(p+':')}
+function dynOrgMatch(a,sp){if(!sp)return false;const hit=(sp.g||[]).includes(a.group)||(sp.gp||[]).some(p=>a.group.startsWith(p))||(sp.k||[]).some(p=>dynOrgKey(a.k,p))||(sp.re||[]).some(r=>new RegExp(r).test(a.k));return hit&&!(sp.x||[]).some(p=>dynOrgKey(a.k,p))}
+function dynOrgActs(v,o,side){const acts=(v.actions||[]).filter(a=>dynOrgMatch(a,o[side]));return side==='light'?acts.filter(a=>!dynOrgMatch(a,o.dark)):acts}
+function dynOrgChips(v){const os=v.orgs||[];if(!os.length)return '';return `<div class="orgchips" aria-label="내 조직">${os.map(o=>`<button data-org="${dynEsc(o.id)}"><span>${o.icon}</span><b>${dynEsc(o.name)}</b><small>${dynEsc(o.role)}</small></button>`).join('')}</div>`}
+function dynOrgHTML(v){const os=v.orgs||[],o=os.find(x=>x.id===dynOrgSel)||os[0];if(!o)return '<p class="muted">이끌거나 속한 단체가 없습니다.</p><button data-goto="home">← 한눈에</button>';dynOrgSel=o.id;
+  const L=dynOrgActs(v,o,'light'),Dk=dynOrgActs(v,o,'dark'),list=dynOrgSide==='dark'?Dk:L,ok=x=>x.filter(a=>a.ok).length,sorted=[...list.filter(a=>a.ok),...list.filter(a=>!a.ok)];
+  return `${os.length>1?`<div class="orgchips small">${os.map(x=>`<button data-org="${dynEsc(x.id)}" class="${x.id===o.id?'on':''}"><span>${x.icon}</span><b>${dynEsc(x.name)}</b></button>`).join('')}</div>`:''}
+    <div class="sec orghead"><div class="orgtitle"><button class="orgback" data-goto="home" aria-label="한눈에로 돌아가기">←</button><span class="orgicon">${o.icon}</span><div><h3>${dynEsc(o.name)}</h3><small>${dynEsc(o.role)}</small></div></div>${dynKV(o.stats.map(([l,x])=>[dynEsc(l),dynEsc(String(x))]))}</div>
+    <div class="orgside"><button data-org-side="light" class="${dynOrgSide!=='dark'?'on':''}">☀️ 양지 <b>${ok(L)}/${L.length}</b></button><button data-org-side="dark" class="${dynOrgSide==='dark'?'on dark':'dark'}">🌑 음지 <b>${ok(Dk)}/${Dk.length}</b></button></div>
+    <div class="sec">${sorted.length?sorted.map(dynActHTML).join(''):`<p class="muted">${dynOrgSide==='dark'?'음지':'양지'} 행동이 아직 없습니다.</p>`}<div class="err" id="dynActErr" role="alert">${dynEsc(dynActErrText)}</div></div>`}
 function dynTodayText(v){const t=v.today;if(!t)return '';const head=t.kind==='duty'?`🏛️ 공무${t.office?' ('+t.office+')':''}`:t.kind==='slack'?`😴 땡땡이 → ${t.didN}`:t.kind==='manage'?'💼 사업 경영':`${t.didN}`;return head+(t.why?` · ${t.why}`:'')}
 function dynWorkHTML(v){const B=v.budget||{},jobs=v.jobs||[],sel=(key,cur,first)=>`<select data-bud="${key}"><option value="-1" ${cur==null||cur<0?'selected':''}>${first}</option>${jobs.filter(j=>j.k!==100||v.canManage||cur===100).map(j=>`<option value="${j.k}" ${cur===j.k?'selected':''}>${dynEsc(j.n)}${j.wage?` · ${money(j.wage.min)}~${money(j.wage.max)}/일`:''}</option>`).join('')}</select>`;
   const j1=jobs.find(x=>x.k===B.job);
@@ -206,7 +221,7 @@ function dynHomeHTML(v){
   const quick=favs.find(x=>x.k===dynQuickKey);
   return `<div class="sec hero"><div class="hero-top"><div class="wealth"><small>순재산</small> ${money(a.w||0)}</div><span class="pill">${dynEsc(v.title||v.rankName)}</span></div>${v.today?`<div class="hero-sub today">오늘: ${dynEsc(dynTodayText(v))}</div>`:''}<div class="hero-sub">현금 ${money(a.cash||0)} · 하루 소득 ${money(a.incAvg||0)}</div><div class="quickstats"><div><small>건강</small><b>${Math.round(m.health)}점</b></div><div><small>행복</small><b>${pct(m.happy)}점</b></div><div><small>평판</small><b>${pct(m.rep??1)}점</b></div><div><small>스트레스</small><b>${v.stress||0}점</b></div></div></div>
   ${dynStatusHTML(v)}
-  <div class="home-actions"><input id="dynQ" class="dynq" type="search" aria-label="전체 행동 검색" placeholder="행동 검색 · 회사, 결혼, 용병…" value="${dynEsc(dynQuery)}"><div id="dynQR">${dynSearchHTML(v)}</div>
+  ${dynOrgChips(v)}<div class="home-actions"><input id="dynQ" class="dynq" type="search" aria-label="전체 행동 검색" placeholder="행동 검색 · 회사, 결혼, 용병…" value="${dynEsc(dynQuery)}"><div id="dynQR">${dynSearchHTML(v)}</div>
   ${(()=>{const okN={},TL=DYN_TL();for(const x of acts)if(x.ok){const t=dynTabOfGroup(x.group);okN[t]=(okN[t]||0)+1}const js=Object.entries(okN).filter(([t])=>TL[t]&&t!=='home');return js.length?`<div class="hjump" aria-label="바로 이동">${js.map(([t,n])=>`<button data-goto="${t}">${TL[t]} <b>${n}</b></button>`).join('')}</div>`:''})()}
   <details class="quick-favs" ${favs.length&&dynFavesOpen?'open':''}><summary>⭐ 즐겨찾기 <small>${favs.length}개</small></summary>
   ${favs.length?`<div class="quick-buttons">${favs.map(x=>`<button title="${dynEsc(x.label)}" aria-expanded="${quick===x}" data-fav-open="${dynEsc(x.k)}">${dynEsc(x.label)}</button>`).join('')}</div>`:'<p class="muted">행동 옆 ☆을 누르면 여기에 모여요.</p>'}
@@ -527,6 +542,15 @@ body.dyn .dynmodal{background:#060c12c9;backdrop-filter:blur(6px);padding:14px}b
 #dynApp #dFeedback{padding:5px 8px;margin-top:4px;max-height:55px}
 #dynApp .dtop .who small{display:inline;margin-left:6px}
 #dynApp #dFind{font-size:17px}
+#dynApp .orgchips{display:flex;gap:6px;overflow-x:auto;margin:0 0 8px;padding-bottom:2px}
+#dynApp .orgchips button{flex:none;display:flex;align-items:center;gap:5px;min-height:40px;padding:5px 10px;border-radius:10px;border:1px solid #4a5d4f;background:#1b2b25;white-space:nowrap}
+#dynApp .orgchips button b{font-size:13px;font-weight:650}#dynApp .orgchips button small{font-size:11px;color:#a2b1b6}#dynApp .orgchips button.on{border-color:#e4c586}
+#dynApp .orgchips.small button{min-height:34px;padding:4px 8px}
+#dynApp .orghead .orgtitle{display:flex;align-items:center;gap:8px;margin-bottom:6px}#dynApp .orghead h3{margin:0;font-size:18px}#dynApp .orghead small{color:#a2b1b6}
+#dynApp .orgicon{font-size:26px}#dynApp .orgback{min-width:38px;min-height:38px;padding:0;font-size:18px}
+#dynApp .orgside{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+#dynApp .orgside button{min-height:42px;font-size:14px;border-radius:10px}#dynApp .orgside button b{margin-left:4px;color:#e4c586}
+#dynApp .orgside button.on{background:#e4c586;color:#141414}#dynApp .orgside button.on b{color:#141414}#dynApp .orgside button.dark.on{background:#3b2a3a;color:#f0dce8;border-color:#a06a90}#dynApp .orgside button.dark.on b{color:#f0c0e0}
 #dynApp .inbox h4 small{font-weight:400;color:#a2b1b6;margin-left:6px}#dynApp .inbox .act.warn{border-color:#a07a3a}
 #dynApp .today{margin:6px 0 0;font-size:12px;color:#c9d6d6}#dynApp .hero .today{color:#e4c586}
 #dynApp .hjump{display:flex;gap:5px;overflow-x:auto;margin:0 0 6px;padding-bottom:2px}
