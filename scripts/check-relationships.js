@@ -11,5 +11,5 @@ run('rel:visit:'+target+':talk');assert(!r.promise);assert(r.history.some(h=>h.t
 const saved=JSON.parse(JSON.stringify(w.exportState()));const restored=ec.module.exports.createWorld(2328,180);restored.importState(saved);assert.equal(restored.S.dyn.relationships[me.id+':'+target].target,target);assert(restored.dynView().relationships.some(t=>t.target===target));
 run('adult:end');assert(r.ended&&!me.affair&&!x.affair);assert(!A('rel:visit:'+target),'정리한 관계에 만남 버튼이 남지 않음');
 const minor=S.agents.find(a=>a.alive&&a!==me&&a.id!==target);minor.age=17*60;assert(!A('adult:seduce').opts.some(o=>o[0]==='p'+minor.id));assert.throws(()=>w.dynAct('rel:letter:'+minor.id),/할 수 없는|성인/);
-assert(Object.keys(w._story.SE).filter(k=>/^rr[A-Z]/.test(k)).length>=12);
+assert(Object.keys(w._story.SE).filter(k=>/^rr[A-Z]/.test(k)).length>=11)/* 잠깐의 일상(효과 미미)은 2026-11-19 정리로 삭제 */;
 console.log('성인 관심→편지→약속→만남→관계·거절·약속 위반·동일인 후속·정리·미성년 제외·저장 확인 완료');

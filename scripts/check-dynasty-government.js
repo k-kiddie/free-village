@@ -56,7 +56,7 @@ function fixture(status){
   assert.throws(()=>saved.dynSetBudget({job:work}),/고용/);
 
   assert(!dynStoryEligible(SE.officialVisit,me));
-  assert(!dynStoryEligible(SE.strayDogs,me));
+  assert(!dynStoryEligible(SE.wellDry,me));// 마을 일상 사건 예시(떠돌이 개 떼는 2026-11-19 정리로 삭제)
   assert(dynStoryEligible(SE.spouseCold,me));
   assert.equal(dynStoryContext(SE.officialVisit,resident).x,me.id);
   G.approval=.4;
@@ -95,7 +95,7 @@ function fixture(status){
   S.dist=[{id:1,name:'서쪽'},{id:2,name:'중앙'},{id:3,name:'동쪽'}];
   assert.equal(w.chiefTitle(),'대통령');
   assert(!dynStoryEligible(SE.officialVisit,me));
-  assert(!dynStoryEligible(SE.strayDogs,me));
+  assert(!dynStoryEligible(SE.wellDry,me));// 마을 일상 사건 예시(떠돌이 개 떼는 2026-11-19 정리로 삭제)
   assert.equal(dynStoryContext(SE.royalInspection,me),null);
   const residents=S.agents.filter(x=>x.alive&&x!==me).slice(0,3);
   for(const p of residents)p.hunger=65;
