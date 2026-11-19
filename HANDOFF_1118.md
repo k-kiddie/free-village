@@ -498,3 +498,8 @@ node scripts/check-building-acts.js | check-crime.js | check-duty.js | check-adu
 - 알려진 남은 일: 원래 마을에도 같은 물가 비율 오해가 지지율 계산에 있음(원래 마을 결과 변경이라 동현 승인 필요). 노조를 이끄는 기능은 아직 없음.
 - 검사: check-daily-work, check-inbox, check-preach, check-gov-org, check-policy-labels, check-orgs, check-heist, check-new-acts (+ 기존 검사 보완: check-duty·check-heresy·check-dynasty·check-dynasty-government·check-relationships·check-mobile-ui).
 - 2026-11-19 추가(동현 요청): 받은 일함을 없애고 **모든 선택지가 시간을 멈추고 바로 뜬다**(기한 없음, 고를 때까지 대기). 예전 저장의 받은 일은 첫 진행 때 멈춤 선택지로 바뀐다. 관련성 가중·반응 학습·쓸데없는 사건 정리는 그대로라 빈도는 이전보다 낮다(2년 14건 측정).
+- 2026-11-19 오후: 확인 버튼 하나뿐인 알림은 멈추지 않음(`dynPush`에서 `D.notes`로, 시작·가장 죽음은 멈춤).
+- 체제 전환(`regime:<전환>:<방법>`, `RC_T`/`RC_M`/`rcReady`/`rcProb`/`rcApply`/`rcAct`): 17가지 전환 × 6가지 방법, 준비 정도(군대·의회·민심·주민 성향·외국). 2차 `rcTick`: 반발 음모(`rcPlot`)·내전(`rcCivilWar`)·망명 정부(`rcExileGov`)·귀환(`rcReturn`)·왕정복고(`rcRestore`/`rcClaim`). 세습 공산은 `G.heredCom`, 허수아비 왕은 `G.puppet`(섭정 유지).
+- 내 조직 정부 칩을 직책별로 분리: 🏛️행정부(`exec`) · 🗳️의회(`council`) · ⚖️수사·사법(`justice`).
+- 정치 중립·겸직(가문 모드, 내 캐릭터): 경찰·검사·재판관은 정당·조직·의원·수장·장관·단체장 겸직 불가, 출마·정당 결성 불가. 겹치면 멈추는 선택창(`duConflict`)으로 어느 쪽을 남길지 고름(장관·단체장 제안은 받기/사양, 사양하면 1년간 재제안 없음 `D.declineUntil`; 의원·정당은 어느 쪽 유지). 수장·왕이 되면 수사·사법 직은 바로 사임. 다른 주민도 중립: 후보 선정 때 정당·조직원·의원 제외, 열흘마다 정치 직 겸직자는 사임·평 조직원은 탈퇴(`duNpcNeutralTick`). 대통령제 수장은 의원직 자동 사임(`dynCouncilCompatTick`). 직함 '수사관'→'검사'로 통일.
+- 예산 부족 시 오류 대신 비활성화: 암살 음모 '경호 강화', 첩보 '회유', 침공 '배상금'(기존 버그).

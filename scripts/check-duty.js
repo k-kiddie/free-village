@@ -7,13 +7,15 @@ const cool=()=>{for(const k of Object.keys(D.cool))if(/^actdu|^actbld/.test(k))D
 const A=k=>w.dynActions().find(a=>a.k===k);
 const run=(k,v)=>{cool();const a=A(k);assert(a,k+' 목록');assert(a.ok,k+' 가능: '+a.why);return w.dynAct(v!=null?k+':'+v:k)};
 G().inst=G().inst||{};G().inst.police=1;
+// 수사·사법은 정치적으로 중립(2026-11-19): 왕·조직원·장관·의원이 아닌 주민으로 만든 뒤 검사한다
+{const g=me.grp&&S.groups.find(x=>x.id===me.grp);if(g){g.members=g.members.filter(id=>id!==me.id);if(g.leader===me.id)g.leader=g.members[0]||null}me.grp=null;const other=S.agents.find(a=>a.alive&&a!==me&&a.age>=18*60);G().chief=other.id;G().king=null;G().regent=null;G().council=(G().council||[]).filter(id=>id!==me.id);for(const m of Object.values(G().min||{}))if(m.mn===me.id)m.mn=null;S.gu&&S.gu.forEach(x=>{if(x.chief===me.id)x.chief=null});S.dist&&S.dist.forEach(x=>{if(x.chief===me.id)x.chief=null})}
 run('duty:cop');assert(me.dynCop,'경찰관');
 for(const a of S.agents.filter(a=>a.alive&&a!==me).slice(0,6))a.crimes=2;
 const r=A('duty:raid');run('duty:raid',r.opts.find(o=>o[0][0]==='c')[0]);run('duty:raid',A('duty:raid').opts.find(o=>o[0][0]==='b')[0]);
 run('duty:probe',A('duty:probe').opts[0][0]);run('duty:protect');
 const c0=me.cash;me.cash=0;D.cool.actdu=0;for(let i=0;i<31;i++)w.step();assert(me.cash>0||!me.dynCop,'월급');
 if(!me.dynCop&&!(G().prosList||[]).includes(me.id))me.dynCop=S.day;run('duty:quit');assert(!me.dynCop);
-for(let i=0;i<10&&!(G().prosList||[]).includes(me.id);i++){D.cool.actdupros=0;run('duty:pros')}assert((G().prosList||[]).includes(me.id),'수사관');
+for(let i=0;i<10&&!(G().prosList||[]).includes(me.id);i++){D.cool.actdupros=0;for(const m of Object.values(G().min||{}))if(m.mn===me.id)m.mn=null;/* 엔진이 장관으로 다시 앉힐 수 있어 겸직 규칙 전에 비움 */run('duty:pros')}assert((G().prosList||[]).includes(me.id),'수사관');
 // 내가 맡은 사건 처리
 const sus=S.agents.find(a=>a.alive&&a!==me&&w.isAdult(a)&&!(a.jailUntil>S.day)&&a.grp!==me.grp&&!me.kids.includes(a.id)&&a.id!==me.partner);G().cases.push({t:'robbery',who:sus.id,amt:5,ev:.6,d:S.day});
 let p=null;for(let i=0;i<120&&!p;i++){w.step();p=D.pending.find(x=>x.kind==='duty');for(const q of D.pending.slice())if(q.kind!=='duty')try{w.dynChoose(q.id,q.opts[0].k)}catch(e){}if(!G().cases.some(c=>c.who===sus.id)&&!p)G().cases.push({t:'robbery',who:sus.id,amt:5,ev:.6,d:S.day})}
