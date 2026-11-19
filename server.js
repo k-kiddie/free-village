@@ -15,7 +15,7 @@ const WORLDS = {
   dynasty:{ seed:Number(process.env.DYNASTY_SEED)||0, population:Number(process.env.DYNASTY_POPULATION)||100 },
 };
 const SWITCH_MIN_MS = Math.max(0, Number(process.env.WORLD_SWITCH_MIN_MS ?? 15000));
-const SCENE_ART_FILES=new Set(['atlas-0.webp','atlas-1.webp','atlas-2.webp','atlas-3.webp','business.webp','characters.webp']);
+const SCENE_ART_FILES=new Set(['atlas-0.webp','atlas-1.webp','atlas-2.webp','atlas-3.webp','business.webp','characters.webp','adult-romance.webp','adult-venues.webp']);
 let active = null;          // {name, worker, gen, latestView, ready, waiting:Map, intended}
 let switching = null;       // 전환 중인 대상 이름
 let chain = Promise.resolve();
