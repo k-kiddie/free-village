@@ -487,3 +487,13 @@ node scripts/check-building-acts.js | check-crime.js | check-duty.js | check-adu
 - 화면: 상태 타일은 값이 있거나 경고일 때만 표시, 한눈에 탭에 "바로 이동(탭별 가능 개수)" 복구, 탭 제목 줄 제거(⌕ 행동 찾기는 상단 바), 빈 "보험·조합·재단" 숨김, "실행 가능만" 기본 켜기, 가능 0개 묶음은 뒤로·흐리게, 결과 알림이 뜨면 진행 상태 줄을 숨기고 7초 뒤 자동 닫기.
 - 범죄: `crime:heist` "높으신 분 털기". 통치자·의원·장관·귀족·재판관·검사·장군·회사 대표·교단 지도자·재산 상위 3명의 저택(현금 45%, 상한 평균 임금×80), 회사 금고(35%, ×120), 국고(15%, ×150, 매우 위험). 성공률은 경비·금고·직위에 따라 8~80%, 쿨다운 45일. 돈은 실제 계정 사이에서만 옮긴다.
 - 검사: `node scripts/check-heist.js`, `scripts/check-mobile-ui.js`(바뀐 화면에 맞게 갱신)
+
+## 2026-11-19 작업 정리 (PR #44~#48, Claude)
+- #44: "새로 할 수 있게 된 일" 판별 분리, 가문 화면 편의성(상태 타일 조건부·바로 이동·탭 제목 줄 제거·실행 가능만 기본), 높으신 분 털기(`crime:heist`).
+- #45: 하루 일(사업 경영 `MANAGE=100`·전업 공직 공무 고정·성실/보통/땡땡이·1~3순위·오늘 한 일과 이유·주민 끈기 유전자 `g.stick`/`lastJob`), 사건 받은 일함(`p.inbox`/`p.due`, 급한 일 `DYN_URGENT`만 멈춤, 기한 지나면 무시, 반응 학습 `story.like`, 관련성 가중 `dynStoryRel`), 전도 9가지와 독실함(`piety`/`faithVia`).
+- #46: 단계형 정책 이름 표시(`DYN_ENUM`·`DYN_UNIT`, 범위 밖 거부), 수장의 정부 조직(`govorg:*` 부처 신설·폐지·경찰·장관 인사, `m.dynMade`/`m.dynPick`).
+- #47: 가문 마을 지지율 폭락 수정(`S.inflY`는 비율 — 가문 마을만 `-1` 보정, 원래 마을은 보존), 쓸데없는 사건 20개 삭제·처지 조건(`STORY_AUDIT.md`), 신도 유지 = 교단 활동 점수(`dynFaithCare`) + 예배·돌봄·감시.
+- #48: 내 조직 화면(`dynOrgs` → `v.orgs`, 화면 `dynTab='org'`, 단체별 정보 + 양지/음지 규칙 g/gp/k/re/x).
+- 서버: 서비스에 코드 받기 단계가 없어 #43에 멈춰 있던 것을 확인하고 드롭인으로 추가(CLAUDE.md AWS 항목).
+- 알려진 남은 일: 원래 마을에도 같은 물가 비율 오해가 지지율 계산에 있음(원래 마을 결과 변경이라 동현 승인 필요). 노조를 이끄는 기능은 아직 없음.
+- 검사: check-daily-work, check-inbox, check-preach, check-gov-org, check-policy-labels, check-orgs, check-heist, check-new-acts (+ 기존 검사 보완: check-duty·check-heresy·check-dynasty·check-dynasty-government·check-relationships·check-mobile-ui).
