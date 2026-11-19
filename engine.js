@@ -5968,12 +5968,20 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(a.dynStress>=40)a.happy=cl((a.happy??.5)-.02,0,1);
     a.dynStress=Math.max(0,a.dynStress-(a.act===REST?5:2))
   }
+  const DYN_EPITHET_ACTIONS={
+    'adultIntimacy:together':['romance','다정한'],'adultIntimacy:talk':['romance','다정한'],'weddingAnniv:gift':['romance','다정한'],'weddingAnniv:walk':['romance','다정한'],
+    'adultIntimacy:rest':['care','배려하는'],'adultVenueBoundary:protect':['care','배려하는'],'adultVenueAfter:listen':['care','배려하는'],
+    'elderWill:fair':['fair','공평한'],'elderWill:give':['fair','공평한'],
+    'spFirstVictory:veterans':['war','병사의 벗'],'spFirstVictory:mourn':['war','병사의 벗'],
+    'adultVenueBoundary:report':['justice','정의로운'],'adultVenueAfter:public':['justice','정의로운']
+  };
+  function dynEpithetChoice(a,p,k){const award=DYN_EPITHET_ACTIONS[`${p.ctx?.sid}:${k}`];if(!award)return;const D=S.dyn,progress=D.epithetProgress||(D.epithetProgress={}),key=`${a.id}:${award[0]}`,entry=progress[key]||(progress[key]={count:0,title:award[1]});entry.count++;if(entry.count<2)return;const list=D.epithets||(D.epithets={}),earned=list[a.id]||(list[a.id]=[]);if(earned.some(x=>x.theme===award[0]))return;earned.push({theme:award[0],title:award[1],d:S.day,gen:D.gen});dynChron(`${nm(a)}에게 “${award[1]}”이라는 별명이 붙었다`,[a.id])}
   function dynChoose0(id,k){const D=S.dyn;if(!D)throw Error('가문 모드가 아닙니다');
     const i=D.pending.findIndex(p=>p.id===Number(id));if(i<0)throw Error('이미 처리된 선택지입니다');
     const p=D.pending[i];dynStoryRecheck(p);if(!p.opts.some(o=>o.k===k))throw Error('없는 선택입니다');if(p.opts.find(o=>o.k===k)?.stale)throw Error('그사이 상황이 바뀌어 지금은 고를 수 없는 선택입니다');
     if(p.kind==='story'&&!String(k).startsWith('__'))dynStoryLike(p,p.opts.findIndex(o=>o.k===k)===0?-.03:.06);
     const me=dynMe(),before=dynChoiceStats(me,p),stress=dynStressCost(me,p,k),oldStory=D.storyHist;
-    const text=DYN_H[p.kind](p.ctx,k,me);
+    const text=DYN_H[p.kind](p.ctx,k,me);dynEpithetChoice(me,p,k);
     const current=D.pending.indexOf(p);if(current!==-1)D.pending.splice(current,1);
     if(stress?.points&&me.alive&&(p.kind!=='story'||D.storyHist!==oldStory))me.dynStress=(me.dynStress||0)+stress.points;
     D.res={d:S.day,kind:p.kind,text,changes:dynChoiceChanges(before,dynChoiceStats(me,p))};
@@ -8632,7 +8640,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const role=dynRole(x),name=x&&nm(x);
     return role&&label.includes(name)?label.replace(name,name+' ('+role+')'):label;
   }
-  const dynP=x=>x?{id:x.id,name:nm(x),role:dynRole(x),alive:!!x.alive,age:Math.floor((x.age||0)/YEAR),sex:x.sex||null,noble:x.dynNoble||null,cause:x.alive?null:(x.cause||null)}:null;
+  const dynP=x=>x?{id:x.id,name:nm(x),role:dynRole(x),epithet:(S.dyn?.epithets?.[x.id]||[]).at(-1)?.title||null,alive:!!x.alive,age:Math.floor((x.age||0)/YEAR),sex:x.sex||null,noble:x.dynNoble||null,cause:x.alive?null:(x.cause||null)}:null;
   function dynFamily(a){const by=id=>S.byId.get(id);const parents=(a.parents||[]).map(by).filter(Boolean);
     const sib=new Set();for(const p of parents)for(const k of p.kids||[])if(k!==a.id)sib.add(k);
     const kids=(a.kids||[]).map(by).filter(Boolean);const grand=[];for(const k of kids)for(const g of k.kids||[]){const x=by(g);if(x)grand.push(x)}

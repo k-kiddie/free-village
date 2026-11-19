@@ -73,11 +73,11 @@ function dynHook(o){
   else if(dynModalId!=null&&!dynView.pending.some(p=>p.id===dynModalId)){dynModalId=null;$('#dynModal').hidden=true}}
 }
 const dynAge=x=>x?`${x.age}세`:'';
-const dynPerson=x=>x?`<span class="pp${x.alive?'':' dead'}" data-person="${x.id}">${dynEsc(x.name)}</span> (${dynEsc(x.alive?[x.role||x.noble,`${x.age}세`].filter(Boolean).join(' · '):x.cause||'사망')})`:'-';
+const dynPerson=x=>x?`<span class="pp${x.alive?'':' dead'}" data-person="${x.id}">${dynEsc(x.name)}</span>${x.epithet?` · “${dynEsc(x.epithet)}”`:''} (${dynEsc(x.alive?[x.role||x.noble,`${x.age}세`].filter(Boolean).join(' · '):x.cause||'사망')})`:'-';
 function dynRender(){
   const v=dynView;if(!v)return;const m=v.me;dynAppRender(v);
   $('header.top h1').textContent=v.house;
-  $('#dynBar').innerHTML=m?`<span class="who" data-person="${m.id}">👤 ${dynEsc(m.name)}(${m.age})</span><small>${m.occ?OCC_L[m.occ]:'정해진 업종 없음'} · ${dynEsc(v.house)} ${v.gen}대</small>
+  $('#dynBar').innerHTML=m?`<span class="who" data-person="${m.id}">👤 ${dynEsc(m.name)}${m.epithet?` · “${dynEsc(m.epithet)}”`:''} (${m.age})</span><small>${m.occ?OCC_L[m.occ]:'정해진 업종 없음'} · ${dynEsc(v.house)} ${v.gen}대</small>
     <span>💰 <b>${money(v.assets?.w||0)}</b></span><span>⭐ 평판 <b>${Math.round((m.rep??1)*100)}</b></span><span>🏅 ${v.rankName}</span>${v.over?'<span>⚰️ 가문 단절</span>':''}`:'';
   $('#dynBar').querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>select(+b.dataset.person));
   const note=$('#dynNote');
