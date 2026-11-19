@@ -43,10 +43,12 @@
   - 이 저장소를 `/opt/free-village`에 clone
   - systemd 서비스 `village.service` 등록. 설정 내용:
     - root 권한, `PORT=80`
-    - `ExecStartPre=git pull --ff-only`: 켜질 때마다, 그리고 재시작될 때마다 main 최신 코드를 받는다
+    - `ExecStartPre`(코드 받기): 처음 user-data에는 **빠져 있었다**. 2026-11-19 드롭인 `/etc/systemd/system/village.service.d/pull.conf`에 `ExecStartPre=-/usr/bin/git -C /opt/free-village pull --ff-only`를 추가했다(`-`: 받기 실패해도 서버는 켜짐). 그 전까지 서버는 #43(521f758)에 멈춰 있었다
     - `ExecStart=node /opt/free-village/server.js`
     - `Restart=always`, 15초 간격
 - 서비스는 시작/재시작 때 main을 받는다. 이미 정상 실행 중인 서비스는 push만으로 갱신되지 않는다. `save/`는 유지한다.
+- 반영 확인: `sudo git -C /opt/free-village log --oneline -1`. 수동 반영: `sudo git -C /opt/free-village pull --ff-only && sudo systemctl restart village.service`
+- 원래 마을 불변 검사는 Node 주 버전마다 기준값이 다르다(22: 9d242c71…, 24: 0404e02c…). `node scripts/check-village-invariance.js --git`으로 main과 직접 비교할 수 있다.
 - 접속: 인스턴스를 시작한 뒤 EC2 화면에서 퍼블릭 IPv4를 복사해 폰에서 `http://그주소`로 들어간다. 이 주소는 켤 때마다 바뀐다.
 
 ## 확정된 서버·클라이언트 구조 (2026-11-16)
