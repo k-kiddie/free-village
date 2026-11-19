@@ -323,13 +323,26 @@ function dynPixelPerson(person,x,y,pose='stand'){
   const cheeks=faceL>.72?`<rect x="${headX+2}" y="20" width="3" height="2" fill="#e9968e"/><rect x="${headX+faceW-5}" y="20" width="3" height="2" fill="#e9968e"/>`:'';
   return `<g transform="translate(${x} ${y}) scale(${scale})" shape-rendering="crispEdges"><rect x="${headX}" y="7" width="${faceW}" height="20" fill="${skin}"/>${hairStyle}${grayHair}<rect x="${headX+3}" y="15" width="3" height="3" fill="#241b25"/><rect x="${headX+faceW-6}" y="15" width="3" height="3" fill="#241b25"/>${cheeks}${ornament}<rect x="${tx}" y="28" width="${torso}" height="34" fill="${coat}"/>${arms}<rect x="${tx+3}" y="61" width="9" height="15" fill="#332c3a"/><rect x="${tx+torso-12}" y="61" width="9" height="15" fill="#332c3a"/></g>`
 }
+function dynSceneCharacter(person,x){
+  if(!person)return '';
+  const female=person.sex==='F'||person.sex==='여성',older=Number(person.age)>=55;
+  const build=Number.isFinite(Number(person.physique))?Number(person.physique):Number(person.bodyL??.5);
+  const col=Math.max(0,Math.min(3,Math.floor(Math.max(0,Math.min(.999,build))*4)));
+  const row=(female?2:0)+(older?1:0),y=151;
+  return `<svg x="${x}" y="${y}" width="68" height="80" viewBox="${col*128} ${row*128} 128 128" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><image href="/scene-art/characters.webp" x="0" y="0" width="512" height="512"/></svg>`;
+}
+function dynSceneCharacters(people){
+  if(!Array.isArray(people)||!people.length)return '';
+  const [lead,...others]=people;
+  return `<g class="scene-characters" shape-rendering="crispEdges">${dynSceneCharacter(lead,10)}${others.length?dynSceneCharacter(others[0],340):''}</g>`;
+}
 function dynVenueSceneArt(scene,p){
   const index=DYN_SCENE_ART_INDEX[scene];
   if(index==null)return '';
-  if(index===64){const title=String(p?.title||'장사 장면').replace(/^[^가-힣A-Za-z0-9]+/,'');return `<svg viewBox="0 0 1672 941" role="img" aria-label="${dynEsc(title)} · 픽셀 장면" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><image href="/scene-art/business.webp" x="0" y="0" width="1672" height="941" preserveAspectRatio="none"/></svg>`}
+  if(index===64){const title=String(p?.title||'장사 장면').replace(/^[^가-힣A-Za-z0-9]+/,'');return `<svg viewBox="0 0 1672 941" role="img" aria-label="${dynEsc(title)} · 픽셀 장면" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><image href="/scene-art/business.webp" x="0" y="0" width="1672" height="941" preserveAspectRatio="none"/><g transform="scale(4)">${dynSceneCharacters(p?.scenePeople)}</g></svg>`}
   const sheet=Math.floor(index/16),tile=index%16,col=tile%4,row=Math.floor(tile/4),x=col*418,y=row*235.25;
   const title=String(p?.title||'이야기 장면').replace(/^[^가-힣A-Za-z0-9]+/,'');
-  return `<svg viewBox="${x} ${y} 418 235.25" role="img" aria-label="${dynEsc(title)} · 픽셀 장면" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><image href="/scene-art/atlas-${sheet}.webp" x="0" y="0" width="1672" height="941" preserveAspectRatio="none"/></svg>`;
+  return `<svg viewBox="${x} ${y} 418 235.25" role="img" aria-label="${dynEsc(title)} · 픽셀 장면" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><image href="/scene-art/atlas-${sheet}.webp" x="0" y="0" width="1672" height="941" preserveAspectRatio="none"/>${dynSceneCharacters(p?.scenePeople)}</svg>`;
 }
 function dynSceneArt(scene,p){return dynVenueSceneArt(scene,p)}
 function dynSceneSpeaker(p){return ({revolt:'성문 앞',battle:'전장의 소식',succession:'왕실 회의',victory:'승전의 광장',council:'의회'})[p.scene]||p.cast?.[0]?.name||String(p.title||'그날의 기록').replace(/^[^가-힣A-Za-z0-9]+/,'')}
