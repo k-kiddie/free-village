@@ -116,6 +116,7 @@ function dynPanelHTML(v){
       <div class="sec"><h4>인구 흐름</h4>${dynKV([['현재 인구',`${v.population.current.toLocaleString()}명`],['수용 상한',`${v.population.capacity.toLocaleString()}명`],['올해 출생·사망',`${v.population.births}명 · ${v.population.deaths}명`],['올해 유입·유출',`${v.population.in}명 · ${v.population.out}명`]])}<small class="muted">출생·이주가 인구에 반영되며, 상한에 가까워지면 새 이주 유입이 제한됩니다.</small></div>
       <div class="sec"><h4>상속 순서</h4>${v.heirs.length?`<ol>${v.heirs.map(x=>`<li>${dynPerson(x)} · ${x.why}</li>`).join('')}</ol>`:'<p class="dynnote">⚠️ 상속자가 없습니다. 이대로 죽으면 가문이 끊깁니다.</p>'}${v.regent?`<p class="dynnote">👤 섭정: ${dynPerson(v.regent)} (16세가 될 때까지 · 재산을 가로챌 수 있음)</p>`:''}</div>
       ${list('부모',f.parents)}${list('배우자',f.partner?[f.partner]:[])}${list('자녀',f.kids)}${f.grand.length?list('손자·손녀',f.grand):''}${list('형제자매',f.siblings)}
+      <div class="sec"><h4>📖 오늘의 일기</h4>${v.diary?.length?v.diary.slice(0,7).map(d=>`<p><small class="muted">${fmtD(d.d)} · ${d.gen}대</small><br>${dynEsc(d.text)}</p>`).join(''):'<p class="muted">하루가 지나면 오늘의 기록이 이곳에 남습니다.</p>'}</div>
       ${(v.past||[]).length?`<div class="sec"><h4>끊어진 가문</h4><ul>${v.past.map(x=>`<li>⚰️ ${dynEsc(x.house)} · ${x.gen}대 ${x.years}년 · 최대 재산 ${money(x.peakW)}${x.title?' · '+dynEsc(x.title):''}</li>`).join('')}</ul></div>`:''}
       ${v.goals?.length?`<div class="sec"><h4>가문 목표</h4>${dynKV(v.goals.map(g=>[dynEsc(g.label),dynEsc(g.claimed?'보상 수령':g.progress+(g.active?' · 선택한 목표':''))]))}</div>`:''}
       ${dynActionsHTML(v,'fam')}

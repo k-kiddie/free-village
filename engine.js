@@ -4373,6 +4373,10 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(person.act===WORK){person.act=REST;person.actT=null}
   }
   function dynChron(text,ids){const D=S.dyn;D.chron.push({d:S.day,gen:D.gen,text,ids:ids||[]});if(D.chron.length>400)D.chron.splice(0,D.chron.length-400)}
+  function dynDiaryUpdate(a){const D=S.dyn;if(!D||!a)return;const kin=dynKin(),facts=D.chron.filter(c=>c.d===S.day&&(c.ids||[]).some(id=>id===a.id||kin.has(id))).slice(-4).map(c=>c.text.replaceAll(nm(a)+'이','내가').replaceAll(nm(a)+'가','내가').replaceAll(nm(a)+'은','나는').replaceAll(nm(a)+'는','나는')).map(t=>t.length>150?t.slice(0,147)+'…':t);
+    const today=D.today?.d===S.day?D.today:null,work=today?.kind==='duty'?`${today.office||'맡은 자리'}에서 공무를 봤다`:today?.kind==='slack'?`${today.office||'맡은 자리'}의 일을 미뤘다`:today?.did!=null?`${dynJobName(today.did)}를 했다`:a.alive?'하루를 보냈다':'삶을 마무리했다';
+    const text=`오늘 나는 ${work}.${facts.length?' '+facts.join(' · '):' 특별한 사건 없이 하루가 저물었다.'}`;
+    const entry={d:S.day,gen:D.gen,actor:a.id,text};D.diary=D.diary||[];const old=D.diary.findIndex(x=>x.d===entry.d&&x.gen===entry.gen&&x.actor===entry.actor);if(old>=0)D.diary[old]=entry;else D.diary.push(entry);if(D.diary.length>60)D.diary.splice(0,D.diary.length-60)}
   function dynCool(kind,days){const D=S.dyn;if((D.cool[kind]||0)>S.day)return false;D.cool[kind]=S.day+days;return true}
   // 받은 일함: 급한 일만 시간을 멈추고, 나머지는 쌓아 두었다가 원할 때 처리한다(기한이 지나면 무시한 결과)
   const DYN_URGENT=new Set(['start','death','birth','caught','war','invaded','conquest','regime','draft','fire','epidemic','famine','sick']);
@@ -5985,7 +5989,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const current=D.pending.indexOf(p);if(current!==-1)D.pending.splice(current,1);
     if(stress?.points&&me.alive&&(p.kind!=='story'||D.storyHist!==oldStory))me.dynStress=(me.dynStress||0)+stress.points;
     D.res={d:S.day,kind:p.kind,text,changes:dynChoiceChanges(before,dynChoiceStats(me,p))};
-    dynResnap();return D.res}
+    dynResnap();dynDiaryUpdate(me);return D.res}
   Object.assign(DYN_H,{faithExpose(c,k,me){const fa=S.faiths.find(f=>f.id===c.fid),D=S.dyn,wa=dynWA(),hr=S.houseRef||100;if(!fa)return '교단이 이미 사라졌다';
     const hit=(rep,frac,cs)=>{dynFRepAdd(fa.id,-rep);dynRep(me,-rep*.4);const left=dynFLeave(fa,frac,a=>(a.g.civic??.5)>.45||(a.g.faith??.5)<.6);if(cs&&S.gov)dynCase2(c.kind==='embezzle'?'embezzle':'scam',me,Math.max(c.amt||0,hr*.3),.6);return left};
     if(k==='apologize'){const pay=Math.min(Math.max(0,me.cash),Math.max(c.amt||0,wa*5));me.cash-=pay;fa.tre=(fa.tre||0)+pay;const left=hit(.15,.1,false);D.faithRisk[fa.id]=0;return `공개 사과하고 ${won(pay)}을 돌려놓았다 · 신도 ${left}명이 떠났다`}
@@ -8604,8 +8608,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(S.day%5===0&&!((me.jailUntil||0)>S.day))dynBudgetTick(me);
       if(S.day%15===0){dynScanTies();
         for(const t of [me,...me.kids.map(id=>S.byId.get(id))])if(dynSingle(t)&&t.age>=18*YEAR&&t.age<45*YEAR&&dynCool('arr'+t.id,YEAR))dynArrangeOffer(t)}
-      dynRegencyTick(me);dynEvents(me);return}
-    dynDeath(me)}
+      dynRegencyTick(me);dynEvents(me);dynDiaryUpdate(me);return}
+    dynDiaryUpdate(me);dynDeath(me)}
   function dynRank(){const D=S.dyn,a=dynMe();if(!a)return 0;if(D.watch)return 5;const G=S.gov;
     if(dynExecutive(a)||a===dynReigningMonarch())return 4;
     if(G&&((G.council||[]).includes(a.id)||G.regent===a.id||dynMinisterPost(a)))return 3;
@@ -8675,7 +8679,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         const storyDef=p.kind==='story'?SE[ctx.sid]:null,storyScene=typeof storyDef?.scene==='function'?storyDef.scene(sCtx(a,ctx)):storyDef?.scene||null;
         const scenePeople=(storyScene||({war:'battle',regime:'revolt',death:'succession'}[p.kind]))?[a,...ids.map(id=>S.byId.get(id)).filter(x=>x&&x!==a)].map(x=>({...dynP(x),looks:x.looks??.5,faceL:x.faceL??x.looks??.5,bodyL:x.bodyL??x.looks??.5,physique:cl((x.g?.body??.5)*.65+(x.fit??.5)*.35,0,1)})):null;
         return {id:p.id,kind:p.kind,d:p.d,inbox:!!p.inbox,due:p.due??null,text:p.text,opts,title:ctx.title||null,cast,scene:storyScene||({war:'battle',regime:'revolt',death:'succession'}[p.kind]||null),scenePeople};
-      }),story:{freq:D.story&&D.story.freq!=null?D.story.freq:2,n:(D.story&&D.story.n)||0},chron:D.chron.slice(-40),past:D.past,notices:S.miles.slice(-8)};
+      }),story:{freq:D.story&&D.story.freq!=null?D.story.freq:2,n:(D.story&&D.story.n)||0},diary:(D.diary||[]).slice(-30).reverse(),chron:D.chron.slice(-40),past:D.past,notices:S.miles.slice(-8)};
     if(!a)return out;const f=dynFamily(a);const g=a.grp&&grpById(a.grp);const publicDuty=dynEmploymentBlocked(a);const emp=!publicDuty&&a.emp&&S.byId.get(a.emp);
     out.me={...dynP(a),sur:a.sur,given:a.given,health:a.health,hunger:a.hunger,happy:a.happy,rep:a.rep,edu:a.edu||0,skill:{farm:a.skill?.[FARM]||0,craft:a.skill?.[CRAFT]||0,trade:a.skill?.[TRADE]||0},g:{boss:a.g.boss,civic:a.g.civic,care:a.g.care,cheat:a.g.cheat},looks:a.looks,occ:a.occ||null,faith:a.faith||null,
       grp:g?{id:g.id,name:g.name,leader:g.leader===a.id}:null,emp:dynP(emp),publicDuty,staff:S.agents.filter(x=>x.alive&&x.emp===a.id).length,crimes:a.crimes||0,caught:a.caught||0,jail:(a.jailUntil||0)>S.day,banned:!!a.banned,pardoned:!!a.pardoned,served:!!a.served,drafted:!!a.drafted,altServ:(a.altServ||0)>S.day};
