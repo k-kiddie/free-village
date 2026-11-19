@@ -7913,6 +7913,13 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     travelNight:['scTravelDetour','scTravelMemory','farExile','farExileHunt','farRefugee','exiledReturns','abroadLetter','homeLetter','kinArrives','migrantGuild','pilgrimTrain','xNomadSettle','xNomadReturn','xNomadBorder','borderFort','merchantsFromChain']
   };
   for(const [scene,ids] of Object.entries(IMMERSIVE_SCENE_IDS))for(const id of ids)if(SE[id]&&!SE[id].scene)SE[id].scene=scene;
+  // 1차 장면 도감의 21개 추가 고유 무대. 사건의 기존 대사·결과를 유지하고
+  // 해당 사건에 맞는 인물·장소 배경만 새 장면으로 덧씌운다.
+  const IMMERSIVE_SCENE_EXTRA={
+    grudge:['feudGrudge','rivalInsult','revenge'],neighborAid:['debtHelp','publicLocalRelief'],debate:['scholarDebate','reformist','jrReformProtest'],childhood:['kidsFight','kidBullied','bdSchoolFight'],construction:['bigProject','roadRepair','xLadderBoom'],successionLessons:['heirTraining','hiddenHeir'],resignation:['ministerQuit','jrMassResign','memberQuit'],pressroom:['newspaper','treasureTruth','honestWitness'],diplomacy:['envoy','allianceOffer','orphanEnvoy'],warCouncil:['warTax','mcInquiry','mcCivilianComplaint','mcCommanderDemand'],ambition:['ambition','ambitiousAlly','ambitiousChallenge'],landCourt:['quarrelLand','wfInheritanceFeud','xMatriSuit'],recruitment:['gangRecruit','mcVeteran','veteranJob'],companyRival:['coRival','coAnniv'],quackClinic:['bdHealQuack'],arena:['bdArenaRiot','bdArenaFix'],judicialPressure:['jrSecretMeet','jrJudgeOffer','jrCjPressure'],poisonEvidence:['wfPoisonWitness'],hostageRescue:['wfHostageRescue','wfHostageLetter','mcCaptiveCommander','wfCaptiveEscape','wfCaptivePetition'],homecoming:['mcHomecoming','veteranReunion','homeLetter','wfGuardianThanks'],addiction:['addictKnocks','gambleDebt','gambleAgain','gamblingNight','xDiceAll','xDiceRigged','xDiceLast']
+  };
+  for(const [scene,ids] of Object.entries(IMMERSIVE_SCENE_EXTRA))for(const id of ids)if(SE[id])SE[id].scene=scene;
+  if(SE.adultVenueAfter)SE.adultVenueAfter.scene='venueAftercare';
   function dynStoryContext(e,me,saved){
     const ctx={...saved,sid:e.id,actor:me.id};
     if(saved?.actor!=null&&saved.actor!==me.id&&!e.heirOk)return null;
