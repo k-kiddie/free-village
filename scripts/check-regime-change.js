@@ -21,4 +21,12 @@ const force=(w,k,m,tries=40)=>{for(let i=0;i<tries;i++){w.S.dyn.cool={};const me
   // 쿠데타 실패 경로는 공화정에서 확인
   const w2=king(),S2=w2.S,m2=S2.byId.get(S2.dyn.pid);force(w2,'regime:republic','legal');S2.gov.chief=m2.id;S2.gov.approval=.05;S2.mil=null;let out='';for(let i=0;i<200;i++){S2.dyn.cool={};m2.jailUntil=0;m2.abroadUntil=0;S2.gov.chief=m2.id;S2.gov.coup=null;S2.gov.regime='rep';const t=w2.dynAct('regime:dict:selfcoup').text;if(/실패/.test(t)){out=t;break}}
   assert(/망명/.test(out),'쿠데타 실패 시 망명: '+out);assert(m2.abroadUntil>S2.day,'나라 밖');assert(S2.dyn.rcExile,'망명 기록')}
-console.log('체제 전환: 입헌군주정·친정 복귀·공산화·개혁 개방·세습·민주화·허수아비 왕·쿠데타 실패 망명·준비 정도 통과');
+// 6) 2차: 반발 음모·내전·망명 정부와 귀환·왕정복고
+const waitFor=(w,kind,days=YEAR*3)=>{const D=w.S.dyn;for(let i=0;i<days;i++){const p=D.pending.find(p=>p.kind===kind);if(p)return p;D.pending=D.pending.filter(p=>['rcPlot','rcCivilWar','rcExileGov','rcReturn','rcRestore','rcClaim'].includes(p.kind));w.step()}return null};
+{const w=king(),S=w.S,D=S.dyn,me=S.byId.get(D.pid);D.rcBacklash={d:S.day,t:'dict',str:1};const p=waitFor(w,'rcPlot');assert(p,'반발 음모 사건');w.dynChoose(p.id,'coax');assert(D.rcBacklash.str<1,'회유로 반발↓');
+  D.rcUnrest={d:S.day,str:.6};S.gov.approval=.1;let q=null;for(let i=0;i<YEAR*3&&!q;i++){S.gov.approval=.1;q=waitFor(w,'rcCivilWar',15)}assert(q,'내전 사건');w.dynChoose(q.id,'share');assert(['cmon','rep'].includes(S.gov.regime),'협상으로 체제 변화: '+S.gov.regime)}
+{const w=king(),S=w.S,D=S.dyn,me=S.byId.get(D.pid);D.rcExile={d:S.day,support:0};me.abroadUntil=S.day+200;const p=waitFor(w,'rcExileGov');assert(p,'망명 정부 사건');w.dynChoose(p.id,'gov');assert(D.rcExile.support>0);
+  me.abroadUntil=S.day;const r=waitFor(w,'rcReturn');assert(r,'귀환 사건');w.dynChoose(r.id,'home');assert(!D.rcExile,'귀환 정리')}
+{const w=king(),S=w.S,D=S.dyn,me=S.byId.get(D.pid),G=S.gov;force(w,'regime:republic','legal');G.chief=me.id;G.regime='rep';G.coup=null;const heir=S.agents.find(a=>a.alive&&w.isAdult(a)&&a.family!==me.family);G.dynasty=heir.family||heir.id;G.regHist.push({d:S.day,r:'mon'});
+  const p=waitFor(w,'rcRestore',YEAR*6);assert(p,'왕정복고 사건');w.dynChoose(p.id,'cmon');assert.equal(G.regime,'cmon','입헌군주로 맞아들임');assert.equal(G.king,heir.id)}
+console.log('체제 전환: 입헌군주정·친정 복귀·공산화·개혁 개방·세습·민주화·허수아비 왕·쿠데타 실패 망명·준비 정도·반발 음모·내전 협상·망명 정부·귀환·왕정복고 통과');
