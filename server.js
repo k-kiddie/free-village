@@ -15,6 +15,7 @@ const WORLDS = {
   dynasty:{ seed:Number(process.env.DYNASTY_SEED)||0, population:Number(process.env.DYNASTY_POPULATION)||100 },
 };
 const SWITCH_MIN_MS = Math.max(0, Number(process.env.WORLD_SWITCH_MIN_MS ?? 15000));
+const SCENE_ART_FILES=new Set(['atlas-0.webp','atlas-1.webp','atlas-2.webp','atlas-3.webp']);
 let active = null;          // {name, worker, gen, latestView, ready, waiting:Map, intended}
 let switching = null;       // 전환 중인 대상 이름
 let chain = Promise.resolve();
@@ -156,6 +157,12 @@ function sendPage(req,res,p){
 const server=http.createServer(async(req,res)=>{
   try {
     const url=new URL(req.url,'http://localhost');const p=url.pathname;
+    if(req.method==='GET'&&p.startsWith('/scene-art/')){
+      const name=p.slice('/scene-art/'.length);if(!SCENE_ART_FILES.has(name))return sendJson(res,404,{error:'장면 그림을 찾을 수 없습니다'});
+      const file=path.join(__dirname,'scene-art',name),stat=fs.statSync(file);
+      res.writeHead(200,{'content-type':'image/webp','content-length':stat.size,'cache-control':'public, max-age=31536000, immutable'});
+      fs.createReadStream(file).pipe(res);return;
+    }
     if(req.method==='GET'&&p==='/health'){const ok=booted&&!lifecycle.stopping;
       return sendJson(res,ok?200:503,{ok,ready:ok,stopReady:lifecycle.stopReady,world:active?.name??null,worldReady:!!active?.ready&&!switching,switching,workers:liveWorkers,day:active?.latestView?.day??null,rssBytes:process.memoryUsage().rss});}
     if(req.method==='GET'&&p==='/')return sendPage(req,res,pages.village);
