@@ -4719,6 +4719,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function dynPickJob(a,c){const D=S.dyn,why=[];D._why=why;for(const k of dynPrefs()){const w=dynJobWhy(a,k,c);if(!w)return k;why.push([k,w])}return null}
   function dynNoteDay(a,best,want,desperate){const D=S.dyn,prefs=dynPrefs(),slack=D.slackD===S.day,why=D._why||[];let r='';
     if(want===MANAGE&&a.fat<100&&!(a.pubT||a.faithT)&&!(a.ct&&best===WORK)){best=REST;D.manage=(D.manage||[]).filter(d=>S.day-d<60).concat(S.day)}
+    else if(want!=null&&want!==MANAGE&&best!==want&&a.fat<100&&!desperate&&!((a.pubT||a.faithT)&&best===TEACH)&&!(a.ct&&best===WORK))best=want;// 정한 일은 지치거나 굶주리거나 계약·맡은 일이 있을 때만 밀린다
     const blocked=why.map(([k,w])=>`${dynJobName(k)}: ${w}`).join(' · ');
     if(!prefs.length)r='성향대로 자동 선택';
     else if(want==null)r=blocked||'원하는 일을 할 수 없음';
