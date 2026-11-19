@@ -21,6 +21,27 @@ for(const id of ['feudGrudge','debtHelp','scholarDebate','kidsFight','bigProject
 assert.equal(SE.publicBudgetHearing.scene,'council','후반에 정의된 공공 예산 사건도 의회 장면 연결');
 assert.equal(SE.publicLocalRelief.scene,'neighborAid','후반에 정의된 주민 구호 사건도 이웃 구호 장면 연결');
 assert.equal(SE.hiddenHeir.scene,'family','숨겨진 상속자는 교육 장면이 아닌 가족 장면');
+assert.equal(SE.heirHouseAftermath.scene,'family','숨겨진 혈육의 후일담도 가족 장면');
+// 숨겨진 상속자 줄거리는 같은 인물을 증거·가문 분가·후일담까지 전달한다.
+const heirStory=D.story=D.story||{q:[]},heirCtx={sid:'hiddenHeir',actor:me.id};
+heirStory.q=[];
+SE.hiddenHeir.o.find(o=>o[0]==='test')[3](sCtx(me,heirCtx));
+const proof=heirStory.q.shift(),claimant=S.byId.get(proof.ctx.x);
+assert(claimant,'증거를 요구하면 실제 청구인 인물을 만든다');
+assert.equal(proof.id,'heirProofReal','증거 사건 예약');
+assert(SE.heirProofReal.text(sCtx(me,{...proof.ctx,sid:proof.id})).includes(claimant.name||claimant.nm||w.nm(claimant)),'증거 장면에 처음 찾아온 인물이 등장');
+SE.heirProofReal.o.find(o=>o[0]==='deny')[3](sCtx(me,{...proof.ctx,sid:proof.id}));
+const split=heirStory.q.shift();assert.equal(split.id,'heirHouse','내친 혈육의 분가 사건 예약');assert.equal(split.ctx.x,claimant.id,'분가 사건도 같은 혈육을 기억');
+const aftermathCtx={...split.ctx,sid:'heirHouseAftermath'};D.mem.heirHouseChoice={v:'rival',d:S.day,gen:D.gen,ids:[claimant.id]};
+assert(SE.heirHouseAftermath.text(sCtx(me,aftermathCtx)).includes(w.nm(claimant)),'후일담이 같은 인물의 이름을 부른다');
+D.mem.heirHouseChoice={v:'peace',d:S.day,gen:D.gen,ids:[claimant.id]};
+assert(SE.heirHouseAftermath.text(sCtx(me,aftermathCtx)).includes('답장이 도착'),'화해 선택의 후일담 문맥');
+D.mem.heirHouseChoice={v:'rival',d:S.day,gen:D.gen,ids:[claimant.id]};
+D.story.q=[];
+SE.heirHouse.o.find(o=>o[0]==='rival')[3](sCtx(me,{...split.ctx,sid:'heirHouse'}));
+assert.equal(heirStory.q[0]?.id,'heirHouseAftermath','가문 경쟁 뒤 결과 후일담 예약');
+assert.equal(heirStory.q[0]?.ctx.x,claimant.id,'경쟁 후일담도 동일 인물을 전달');
+D.mem.heirHouseChoice={v:'peace',d:S.day,gen:D.gen,ids:[claimant.id]};
 D.pending=[{id:99001,kind:'death',ctx:{dead:me.id,heir:partner.id},opts:[],text:'가문을 잇는다'}];
 const successionView=w.dynView().pending[0];assert.equal(successionView.scene,'succession','세대 승계 장면은 왕위/가문 계승 무대');
 assert(successionView.scenePeople.some(x=>x.id===me.id)&&successionView.scenePeople.some(x=>x.id===partner.id),'승계 장면에 고인과 후계자 모두 등장');

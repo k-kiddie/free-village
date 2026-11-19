@@ -7329,13 +7329,15 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     o:[['counter','맞불 후보를 돕는다',c=>`약 ${won(c.wA*6)}`,c=>{c.cash(-c.wA*6);if(c.roll(.55))return '원수가 낙선했다';c.rep(-.04);return '원수가 당선돼 우리를 노린다'}],['reconcile','먼저 화해를 청한다','',c=>{c.tie(c.x,.4,'화해');return '긴 다툼이 끝났다'}],['ignore','신경 쓰지 않는다','',()=> '두고 보기로 했다']]});
   // C. 숨겨진 상속자 → 증거 → 송사 → 분가 가문
   E('hiddenHeir',{cat:'가족',cd:YEAR*10,need:c=>dynFamily(c.me).kids.length>0&&c.me.age>40*YEAR,title:'🧑 나타난 숨겨진 자식',text:()=>'낯선 젊은이가 찾아와 "선대 어른의 숨겨진 자식"이라며 상속 몫을 요구합니다.',
-    o:[['test','증거를 내라 한다','',c=>{c.chain(c.roll(.5)?'heirProofReal':'heirProofFake',15);return '증거를 가져오라고 돌려보냈다'}],['pay','돈을 주어 보낸다',c=>`약 ${won(c.wA*8)}`,c=>{c.cash(-c.wA*8);return '돈을 받고 떠났다'}],['accept','식구로 받아들인다','상속 다툼 위험',c=>{const a=sNewPerson({sur:c.me.sur,age:22,cash:2});a.family=c.me.family;c.tie(a,.3,'새 식구');c.mem.set('heirClaimant',1,[a.id]);return '새 식구로 맞았다'}]]});
-  E('heirProofReal',{chain:1,title:'📜 진짜 혈육',text:()=>'젊은이가 가져온 서찰과 패물은 진짜였습니다. 선대 어른의 필체가 분명합니다.',
-    o:[['share','몫을 떼어 준다',c=>`현금 20%`,c=>{const g=c.cash(-c.me.cash*.2);const a=sNewPerson({sur:c.me.sur,age:22,cash:0});a.cash+=-g;a.family=c.me.family;c.tie(a,.4,'혈육 인정');c.rep(.04);return '혈육으로 인정하고 몫을 떼어 주었다'}],['deny','그래도 내친다','',c=>{c.rep(-.05);c.later('heirHouse',YEAR*5,YEAR*10);return '내쳤다. 젊은이가 이를 갈며 떠났다'}]]});
-  E('heirProofFake',{chain:1,title:'🎭 가짜 상속자',text:()=>'조사해 보니 젊은이의 서찰은 위조였고, 뒤에 사기꾼 일당이 있었습니다.',
+    o:[['test','증거를 내라 한다','',c=>{const a=sNewPerson({sur:c.me.sur,age:22,cash:0});a.family=c.me.family;c.mem.set('heirClaimant',1,[a.id]);c.chain(c.roll(.5)?'heirProofReal':'heirProofFake',15,{x:a.id});return '증거를 가져오라고 돌려보냈다'}],['pay','돈을 주어 보낸다',c=>`약 ${won(c.wA*8)}`,c=>{c.cash(-c.wA*8);return '돈을 받고 떠났다'}],['accept','식구로 받아들인다','상속 다툼 위험',c=>{const a=sNewPerson({sur:c.me.sur,age:22,cash:2});a.family=c.me.family;c.tie(a,.3,'새 식구');c.mem.set('heirClaimant',1,[a.id]);return '새 식구로 맞았다'}]]});
+  E('heirProofReal',{chain:1,title:'📜 진짜 혈육',text:c=>`${josa(c.n(c.x),'이','가')} 가져온 서찰과 패물은 진짜였습니다. 선대 어른의 필체가 분명합니다.`,
+    o:[['share','몫을 떼어 준다',c=>`현금 20%`,c=>{const g=c.cash(-c.me.cash*.2);if(c.x){c.x.cash+=-g;c.x.family=c.me.family;c.tie(c.x,.4,'혈육 인정')}c.rep(.04);c.mem.set('heirClaimantAccepted',1,c.x?[c.x.id]:[]);return '그 혈육을 인정하고 몫을 떼어 주었다'}],['deny','그래도 내친다','',c=>{c.rep(-.05);c.later('heirHouse',YEAR*5,YEAR*10,{x:c.x?.id});return '내쳤다. 젊은이가 이를 갈며 떠났다'}]]});
+  E('heirProofFake',{chain:1,title:'🎭 가짜 상속자',text:c=>`${josa(c.n(c.x),'이','가')} 가져온 서찰은 위조였고, 뒤에 사기꾼 일당이 있었습니다.`,
     o:[['police','관아에 넘긴다','',c=>{c.rep(.03);return '사기꾼 일당이 붙잡혔다'}],['use','역으로 이용한다','',c=>{c.cash(c.wA*3);return '사기꾼 일당을 협박해 돈을 받아냈다'},{trait:'honesty'}]]});
-  E('heirHouse',{chain:1,heirOk:1,title:'🏯 갈라져 나온 가문',text:()=>'예전에 내쳤던 숨겨진 혈육이 크게 성공해 우리 집안과 맞먹는 가문을 세웠습니다. 그 가문이 우리를 원수로 여긴다고 합니다.',
-    o:[['peace','사과하고 화해를 청한다',c=>`약 ${won(c.wA*10)}`,c=>{c.cash(-c.wA*10);c.rep(.03);return '늦게나마 사과하자 원한이 누그러졌다'}],['rival','맞서 경쟁한다','',c=>{c.mem.set('rivalHouse',1);return '두 가문의 경쟁이 시작됐다'}]]});
+  E('heirHouse',{chain:1,heirOk:1,title:'🏯 갈라져 나온 가문',text:c=>`${josa(c.n(c.x),'이','가')} 크게 성공해 갈라져 나온 가문을 세웠습니다. 숨겨진 혈육은 우리 집안을 원수로 여깁니다.`,
+    o:[['peace','사과하고 화해를 청한다',c=>`약 ${won(c.wA*10)}`,c=>{c.cash(-c.wA*10);c.rep(.03);c.mem.set('heirHouseChoice','peace',c.x?[c.x.id]:[]);c.later('heirHouseAftermath',YEAR,YEAR*2,{x:c.x?.id});return '늦게나마 사과하고 화해를 청했다'}],['rival','맞서 경쟁한다','',c=>{c.mem.set('rivalHouse',1,c.x?[c.x.id]:[]);c.mem.set('heirHouseChoice','rival',c.x?[c.x.id]:[]);c.later('heirHouseAftermath',YEAR,YEAR*2,{x:c.x?.id});return '두 가문의 경쟁이 시작됐다'}]]});
+  E('heirHouseAftermath',{chain:1,heirOk:1,title:'🕊️ 두 가문의 답장',text:c=>c.mem.get('heirHouseChoice')==='peace'?`${josa(c.n(c.x),'이','가')} 보낸 답장이 도착했습니다. 오래 묵은 원한을 풀 여지가 생겼습니다.`:`${josa(c.n(c.x),'이','가')} 경쟁을 선언한 뒤 첫 움직임을 보였습니다. 두 가문의 다툼이 마을 사람들에게까지 번지고 있습니다.`,
+    o:[['reconcile','마지막으로 손을 내민다','',c=>{c.tie(c.x,.2,'혈육 화해');c.mem.del('rivalHouse');c.mem.del('heirHouseChoice');c.rep(.02);return '서로의 처지를 인정하고 다툼을 거두었다'}],['hold','입장을 지킨다','',c=>{c.tie(c.x,-.1,'가문 경쟁');c.mem.del('heirHouseChoice');return '각자의 길을 가기로 했다. 원한은 남았다'}]]});
   // D. 전쟁고아 → 성장 → 첩자 의심 → 평화의 사신
   E('warOrphan',{cat:'전쟁',cd:YEAR*8,need:()=>!!S.war||!!(S.warEnd&&S.day-S.warEnd<YEAR),title:'🧒 적국의 고아',text:()=>'전쟁터에서 부모를 잃은 적국 아이가 우리 마을로 흘러들었습니다. 사람들이 "적의 자식"이라며 돌을 던집니다.',
     o:[['adopt','거두어 키운다','',c=>{const k=mk({age:6*YEAR,born:S.day-6*YEAR,g:randGenome(),sur:c.me.sur});initQ(k);dynAdopt(c.me,k);c.mem.set('warOrphan',1,[k.id]);c.later('orphanSpySuspect',YEAR*10,YEAR*12,{x:k.id});return `${josa(nm(k),'을','를')} 자식으로 거뒀다`}],['protect','다른 집에 맡기도록 돕는다',c=>`약 ${won(c.wA*3)}`,c=>{c.cash(-c.wA*3);c.rep(.03);return '좋은 집에 맡겼다'}],['away','못 본 척한다','',()=> '외면했다']]});
@@ -7727,7 +7729,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   };
   // 겹치는 범용 분류보다 사건의 실제 초점을 우선한다.
   const IMMERSIVE_SCENE_OVERRIDES={
-    family:['hiddenHeir','foundlingGrown'],ceremony:['newborn','weddingAsk','elope','grandChild','daughterSuitor','widowRemarry','foreignBride','royalMatch','spFirstGov','spFiftyYears','spThreeRulers','spFaithMajority','exileMarriage'],
+    family:['hiddenHeir','foundlingGrown','heirHouseAftermath'],ceremony:['newborn','weddingAsk','elope','grandChild','daughterSuitor','widowRemarry','foreignBride','royalMatch','spFirstGov','spFiftyYears','spThreeRulers','spFaithMajority','exileMarriage'],
     travel:['kidStudyAbroad','merchantsFrom','merchantsFromChain','scTravelDetour','farMerchant'],workshop:['craftOrder'],technology:['ocKnowInvent','ocKnowLeak','dynSteam','dynPress'],transport:['dynRail','bridge','bridgeName'],
     fire:['fireRisk','fireNbr','coFire','bdFacBlast'],nature:['bdStoreRats','ocMineCollapse'],famine:['spFamine'],drought:['wellDry'],season:['harvestFest','harvestHelp','springPlant'],
     construction:['ocBuildCollapse','ocBuildBig','ocBuildCut'],victory:['spFirstVictory','spPeacefulUnion','warHero','floodHero'],business:['tradeWin','tradeLose','merchantPartner','partnerBetray','partnerRun','partnerCaught','partnerReturns','expandBiz','bizBoom','bizBust'],
