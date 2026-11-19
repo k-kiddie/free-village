@@ -283,7 +283,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(!t){const rivals=ad.filter(x=>x!==a&&(x.w||0)>(a.w||0)&&(x.workers||0)>0);t=rivals.length?pick(rivals):null}
       if(t){addRumor(t,.35,false,a.id,3);a.liar=(a.liar||0)+1;mile('fakeRumor',`첫 헛소문. ${josa(nm(a),'이','가')} ${nm(t)}에 대한 없는 말을 지어 퍼뜨렸다`,[a.id,t.id])}}
     // 가족애·이념 흐름 (한 달에 한 번)
-    if(day%30===0){const med=median();const cpiUp=(S.inflY||0)>.1;
+    if(day%30===0){const med=median();const cpiUp=S.dyn?(S.inflY||1)-1>.1:(S.inflY||0)>.1;
       for(const a of ad){let d=0;const w=a.w||0;if(w<med*.5)d+=.03;else if(w>med*2.5)d-=.03;if(a.jobless>3)d+=.02;if(cpiUp)d-=.01;if(a.spend&&a.spend.govtax>20&&w>med)d-=.015;if(a.robbed>day-30)d-=.01;
         const p=a.partner&&S.byId.get(a.partner);if(p)d+=(ideoOf(p)-ideoOf(a))*.05;for(const pid of a.parents){const q=S.byId.get(pid);if(q&&q.alive)d+=(ideoOf(q)-ideoOf(a))*.02}
         const paper=a.paper&&S.bldgs.find(b=>b.id===a.paper);if(paper&&paper.owner&&!(paper.closed>day)){const o=S.byId.get(paper.owner);if(o)d+=(ideoOf(o)-ideoOf(a))*.06}
@@ -841,7 +841,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     for(const x of gs){if(rulingN()>=need)break;G.coal.push(x.g.id);mEv('coalition',`연정. 과반이 모자란 촌장 편이 ${josa(x.g.name,'과','와')} 손을 잡았다`,[ch.id])}}
   function rulingN(){const G=S.gov;const ch=G&&S.byId.get(G.chief);return(G&&G.council||[]).filter(id=>isRuling(S.byId.get(id),ch)).length}
   function approvalTick(){const G=S.gov;if(!G||!G.chief)return;const ch=S.byId.get(G.chief);if(!ch||!ch.alive)return;const ad=adultsC();if(ad.length<10)return;
-    const H=S.hist,h1=H[H.length-1],h0=H[H.length-2];const gg=h1&&h0&&h0.gdp?(h1.gdp-h0.gdp)/Math.max(.01,h0.gdp):0;const infl=S.inflY||0;
+    const H=S.hist,h1=H[H.length-1],h0=H[H.length-2];const gg=h1&&h0&&h0.gdp?(h1.gdp-h0.gdp)/Math.max(.01,h0.gdp):0;const infl=S.dyn?Math.max(-.5,(S.inflY||1)-1):S.inflY||0;// S.inflY는 비율(1=물가 그대로). 원래 마을은 결과 보존을 위해 예전 식 유지
     const E=gg*3-infl*3-(h1&&h1.starve>10?.4:0)-((S.yr.epi||0)?.3:0)-((S.cartels||[]).length?.1:0)+(S.day-(G.elected||0)<YEAR?.3:0);const ci=ideoOf(ch);let yes=0,n=0;
     for(let i=0;i<Math.min(200,ad.length);i++){const v=ad[(R()*ad.length)|0];if(v===ch)continue;n++;const s2=((v.happy??.5)-.5)*1.5+(v.grp&&v.grp===ch.grp?.8:v.grp&&ch.grp?-.4:0)-Math.abs(ideoOf(v)-ci)*.7+((ch.rep??1)-.75)*1.2+E*.5+(v.pVote===ch.id?.4:0)+gauss()*.8;if(s2>0)yes++}
     G.approval=n?yes/n:.5;G.apHist=G.apHist||[];G.apHist.push(G.approval);if(G.apHist.length>120)G.apHist.shift();
