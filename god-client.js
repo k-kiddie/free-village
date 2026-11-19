@@ -336,7 +336,16 @@ function dynSceneCharacters(people){
   const [lead,...others]=people;
   return `<g class="scene-characters" shape-rendering="crispEdges">${dynSceneCharacter(lead,10)}${others.length?dynSceneCharacter(others[0],340):''}</g>`;
 }
+function dynAdultSceneArt(scene,p){
+  const venueTile=({nightlife:0,hostess:0,'mens-esthetic':1,soap:2,delivery:3,hotel:3,venueAftercare:0})[scene];
+  const intimacy=scene==='intimate';
+  if(!intimacy&&venueTile==null)return '';
+  const tile=intimacy?Math.abs(Number(p?.id)||0)%4:venueTile,col=tile%2,row=Math.floor(tile/2),x=col*836,y=row*470;
+  const atlas=intimacy?'adult-romance':'adult-venues',title=String(p?.title||'성인 인물 장면').replace(/^[^가-힣A-Za-z0-9]+/,'');
+  return `<svg viewBox="${x} ${y} 836 470" role="img" aria-label="${dynEsc(title)} · 성인 인물 픽셀 장면" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><image href="/scene-art/${atlas}.webp" x="0" y="0" width="1672" height="941" preserveAspectRatio="none"/><g transform="scale(2)">${dynSceneCharacters(p?.scenePeople)}</g></svg>`;
+}
 function dynVenueSceneArt(scene,p){
+  const adultArt=dynAdultSceneArt(scene,p);if(adultArt)return adultArt;
   const index=DYN_SCENE_ART_INDEX[scene];
   if(index==null)return '';
   if(index===64){const title=String(p?.title||'장사 장면').replace(/^[^가-힣A-Za-z0-9]+/,'');return `<svg viewBox="0 0 1672 941" role="img" aria-label="${dynEsc(title)} · 픽셀 장면" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><image href="/scene-art/business.webp" x="0" y="0" width="1672" height="941" preserveAspectRatio="none"/><g transform="scale(4)">${dynSceneCharacters(p?.scenePeople)}</g></svg>`}
