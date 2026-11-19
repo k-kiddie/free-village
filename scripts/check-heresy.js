@@ -11,8 +11,9 @@ const run=(w,d)=>{for(let i=0;i<d;i++){w.step();for(const p of w.S.dyn.pending.s
   w.dynAct('extra:found:doom+chosen:');const fa=w.S.faiths.find(f=>f.leader===me.id);assert(fa.doomD>w.S.day,'종말 날짜');assert(/종말교$/.test(fa.name),'이단 교리 이름');
   assert(w.dynView().faithInfo.heresy.length===2,'화면에 이단 표시')}
 // 2) 번영: 헌금이 쌓이고 신도 성향이 탐욕스러워짐
-{const {w,fa}=cult(1202,'prosper+work');const t0=fa.tre,c0=ad(w).filter(a=>a.faith===fa.id).reduce((t,a)=>t+a.g.cheat,0);run(w,95);assert(fa.tre>t0,'번영 헌금');
-  const ms=ad(w).filter(a=>a.faith===fa.id);assert(ms.reduce((t,a)=>t+a.g.cheat,0)/ms.length>c0/Math.max(1,ms.length)*.9,'탐욕 성향 유지·상승')}
+{const {w,fa}=cult(1202,'prosper+work');const t0=fa.tre,ms0=ad(w).filter(a=>a.faith===fa.id),avg=xs=>xs.reduce((t,a)=>t+a.g.cheat,0)/Math.max(1,xs.length),c0=avg(ms0);run(w,95);assert(fa.tre>t0,'번영 헌금');
+  // 같은 사람들끼리 비교(독실함이 낮은 신도는 떠날 수 있어 인원이 바뀜)
+  const still=ms0.filter(a=>a.alive&&a.faith===fa.id);assert(avg(still.length?still:ms0)>c0*.9,'탐욕 성향 유지·상승')}
 // 3) 향락: 중독자가 생김
 {const {w,fa}=cult(1203,'hedon+equal');run(w,200);assert(ad(w).some(a=>a.faith===fa.id&&a.addict),'향락 중독')}
 // 4) 다산: 같은 시드에서 출생이 뚜렷이 많음

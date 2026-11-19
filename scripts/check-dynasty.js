@@ -75,8 +75,10 @@ function main(){
     assert.throws(()=>x.dynAct('stock:sell:'+f.id),/양/);assert(/팔았다/.test(x.dynAct('stock:sell:'+f.id+':0.1').text));acts.stock=true}
   // 9. 사건 선택지(7-2): 상황을 만들어 선택지가 뜨고 고른 대로 반영되는지
   const evs={};
-  {const x=engine.createWorld(7,150);x.dynStart();x.dynChoose(x.S.dyn.pending[0].id,'go');for(let i=0;i<10;i++)x.step();try{x.dynAct('council')}catch(e){}
-    const S2=x.S,D2=S2.dyn,me=()=>S2.byId.get(D2.pid);for(let i=0;i<YEAR*8&&!D2.over;i++){while(D2.pending.length){const p=D2.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}x.step()}assert(!D2.over,'사건 검사용 가문 유지');const clear=()=>{let g=0;while(D2.pending.length){assert(++g<50);const p=D2.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}};
+  {// 8년 동안 마지막 선택만 고르므로 정변·망명 등으로 가문이 끊길 수 있다 — 끊기면 다른 시드로 다시 만든다(이 묶음은 사건 반응을 보는 검사)
+    const mk=sd=>{const x=engine.createWorld(sd,150);x.dynStart();x.dynChoose(x.S.dyn.pending[0].id,'go');for(let i=0;i<10;i++)x.step();try{x.dynAct('council')}catch(e){}const D=x.S.dyn;for(let i=0;i<YEAR*8&&!D.over;i++){while(D.pending.length){const p=D.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}x.step()}return x};
+    let x;for(const sd of [7,8,9,11,13]){x=mk(sd);if(!x.S.dyn.over)break}
+    const S2=x.S,D2=S2.dyn,me=()=>S2.byId.get(D2.pid);assert(!D2.over,'사건 검사용 가문 유지');const clear=()=>{let g=0;while(D2.pending.length){assert(++g<50);const p=D2.pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}};
     const until=(kind,days)=>{for(let i=0;i<days;i++){x.step();const p=D2.pending.find(p=>p.kind===kind);if(p)return p;clear();if(D2.over)return null}return null};
     clear();D2.cool={};const other=()=>S2.agents.find(a=>a.alive&&x.isAdult(a)&&a.id!==D2.pid&&a.id!==me().partner);
     me().health=30;let p=until('sick',2);assert(p,'병 선택지');let h0=me().health;x.dynChoose(p.id,'bear');assert(me().health>h0,'버티면 조금 회복');evs.sick=p.opts.map(o=>o.k).join('/');clear();
@@ -88,7 +90,7 @@ function main(){
       if(p){x.dynChoose(p.id,'confess');const c=G.cases.find(c=>c.who===D2.pid&&c.t==='tax');assert(c&&c.conf===1&&c.dyn==='conf','자백 표시');for(let i=0;i<12&&G.cases.includes(c);i++){x.step();clear()}assert(!G.cases.includes(c),'자백 뒤 재판 진행');evs.caught=G.caseLog.slice(-6).map(r=>r.r).find(r=>/유죄|무죄|불기소|무혐의|종결/.test(r))||'처리됨'}
       else evs.caught='수사관 없음';clear()}
     {const t=other(),h=S2.houses.find(h=>h.id!==me().home&&h.id!==t.home);if(h){if(t.home){const o=S2.houses.find(x=>x.id===t.home);if(o&&o.occ===t.id)o.occ=null}h.owner=D2.pid;h.occ=t.id;t.home=h.id;h.tenantRent=1e6;h.sale=null;h.deposit=0;t.cash=0;p=until('rentLate',10);assert(p,'월세 체납 선택지');x.dynChoose(p.id,'wait');assert(h.dynGrace>S2.day,'기다려 주기');evs.rentLate=1;clear()}}
-    {const o=other(),h=S2.houses.find(h=>h.owner===o.id)||S2.houses.find(h=>h.id!==me().home);h.owner=o.id;h.deposit=200;h.depTenant=D2.pid;h.depEnd=S2.day+1;o.g.cheat=3;p=until('deposit',2);assert(p,'전세금 미반환 선택지');x.dynChoose(p.id,'give');evs.deposit=1;clear()}
+    {const o=S2.agents.find(a=>a.alive&&x.isAdult(a)&&a.id!==D2.pid&&a.id!==me().partner&&a.home)||other(),h=S2.houses.find(h=>h.owner===o.id&&!h.pub)||S2.houses.find(h=>h.id!==me().home&&!h.pub);h.owner=o.id;h.deposit=200;/* 집주인은 자기 집이 있어야 하고, 보증금 보호 정책이 있으면 관청이 대신 물어 선택지가 안 뜸 */if(S2.gov)S2.gov.policy.depGuar=false;h.depTenant=D2.pid;h.depEnd=S2.day+1;o.g.cheat=3;p=until('deposit',2);assert(p,'전세금 미반환 선택지');x.dynChoose(p.id,'give');evs.deposit=1;clear()}
     {const b=S2.bldgs.find(b=>!b.firm&&b.owner&&b.owner!==D2.pid);if(b&&!me().firm){me().jailUntil=0;b.owner=D2.pid;me().cash+=500;const r=x.dynAct('firm:new');const f=S2.firms.find(f=>f.ceo===D2.pid);if(f){f.cash=0;p=null;for(let i=0;i<16&&!p;i++){x.step();p=D2.pending.find(p=>p.kind==='firmCrisis');if(!p)clear()}assert(p,'사업 위기 선택지');x.dynChoose(p.id,'close');assert(!S2.firms.includes(f)&&b.owner===D2.pid,'정리하면 건물은 내 것');evs.firmCrisis=1;clear()}else evs.firmCrisis=r.text}}
     if(S2.gov&&!(S2.gov.chief===D2.pid||S2.gov.king===D2.pid)&&!['mil','com','msoc'].includes(S2.gov.regime)){S2.gov.coup=true;p=until('regime',1);assert(p,'체제 변화 선택지');x.dynChoose(p.id,'hide');evs.regime=p.opts.map(o=>o.k).join('/');clear()}
     if(!S2.war&&!(S2.gov&&(S2.gov.chief===D2.pid||S2.gov.king===D2.pid))){S2.war={t:'너른들',d:S2.day+1,score:0,cas:0,civ:0};p=until('war',1);if(p){x.dynChoose(p.id,'avoid');evs.war=1}clear()}
@@ -96,8 +98,9 @@ function main(){
   {const kinds=Object.keys(stat.kinds).filter(k=>!['start','notice','death','arrange','kidMatch','proposeIn','proposeOut'].includes(k));assert(kinds.length>=6,'자동 플레이에서 사건 선택지 여러 종류: '+kinds.join(','));evs.auto=kinds}
   // 10. 7-1 남은 행동(가족·상속·인맥·건강·어두운 길·권력)과 3단계(넓은 상속·섭정·단절·새 가문·관전)
   const st3={};
-  {const x=engine.createWorld(7,150);x.dynStart();const D3=()=>x.S.dyn;x.dynChoose(D3().pending[0].id,'go');for(let i=0;i<10;i++)x.step();try{x.dynAct('council')}catch(e){}
-    const clear=()=>{let g=0;while(D3().pending.length){assert(++g<50);const p=D3().pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}};for(let i=0;i<YEAR*12&&!D3().over;i++){clear();x.step()}clear();assert(!D3().over);
+  {// 12년 동안 마지막 선택만 고르면 가문이 끊길 수 있다 — 끊기면 다른 시드로 다시 만든다
+    let x;const D3=()=>x.S.dyn;const clear=()=>{let g=0;while(D3().pending.length){assert(++g<50);const p=D3().pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}};
+    for(const sd of [7,8,9,11,13]){x=engine.createWorld(sd,150);x.dynStart();x.dynChoose(D3().pending[0].id,'go');for(let i=0;i<10;i++)x.step();try{x.dynAct('council')}catch(e){}for(let i=0;i<YEAR*12&&!D3().over;i++){clear();x.step()}clear();if(!D3().over)break}assert(!D3().over);
     const me=x.S.byId.get(D3().pid);me.cash+=5000;const relative=x.S.agents.find(a=>a.alive&&isA(a)&&a.id!==me.id);assert(relative);relative.family=me.family;D3().disinherited=[];const done=[];
     for(const a0 of x.dynActions().filter(a=>a.ok&&/^(fam|kin|net|med|dark|pow):/.test(a.k)&&a.k!=='fam:divorce')){const a=x.dynActions().find(y=>y.k===a0.k);if(!a||!a.ok)continue;const r=x.dynAct(a.k);assert(r.text,a.k);done.push(a.k.split(':').slice(0,2).join(':'))}
     assert(done.includes('kin:heir')&&done.some(k=>k.startsWith('net:'))&&done.some(k=>k.startsWith('dark:')),'새 행동: '+done.join(','));st3.acts=[...new Set(done)];
