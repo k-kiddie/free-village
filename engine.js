@@ -2836,7 +2836,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 3. 오늘 할 일 정하기
     eduTick();
     for(const a of L)if((a.jailUntil||0)>S.day){a.act=REST;a.actT={jail:1};a.fat=Math.max(0,a.fat-20)}else if(S.dyn&&(a.dynTravelUntil>S.day||a.dynBasicUntil>S.day)){a.act=REST;a.actT={market:1}}else if(S.dyn&&a.dynMercFirm){a.act=REST;a.actT={market:1};a.fat=Math.max(0,a.fat-10)}else if(a.abroadUntil>S.day){a.act=REST;a.actT={market:1}}else if(a.foreignT){a.act=TEACH}else if(a.armyUntil>S.day){a.act=REST;const bl=S.mil&&S.mil.bases&&S.mil.bases[0];a.actT=bl!=null?{lot:bl}:{market:1};a.fat=Math.max(0,a.fat-15)}else if(a.study&&isAdult(a)){a.act=REST;const sb=S.bldgs.find(b=>b.school&&b.cond>.2)||S.bldgs.find(b=>b.fx.includes('gather'));a.actT=sb?{lot:sb.lot}:{market:1};a.fat=Math.max(0,a.fat-15)}
-    const actors=L.filter(a=>isAdult(a)&&!((a.jailUntil||0)>S.day)&&!a.study&&!(a.armyUntil>S.day)&&!a.foreignT&&!a.civ&&!(S.dyn&&(a.dynMercFirm||a.dynTravelUntil>S.day||a.dynBasicUntil>S.day))&&!(a.abroadUntil>S.day));if(S.eduShare2)actors.sort((x,y)=>(y.edu||0)-(x.edu||0));
+    if(S.dyn)dynDayPass(L);
+    const actors=L.filter(a=>isAdult(a)&&!((a.jailUntil||0)>S.day)&&!a.study&&!(a.armyUntil>S.day)&&!a.foreignT&&!a.civ&&!(S.dyn&&a.dynDayD===S.day)&&!(S.dyn&&(a.dynMercFirm||a.dynTravelUntil>S.day||a.dynBasicUntil>S.day))&&!(a.abroadUntil>S.day));if(S.eduShare2)actors.sort((x,y)=>(y.edu||0)-(x.edu||0));
     const myPlots=new Map();let anyPlotFree=false;for(const pl of S.plots){if(pl.owner)myPlots.set(pl.owner,(myPlots.get(pl.owner)||0)+1);if(pl.owner&&pl.used<S._pc)anyPlotFree=true}
     const siteK=new Map(S.sites.map(x=>[x.id,x.kind]));const siteBig=new Set(S.sites.filter(x=>x.big||x.kind==='apt'||x.kind==='dev'||x.kind==='clear'||x.pub||x.firm).map(x=>x.id));const banRules=S.gov&&S.gov.rules&&S.gov.rules.length;const freeLot=hasFreeLot(),freeShop=S.shopUsed.includes(false);
     const kids=L.filter(a=>a.alive&&a.age>=6*YEAR&&a.age<ADULT),kidsN=kids.length;S.sig.kids=kidsN;for(const c of kids)c.taught=0;
@@ -2846,7 +2847,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     for(const a of actors){
       const wkF=faithHas(a,'work');const g=a.g,hu=a.hunger/100,ti=a.fat/100,po=1/(1+Math.max(0,a.cash)/20);
       const desperate=a.hunger>45&&a.inv.meal<1&&a.inv.grain<2&&a.cash<S.price.grain*3;
-      let best=REST,bv=-1e9;
+      let best=REST,bv=-1e9;const dynWant=S.dyn&&a.id===S.dyn.pid?dynPickJob(a,{myPlots,anyPlotFree,banRules,siteK,freeLot,freeShop,kidsN,monarch}):null;
       if(a.fat>=100){best=REST}else{
         for(let k=0;k<NA;k++){
           if(k===FARM&&!myPlots.get(a.id)&&!anyPlotFree)continue;
@@ -2866,10 +2867,12 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
           if(wkF)v+=PROD.includes(k)?.6:k===REST?-.5:0;
           if(k===BUILD&&a.site&&siteK.get(a.site)&&(siteBig.has(a.site)))v+=4;
           v+=3*(g.b[k]+g.h[k]*hu+g.t[k]*ti+g.p[k]*po)+gauss()*g.explore*2;
-          if(S.dyn&&a.id===S.dyn.pid&&S.dyn.budget.job!=null&&S.dyn.budget.job>=0){if(k===S.dyn.budget.job)v+=6+Math.abs(v)}
+          if(dynWant!=null&&k===dynWant)v+=6+Math.abs(v);
+          if(S.dyn&&k===a.lastJob&&a.id!==S.dyn.pid)v+=dynStickBonus(a);
           if(v>bv){bv=v;best=k}}}
       if((a.pubT||a.faithT)&&a.fat<85)best=TEACH;
       else if(a.ct&&!dynEmploymentBlocked(a,monarch)&&a.fat<85&&!a.sw){const ce=S.byId.get(a.ct.e);if(ce&&ce.alive&&a.emp===ce.id)best=WORK}
+      if(S.dyn){if(best!==REST){a.actRun=a.lastJob===best?(a.actRun||0)+1:0;a.lastJob=best}if(a.id===S.dyn.pid)best=dynNoteDay(a,best,dynWant,desperate)}
       a.act=best;a.actT=null;if(best===FARM)nFarm++}
     // 4. 실행
     const crowd=nFarm>0?Math.min(1,PLOTS.length/nFarm):1;
@@ -2969,7 +2972,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         if(!o&&a.ct&&a.emp===a.ct.e){const ce=S.byId.get(a.ct.e);if(ce&&ce.alive&&(dynContractFirm(a,ce)?.cash??ce.cash)>a.ct.w){o=offerQ.find(x=>x.e===ce);if(!o&&ce.lastSpec!=null){o={e:ce,spec:ce.lastSpec,wage:a.ct.w,slots:0,init:0};offerQ.push(o)}if(o)o.slots++}}
         if(!o){o=offerQ.find(x=>x.slots>0&&x.e.g.kin>.55&&(x.e.kids.includes(a.id)||a.kids.includes(x.e.id)||x.e.partner===a.id||a.parents.some(p=>x.e.parents.includes(p))));if(o&&o.e.id!==a.emp)mile('nepotism',`첫 친인척 채용. ${josa(nm(o.e),'이','가')} 남보다 먼저 친척 ${josa(nm(a),'을','를')} 일꾼으로 썼다`,[o.e.id,a.id])}
         if(o&&((o.research&&(a.edu||0)<3)||(o.minEdu&&Math.max(a.edu||0,a.cert?2:0)<o.minEdu)))o=null;if(!o&&Math.max(a.edu||0,a.cert?2:0)>=2)o=offerQ.find(x=>x.slots>0&&x.e!==a&&x.spec!==FARM&&x.spec!==CHOP&&x.spec!==MINE&&(!x.research||(a.edu||0)>=3));if(!o||(a.caught>=2&&o.e.g.picky>.5))o=offerQ.find(x=>x.slots>0&&x.e!==a&&!(a.caught>=2&&x.e.g.picky>.5)&&(!x.research||(a.edu||0)>=3)&&(!x.minEdu||Math.max(a.edu||0,a.cert?2:0)>=x.minEdu));
-        S.yr.tries++;if(!o){a.act=REST;a.fat-=20;S.yr.unemp++;S.unempToday=(S.unempToday||0)+1;a.jobless=(a.jobless||0)+1}else{a.jobless=0;
+        S.yr.tries++;if(!o){if(S.dyn&&a.id===S.dyn.pid&&S.dyn.today)Object.assign(S.dyn.today,{did:REST,why:'일자리를 못 구해 쉼'});a.act=REST;a.fat-=20;S.yr.unemp++;S.unempToday=(S.unempToday||0)+1;a.jobless=(a.jobless||0)+1}else{a.jobless=0;
           o.slots--;const e=o.e;
           if(a.emp!==e.id){a.emp=e.id;S.tot.hires++;if(S.tot.hires===1)mile('hire',`첫 고용. ${josa(nm(e),'이','가')} ${nm(a)}에게 하루 ${won(o.wage)} 일당을 주고 일을 시켰다`,[e.id,a.id])}
           e.workers++;
@@ -4362,8 +4365,20 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   }
   function dynChron(text,ids){const D=S.dyn;D.chron.push({d:S.day,gen:D.gen,text,ids:ids||[]});if(D.chron.length>400)D.chron.splice(0,D.chron.length-400)}
   function dynCool(kind,days){const D=S.dyn;if((D.cool[kind]||0)>S.day)return false;D.cool[kind]=S.day+days;return true}
+  // 받은 일함: 급한 일만 시간을 멈추고, 나머지는 쌓아 두었다가 원할 때 처리한다(기한이 지나면 무시한 결과)
+  const DYN_URGENT=new Set(['start','death','birth','caught','war','invaded','conquest','regime','draft','fire','epidemic','famine','sick']);
+  const DYN_IGNORE_RE=/거절|무시|외면|모른\s?척|넘긴다|넘어간다|그냥 둔다|그냥 지나|관여하지|지켜본다|사양|미룬다|내버려|흘려|피한다|가만히/;
+  function dynInboxTick(me){const D=S.dyn;for(const p of D.pending)dynStoryRecheck(p);for(const p of D.pending.slice()){if(!p.inbox||p.due==null||p.due>S.day)continue;
+      if(p.kind==='notice'){D.pending.splice(D.pending.indexOf(p),1);continue}
+      const o=p.opts.find(o=>DYN_IGNORE_RE.test(o.label)&&o.available!==false);const title=p.ctx?.title||p.text.slice(0,24);let text='';
+      if(p.kind==='story')dynStoryLike(p,-.15);
+      if(o){try{text=dynChoose0(p.id,o.k).text}catch(e){text=''}}
+      const i=D.pending.indexOf(p);if(i>=0)D.pending.splice(i,1);
+      D.res={d:S.day,kind:p.kind,text:`📥 기한이 지나 넘어갔다 · ${title}${text?' → '+text:' · 흐지부지됐다'}`,changes:D.res?.d===S.day?D.res.changes:[]};dynChron(`${title}: 답하지 않아 넘어갔다`,[me.id])}}
+  // 반응 학습: 매번 첫 선택만 누르거나 기한을 넘기는 종류는 덜, 고민해 고르는 종류는 더 자주
+  function dynStoryLike(p,d){const D=S.dyn,e=SE[p.ctx?.sid];if(!e)return;D.story.like=D.story.like||{};D.story.like[e.cat]=cl((D.story.like[e.cat]||0)+d,-.7,1)}
   function dynPush(kind,text,opts,ctx){const D=S.dyn;if(D.pending.some(p=>p.kind===kind&&JSON.stringify(p.ctx)===JSON.stringify(ctx||{})))return null;
-    const p={id:D.nextP++,kind,d:S.day,text,opts:opts.map(o=>({...o,fundingLabel:o.fundingLabel||(kind==='intel'&&o.k==='bribe'?'국가 치안 예산':/내 재산|개인|사재/.test(o.label)?'개인 자금':undefined)})),ctx:ctx||{}};D.pending.push(p);return p}
+    const inbox=!DYN_URGENT.has(kind),p={id:D.nextP++,kind,d:S.day,inbox,due:inbox?S.day+(kind==='notice'?7:12):null,text,opts:opts.map(o=>({...o,fundingLabel:o.fundingLabel||(kind==='intel'&&o.k==='bribe'?'국가 치안 예산':/내 재산|개인|사재/.test(o.label)?'개인 자금':undefined)})),ctx:ctx||{}};D.pending.push(p);return p}
   function dynStart(){
     let c=S.agents.filter(a=>a.alive&&isAdult(a)).sort((x,y)=>dynScore(y)-dynScore(x)||x.id-y.id)[0];if(!c)throw Error('성인 주민이 없습니다');
     S.dyn={v:1,pid:c.id,house:c.sur+'씨 가문',houseAuto:true,founder:c.id,heir:null,gen:1,start:S.day,prestige:0,budget:{life:2,edu:1,save:.1,give:0,debt:0},
@@ -4487,6 +4502,62 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         [{k:'yes',label:'허락한다',hint:'얻는 것: '+dynGain(o).text},{k:'no',label:'반대한다',hint:`낭만적인 자녀는 반대를 무릅쓰고 혼인할 수 있음`}],{kid:kid.id,other:o.id,p})}}
   // ---- 지출 설정(7-3). 5일마다 내 캐릭터에게만 적용. 쓴 돈은 마을 사람에게 간다(돈이 사라지지 않음) ----
   // 일 고르기: 엔진이 매일 일을 고를 때 이 일에 가중치(+6). 땅·재료·일자리 조건은 그대로.
+  // ===== 하루 일: 공무·사업 경영·우선순위·끈기 (가문 모드 전용, 원래 마을은 이 함수들을 부르지 않는다) =====
+  const MANAGE=100,DYN_JOB_N={[MANAGE]:'사업 경영'};
+  // 국가의 녹을 먹는 전업 공직(의원은 겸직이라 제외)
+  function dynFullOffice(a){const G=S.gov;if(!G||!a)return '';if(G.king===a.id)return '왕';if(G.chief===a.id)return chiefTitle();if(G.regent===a.id)return '섭정';const m=dynMinisterPost(a);if(m)return m.title||'장관';
+    const c=duRole(a);if(c)return {judge:'재판관',pros:'검사',cop:'경찰'}[c];if(S.mil?.gen===a.id)return '장군';const lo=dynLocalOffice(a);if(lo)return lo.kind==='gu'?'구청장':'동장';return ''}
+  function dynCanManage(me){const D=S.dyn;return !!(me&&(coMine(me).some(f=>!f.merc&&!f.gone)||(D.shark&&D.shark.book&&D.shark.book.length)))}
+  function dynManageRatio(days){const D=S.dyn;return (D.manage||[]).filter(d=>S.day-d<days).length/days}
+  function dynJobName(k){return DYN_JOB_N[k]||(DYN_JOBS.find(j=>j[0]===k)||[])[1]||'쉬기'}
+  // 엔진의 하루 일 조건과 같은 기준으로 못 하는 이유를 돌려준다(빈 문자열이면 가능)
+  function dynJobWhy(a,k,c){
+    if(k===MANAGE)return dynCanManage(a)?'':'경영할 사업(내 회사·고리대)이 없음';
+    if(k===FARM&&!c.myPlots.get(a.id)&&!c.anyPlotFree)return '경작할 땅이 없음';
+    if(k===COOK&&a.inv.grain<2)return '곡식이 모자람';
+    if(k===CRAFT&&a.inv.wood<3)return '나무가 모자람';
+    if(k===CHOP&&c.banRules&&banned(a,'chop'))return '벌목 금지 규칙';
+    if(k===BUILD&&!(a.site&&(c.siteK.get(a.site)==='clear'||c.siteK.get(a.site)==='dev'))&&(a.inv.wood+(a.inv.plank||0)/.7<1||(a.inv.stone||0)+(a.inv.brick||0)*2.5<1.5||(!a.site&&!c.freeLot&&!c.freeShop)))return '집 지을 재료나 터가 없음';
+    if(k===WORK&&dynEmploymentBlocked(a,c.monarch))return '공직 중에는 고용될 수 없음';
+    if(k===WORK&&!S.offers.length)return '일자리 공고가 없음';
+    if(k===TRADE&&a.cash<20*PL()/(1+(a.edu||0)))return '장사 밑천이 모자람';
+    if(k===TEACH&&((!c.kidsN&&!(S._studs||[]).length)||Math.max(a.skill[FARM],a.skill[COOK],a.skill[CHOP],a.skill[BUILD],a.skill[CRAFT],a.skill[MINE])<.4-.15*(a.edu||0)))return '가르칠 학생이나 기술이 없음';
+    return ''}
+  function dynPrefs(){const B=S.dyn.budget;return [B.job,B.job2,B.job3].filter(j=>j!=null&&j>=0)}
+  function dynPickJob(a,c){const D=S.dyn,why=[];D._why=why;for(const k of dynPrefs()){const w=dynJobWhy(a,k,c);if(!w)return k;why.push([k,w])}return null}
+  function dynNoteDay(a,best,want,desperate){const D=S.dyn,prefs=dynPrefs(),slack=D.slackD===S.day,why=D._why||[];let r='';
+    if(want===MANAGE&&a.fat<100&&!(a.pubT||a.faithT)&&!(a.ct&&best===WORK)){best=REST;D.manage=(D.manage||[]).filter(d=>S.day-d<60).concat(S.day)}
+    else if(want!=null&&want!==MANAGE&&best!==want&&a.fat<100&&!desperate&&!((a.pubT||a.faithT)&&best===TEACH)&&!(a.ct&&best===WORK))best=want;// 정한 일은 지치거나 굶주리거나 계약·맡은 일이 있을 때만 밀린다
+    const blocked=why.map(([k,w])=>`${dynJobName(k)}: ${w}`).join(' · ');
+    if(!prefs.length)r='성향대로 자동 선택';
+    else if(want==null)r=blocked||'원하는 일을 할 수 없음';
+    else if((a.pubT||a.faithT)&&best===TEACH&&want!==TEACH)r='맡은 가르침 일을 먼저 함';
+    else if(a.ct&&best===WORK&&want!==WORK)r='고용 계약 근무 중';
+    else if(want===MANAGE&&best===REST)r=blocked?`앞 순위 불가 → ${blocked}`:'';
+    else if(best===want)r=blocked?`앞 순위 불가 → ${blocked}`:'';
+    else if(a.fat>=100)r='피로가 쌓여 쉼';
+    else if(desperate)r='굶주려서 먹을 것부터 구함';
+    else r='다른 일이 더 급해 보여서';
+    D.today={d:S.day,kind:slack?'slack':want===MANAGE&&best===REST?'manage':'job',want,did:want===MANAGE&&best===REST?MANAGE:best,why:r,office:slack?dynFullOffice(a):''};return best}
+  // 공무: 전업 공직자는 하루 일 대신 공무를 본다. 주민 공직자는 성향대로 가끔 땡땡이친다
+  function dynDayPass(L){const D=S.dyn,me=dynMe();if(!S.gov){if(me)D.slackD=-1;return}
+    for(const a of L){if(!a.alive||!isAdult(a)||(a.jailUntil||0)>S.day||a.study||a.armyUntil>S.day||a.foreignT||a.civ||a.dynMercFirm||a.dynTravelUntil>S.day||a.dynBasicUntil>S.day||a.abroadUntil>S.day)continue;
+      const office=dynFullOffice(a);if(!office)continue;
+      if(a===me){const duty=D.budget.duty??1;if(duty===2){D.slackD=S.day;continue}D.today={d:S.day,kind:'duty',office,did:null,want:null,why:duty===0?'공무에 전념':''}}
+      else if(wr()<cl(.05+(a.g.cheat??.3)*.35+(1-(a.g.civic??.5))*.2,0,.6))continue;
+      a.dynDayD=S.day;a.act=REST;a.actT={market:1};a.fat=Math.max(0,a.fat-6)}}
+  function dynDutyTick(me){const D=S.dyn,t=D.today,G=S.gov;if(!t||t.d!==S.day||!me)return;const ruler=G&&(G.chief===me.id||G.king===me.id||G.regent===me.id);
+    if(t.kind==='duty'){D.slack=Math.max(0,(D.slack||0)-.1);if((D.budget.duty??1)===0){if(ruler)G.approval=Math.min(.95,(G.approval??.5)+.0015);me.rep=cl((me.rep??1)+.0005,0,1);me.dynStress=Math.min(100,(me.dynStress||0)+.4)}return}
+    if(t.kind!=='slack')return;D.slack=(D.slack||0)+1;if(ruler)G.approval=Math.max(0,(G.approval??.5)-.003);me.rep=cl((me.rep??1)-.0005,0,1);
+    if(D.slack>=8&&wr()<.04){D.slack=0;let txt;const mm=G&&Object.values(G.min||{}).find(m=>m.mn===me.id&&!m.into);
+      if(mm){mm.mn=null;txt=`${josa(nm(me),'이','가')} 공무를 내팽개치다 ${mm.name||'부처'} 장관 자리에서 잘렸다`}
+      else if(me.dynCop){me.dynCop=null;txt=`${josa(nm(me),'이','가')} 근무를 빼먹다 경찰복을 벗었다`}
+      else{if(ruler)G.approval=Math.max(0,(G.approval??.5)-.05);me.rep=cl((me.rep??1)-.05,0,1);txt=`${nm(me)} ${t.office||'공직자'}의 공무 태만이 소문났다`}
+      log('pol',txt,[me.id]);dynChron(txt,[me.id]);dynPush('notice',txt,[{k:'ok',label:'확인'}],{d:S.day})}}
+  // 끈기: 하던 일을 이어 가면 단골·재고·손에 익음이 남는다. 얼마나 버티는지는 사람마다 다르고 자녀에게 이어진다
+  function dynStickBonus(a){if(a.lastJob==null||a.lastJob===REST)return 0;let st=a.g.stick;
+    if(st==null){const ps=(a.parents||[]).map(id=>S.byId.get(id)).filter(p=>p&&p.g&&p.g.stick!=null);st=ps.length?cl(ps[wr()<.5?0:ps.length-1].g.stick+(wr()-.5)*.25,0,1):wr();a.g.stick=st}
+    return st*3*(1+Math.min(a.actRun||0,20)/20)}
   const DYN_JOBS=[[FARM,'농사','내 땅이나 빈 땅을 경작'],[COOK,'요리','곡식이 있어야 함'],[CHOP,'벌목·채집','숲에서 자원을 모아 장터에 팖'],[BUILD,'집짓기','나무·돌·집터가 있어야 함'],[WORK,'품팔이·농가 일손·운반','고용주가 실제 일자리를 내야 함'],[CRAFT,'장인(도구·물건 만들기)','나무가 있어야 함'],[MINE,'광산','광산과 채굴 조건이 필요'],[TEACH,'가르치기·견습','학생이나 가르칠 기술이 필요'],[TRADE,'장사','밑천이 있어야 함'],[STEAL,'도둑질','불법 · 적발되면 벌금·감옥·평판 하락']];
   const DYN_GIG_TYPES=[['day','품팔이',()=>true],['farm','농가 일손',o=>o.spec===FARM],['gather','채집·광산 보조',o=>o.spec===CHOP||o.spec===MINE],['haul','운반·공사 보조',o=>o.spec===BUILD||o.spec===TRADE],['apprentice','견습',o=>!!o.appr&&PROD.includes(o.spec)]];
   function dynGigOffers(me){if(!me||!isAdult(me)||dynEmploymentBlocked(me)||me.ct||S.dyn.gig)return[];const offers=S._offerQ||S.offers||[],out=[];
@@ -4556,7 +4627,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const rivals=S.groups.filter(x=>x.mode==='gang'&&x.id!==g.id).length;ops.risk=Math.min(.03,(ops.risk||0)+rivals*.00001);if(ops.loyalty<.18&&members.length>1&&wr()<.002){const deserter=members.filter(x=>x.id!==me.id).sort((a,b)=>(ops.orders?.[a.id]?1:0)-(ops.orders?.[b.id]?1:0))[0];if(deserter){delete ops.orders?.[deserter.id];leaveGroup(deserter);ops.loyalty=cl(ops.loyalty-.04,0,1);ops.reports.unshift({d:S.day,text:`${nm(deserter)}이 보수와 충성 문제로 조직을 떠났다`})}}ops.active=active;ops.reports=ops.reports.slice(0,20)}
   const DYN_GIVE=['없음','교회','촌장','가난한 이웃'],DYN_DEBT=['최소','빨리'];
   function dynSetBudget(b){const D=S.dyn;if(!D)throw Error('가문 모드가 아닙니다');const B=D.budget,N={...B},n=(v,lo,hi)=>{v=Number(v);if(!Number.isFinite(v))throw Error('지출 설정 값이 올바르지 않습니다');return Math.max(lo,Math.min(hi,v))};
-    if(b.job!=null){const j=Math.round(Number(b.job));if(!(j===-1||DYN_JOBS.some(x=>x[0]===j)))throw Error('없는 일입니다');if(j===WORK&&dynEmploymentBlocked(dynMe()))throw Error('통치 중에는 다른 사람에게 고용될 수 없습니다');N.job=j}
+    for(const key of ['job','job2','job3'])if(b[key]!=null){const j=Math.round(Number(b[key]));if(!(j===-1||j===MANAGE||DYN_JOBS.some(x=>x[0]===j)))throw Error('없는 일입니다');if(j===WORK&&dynEmploymentBlocked(dynMe()))throw Error('통치 중에는 다른 사람에게 고용될 수 없습니다');N[key]=j}
+    if(b.duty!=null){const d=Math.round(Number(b.duty));if(![0,1,2].includes(d))throw Error('공무 태도 값이 올바르지 않습니다');N.duty=d}
     if(b.life!=null)N.life=Math.round(n(b.life,0,4));if(b.edu!=null)N.edu=Math.round(n(b.edu,0,3));if(b.save!=null)N.save=Math.round(n(b.save,0,.5)*20)/20;if(b.give!=null)N.give=Math.round(n(b.give,0,3));if(b.debt!=null)N.debt=Math.round(n(b.debt,0,1));Object.assign(B,N);return {...B}}
   function dynPayee(me){const own=[...S.shops.map(s=>s.owner),...S.bldgs.filter(b=>!b.firm).map(b=>b.owner)].map(id=>S.byId.get(id)).filter(x=>x&&x.alive&&x!==me);if(own.length)return pick(own);const ad=adultsC().filter(x=>x!==me);return ad.length?pick(ad):null}
   function dynPay(me,to,amt,why){amt=Math.min(amt,Math.max(0,me.cash));if(!(amt>0)||!to)return 0;me.cash-=amt;SP(me,why,amt);to.cash+=amt;to.src.biz=(to.src.biz||0)+amt;return amt}
@@ -4795,8 +4867,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function coTick(me){if(S.day%30!==7)return;const wA=dynWA(),G=S.gov;
     for(const f of S.firms.slice()){if(!f.co||f.merc||!firmById(f.id))continue;const o=f.co,staff=coStaff(f),c=S.byId.get(f.ceo);if(!c||!c.alive)continue;
       // 사기: 임금·복지·장학 재단·하청 후려치기로 정해지는 목표 쪽으로 30%씩
-      const target=cl(.5+(o.wage-1)*1.5+o.wel*.12+o.fund*.05-(o.dark.sub&&S.day-o.dark.sub<YEAR?.1:0)-(o.strike>S.day?.05:0),0,1);o.morale=cl(o.morale+(target-o.morale)*.3,0,1);
-      const base=coBase(f),mult=coMult(f)*(.8+o.morale*.4)-(o.strike>S.day?.5:0)-(o.morale<.3?.1:0);
+      const mgr=me&&f.ceo===me.id?dynManageRatio(30):null,mgrM=mgr==null?0:mgr>0?mgr*.15:staff.length>=2?-.05:0;
+      const target=cl(.5+(o.wage-1)*1.5+o.wel*.12+o.fund*.05-(o.dark.sub&&S.day-o.dark.sub<YEAR?.1:0)-(o.strike>S.day?.05:0)+mgrM,0,1);o.morale=cl(o.morale+(target-o.morale)*.3,0,1);
+      const base=coBase(f),mult=coMult(f)*(.8+o.morale*.4)*(mgr?1+mgr*.3:1)-(o.strike>S.day?.5:0)-(o.morale<.3?.1:0);
       if(mult>0)o.lastGain=coDrain(f,base*mult);else{o.lastGain=-coSpend(f,base*-mult)}
       // 복지·지점 운영비
       if(o.wel&&staff.length){const per=Math.min(wA*2,(f.cash||0)*.2/staff.length);for(const x of staff){f.cash-=per;x.cash+=per}if((f.cash||0)<wA*5){o.wel=0;coNote(f,'회사 현금이 바닥나 복지를 멈췄다')}}
@@ -4914,10 +4987,72 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       o.faithSpec={docs:[...Object.keys(DOCN).map(k=>({k,n:DOCN[k],d:DOCD[k]})),...Object.keys(DOCN_X).map(k=>({k,n:DOCN_X[k],d:DOCD[k],x:1}))],min:2,max:Object.keys(DOCN).length+Object.keys(DOCN_X).length}}
     if(!mine)return;
     const est=dynTheoEst(me,fa),pc=wa*3;
-    add('extra:preach','종교','전도 활동',`${fa.name} · 신도 ${fa.members||est.fol}명(어른의 ${Math.round(est.share*100)}%) · 비용 ${won(pc)} · 교리가 맞는 주민일수록 잘 따라옴${G&&G.stateFaith&&G.stateFaith!==fa.id?' · 국교가 따로 있어 박해받을 수 있음':''}`,adult||(me.cash<pc?'비용이 모자람':'')||dynWait('preach'));
+    add('extra:preach','종교','전도 · 길거리 설교',`싸고 넓게, 독실함은 보통 · ${fa.name} · 신도 ${fa.members||est.fol}명(어른의 ${Math.round(est.share*100)}%) · 비용 ${won(pc)} · 교리가 맞는 주민일수록 잘 따라옴${G&&G.stateFaith&&G.stateFaith!==fa.id?' · 국교가 따로 있어 박해받을 수 있음':''}`,adult||(me.cash<pc?'비용이 모자람':'')||dynWait('preach'));
+    dynPreachActions(me,add,fa);
     if(G&&regime()==='theo'&&G.stateFaith===fa.id)return;
     const tc=wa*15,why=adult||(ad.length<20?'어른이 20명 이상이어야 함':'')||(est.ok?'':`신도가 어른의 22% 이상이어야 함(지금 ${Math.round(est.share*100)}%)`)||(me.cash+(fa.tre||0)<tc?'거사 자금이 모자람(교단 금고 포함)':'')||dynWait('theo');
     add('extra:theo',G?'정부 세우기':'정부 세우기',G?'종교 혁명(신정)':'신정 국가 세우기',`${G?'정권을 무너뜨리고':'교단의 힘으로 정부를 세워'} 내가 교주로서 다스림 · 성공 가능성 약 ${Math.round(est.p*100)}%${est.crisis?' · 지금은 위기라 유리':''} · 자금 ${won(tc)} · 실패하면 신도 일부가 떠나고 ${G?'갇힐 수 있음':'평판이 떨어짐'}`,why)}
+  // ===== 전도 방법 다양화와 독실함 (가문 모드 전용) =====
+  // 독실함(piety 0~1): 어떻게 데려왔느냐에 따라 다르고, 낮으면 떠나기 쉽다. 밥·강압으로 온 신도는 금방, 가족·학교로 온 신도는 오래 남는다
+  const DYN_PREACH=new Set(['visit','relief','heal','kin','debate','court','school','force']);
+  const DYN_VIA_N={preach:'설교',visit:'방문',relief:'구제',heal:'치유',kin:'가족',debate:'논쟁',court:'포섭',school:'학교',force:'강압'};
+  function dynConvert(x,fa,piety,via){x.faith=fa.id;x.piety=cl(piety+((x.g.faith??.4)-.4)*.3,0,1);x.faithVia=via}
+  function dynPiety(x){return x.piety??.6}
+  function dynFaithMembers(fa){return adultsC().filter(a=>a.faith===fa.id&&a.id!==fa.leader)}
+  function dynPreachTargets(me,fa,n,filt){const pool=adultsC().filter(x=>x!==me&&x.faith!==fa.id&&!(x.faith&&faithOf(x)?.leader===x.id)&&(!filt||filt(x)));const out=[];while(out.length<n&&pool.length)out.push(pool.splice(Math.floor(wr()*pool.length),1)[0]);return out}
+  function dynOfficials(me,fa){const G=S.gov;if(!G)return [];const ids=new Set([G.chief,G.king,...(G.council||[]),...Object.values(G.min||{}).map(m=>m.mn)].filter(Boolean));return [...ids].map(id=>S.byId.get(id)).filter(x=>x&&x.alive&&x!==me&&x.faith!==fa.id).slice(0,6)}
+  function dynPreachActions(me,add,fa){const D=S.dyn,G=S.gov,wa=dynWA(),hr=S.houseRef||100,W=k=>dynWait('pr'+k),f=dynFamily(me);
+    add('extra:visit','종교','전도 · 가가호호 방문','돈 없이 이웃을 찾아감 · 따라오는 확률이 높고 독실함도 높지만 인원이 적음 · 귀찮아하는 사람은 평판이 조금 깎임',W('visit'));
+    const poor=adultsC().filter(x=>x!==me&&x.faith!==fa.id&&((x.hunger||0)>40||(x.cash||0)<wa*3)).length;
+    add('extra:relief','종교','전도 · 구제와 무료 급식',`굶주리고 가난한 주민 최대 8명에게 1인당 ${won(wa)} · 잘 따라오지만 독실함이 낮아 형편이 나아지면 떠나기 쉬움`,!poor?'도움이 필요한 주민이 없음':me.cash<wa*8?'구제 비용이 모자람':W('relief'));
+    const sick=adultsC().filter(x=>x!==me&&(x.health||100)<60).length;
+    add('extra:heal','종교','전도 · 치유 집회',`아픈 주민 ${sick}명 · 장소 비용 ${won(wa*4)} · 성공하면 한꺼번에 개종하고 명성↑, 실패하면 "사기꾼" 소문과 평판↓`,!sick?'아픈 주민이 없음':me.cash<wa*4?'장소 비용이 모자람':W('heal'));
+    const kin=[...f.parents,...f.siblings,...f.kids,...f.grand,f.partner].filter(x=>x&&x.alive&&isAdult(x)&&x.faith!==fa.id).length;
+    add('extra:kin','종교','전도 · 가족 전도',`우리 가족 ${kin}명 · 거의 확실하고 아주 독실하지만 범위가 좁음`,!kin?'믿지 않는 어른 가족이 없음':W('kin'));
+    const rivals=S.faiths.filter(x=>x.id!==fa.id&&x.leader&&S.byId.get(x.leader)?.alive);
+    {const a=add('extra:debate','종교','전도 · 공개 논쟁','다른 교단 지도자와 광장에서 맞붙음 · 이기면 그쪽의 흔들리는 신도가 넘어오고, 지면 내 흔들리는 신도가 넘어감',rivals.length?W('debate'):'맞붙을 다른 교단이 없음');a.opts=rivals.map(x=>['f'+x.id,`${x.name} (${nm(S.byId.get(x.leader))}) · 신도 ${x.members||0}명`])}
+    const off=dynOfficials(me,fa);
+    {const a=add('extra:court','종교','전도 · 권력자 포섭',`통치자·의원·장관에게 선물 ${won(wa*15)}을 들고 찾아감 · 어렵지만 통치자가 개종하면 국교로 삼을 수 있음`,!G?'정부가 없음':!off.length?'포섭할 권력자가 없음':me.cash<wa*15?'선물 비용이 모자람':W('court'));a.opts=off.map(x=>['p'+x.id,nm(x)])}
+    add('extra:school','종교',fa.school?'전도 · 교단 학교 운영 중':'전도 · 학교·고아원 세우기',fa.school?`열흘마다 교단 금고에서 운영비 ${won(wa*2)} · 아이·청소년이 아주 독실한 신도로 자람 · 금고가 비면 문을 닫음`:`세우는 비용 ${won(hr)} · 느리지만 다음 세대 신도가 크게 늘고 오래 남음`,fa.school?'이미 운영 중':me.cash<hr?'세우는 비용이 모자람':W('school'));
+    const ruler=G&&(G.chief===me.id||G.king===me.id),gang=me.grp&&grpById(me.grp),gangOk=gang&&gang.mode==='gang'&&gang.leader===me.id&&gang.members.length>=5;
+    add('extra:force','종교','전도 · 강압 개종',`${ruler?'권력으로':'패거리를 풀어'} 주민 최대 12명을 강제로 개종 · 빠르지만 독실함이 매우 낮아 몰래 떠나고 원한이 쌓임${G&&!dynHard()?' · 강압 체제가 아니면 사건이 됨':''}`,!(ruler||gangOk)?'통치자이거나 조직원 5명 이상 패거리를 이끌어야 함':W('force'))}
+  function dynPreachAct(me,op,arg){const D=S.dyn,G=S.gov,wa=dynWA(),hr=S.houseRef||100,fa=faithOf(me);if(!fa||fa.leader!==me.id)throw Error('교단을 이끄는 사람만 할 수 있습니다');
+    const cool=d=>{D.cool['actpr'+op]=S.day+d},fit=x=>dynDocFit(x,fa.doc),done=(n,t)=>{fa.members=(fa.members||0)+n;return t};
+    if(op==='visit'){cool(10);let n=0,annoy=0;for(const x of dynPreachTargets(me,fa,6)){const p=(x.g.faith??.4)*.8*fit(x)*(x.faith?.35:1)*(fa.temple?1.2:1);if(wr()<p){dynConvert(x,fa,.6,'visit');n++}else if(wr()<.25){annoy++;dynRep(me,-.005)}}
+      return done(n,n?`집집마다 찾아가 ${n}명이 ${josa(fa.name,'을','를')} 믿게 됐다${annoy?` · ${annoy}명은 문전박대했다`:''}`:`문을 두드렸지만 따라오는 사람이 없었다${annoy?` · ${annoy}명은 귀찮아했다`:''}`)}
+    if(op==='relief'){const ts=adultsC().filter(x=>x!==me&&x.faith!==fa.id&&((x.hunger||0)>40||(x.cash||0)<wa*3)).sort((a,b)=>(b.hunger||0)-(a.hunger||0)).slice(0,8);if(!ts.length)throw Error('도움이 필요한 주민이 없습니다');if(me.cash<wa*ts.length)throw Error('구제 비용이 모자랍니다');cool(15);let n=0;
+      for(const x of ts){me.cash-=wa;x.cash+=wa;x.hunger=Math.max(0,(x.hunger||0)-25);if(wr()<.5+(x.hunger||0)/200+(fit(x)-1)*.3){dynConvert(x,fa,.3,'relief');n++}}dynRep(me,.01);
+      return done(n,`굶주린 ${ts.length}명에게 밥과 ${won(wa)}씩을 나눴다 · ${n}명이 ${josa(fa.name,'을','를')} 믿게 됐다(형편이 나아지면 떠날 수 있음)`)}
+    if(op==='heal'){const sick=adultsC().filter(x=>x!==me&&(x.health||100)<60).slice(0,6);if(!sick.length)throw Error('아픈 주민이 없습니다');const to=dynPayee(me);if(me.cash<wa*4)throw Error('장소 비용이 모자랍니다');dynPay(me,to,wa*4,'tithe');cool(30);
+      const ok=wr()<.35+(me.g.faith??.5)*.2+(fa.temple?.1:0)+(fa.doc.includes('miracle')?.1:0);
+      if(ok){let n=0;for(const x of sick){x.health=Math.min(100,x.health+15);if(x.faith!==fa.id&&wr()<.75){dynConvert(x,fa,.7,'heal');n++}}for(const x of dynPreachTargets(me,fa,4))if(wr()<.3){dynConvert(x,fa,.5,'heal');n++}dynRep(me,.03);dynFRepAdd(fa.id,.05);dynChron(`${fa.name} 치유 집회에서 기적이 일어났다는 소문이 돌다`,[me.id]);
+        return done(n,`치유 집회에서 아픈 이들이 일어섰다! ${n}명이 ${josa(fa.name,'을','를')} 믿게 됐다`)}
+      dynRep(me,-.05);dynFRepAdd(fa.id,-.05);D.faithRisk={...D.faithRisk,[fa.id]:Math.min(1,(D.faithRisk?.[fa.id]||0)+.1)};D.faithDark={...D.faithDark,[fa.id]:{kind:'miracle',amt:wa*4,d:S.day}};return '치유 집회에서 아무도 낫지 않았다. "사기꾼"이라는 수군거림이 들린다'}
+    if(op==='kin'){const f=dynFamily(me),ts=[...f.parents,...f.siblings,...f.kids,...f.grand,f.partner].filter(x=>x&&x.alive&&isAdult(x)&&x.faith!==fa.id);if(!ts.length)throw Error('믿지 않는 어른 가족이 없습니다');cool(20);let n=0;
+      for(const x of ts)if(wr()<.75*fit(x)*(x.faith?.6:1)){dynConvert(x,fa,.85,'kin');n++}return done(n,n?`가족 ${n}명이 ${josa(fa.name,'을','를')} 함께 믿기로 했다`:'가족들이 아직은 마음을 열지 않았다')}
+    if(op==='debate'){const F=S.faiths.find(x=>x.id===Number(String(arg).slice(1)));const L=F&&S.byId.get(F.leader);if(!F||!L||!L.alive||F.id===fa.id)throw Error('맞붙을 교단이 없습니다');cool(45);
+      const score=a=>(a.edu||0)*.15+(a.rep??.5)*.4+(a.g.faith??.5)*.2+wr()*.5,win=score(me)>score(L);let n=0;
+      if(win){for(const x of adultsC())if(x.faith===F.id&&x.id!==F.leader&&dynPiety(x)<.55&&wr()<.5){dynConvert(x,fa,.5,'debate');n++}F.members=Math.max(0,(F.members||0)-n);dynRep(me,.05);dynFRepAdd(fa.id,.05);dynChron(`${josa(nm(me),'이','가')} 광장 논쟁에서 ${F.name}의 ${josa(nm(L),'을','를')} 꺾다`,[me.id,L.id]);
+        return done(n,`광장 논쟁에서 ${josa(nm(L),'을','를')} 꺾었다! ${F.name} 신도 ${n}명이 넘어왔다`)}
+      for(const x of dynFaithMembers(fa))if(dynPiety(x)<.45&&wr()<.35){x.faith=F.id;x.piety=.5;n++}fa.members=Math.max(1,(fa.members||0)-n);F.members=(F.members||0)+n;dynRep(me,-.04);dynFRepAdd(fa.id,-.04);return `광장 논쟁에서 ${nm(L)}에게 밀렸다 · 내 신도 ${n}명이 ${josa(F.name,'으로','로')} 떠났다`}
+    if(op==='court'){const x=S.byId.get(Number(String(arg).slice(1)));if(!G||!x||!x.alive||!dynOfficials(me,fa).includes(x))throw Error('포섭할 권력자가 아닙니다');if(me.cash<wa*15)throw Error('선물 비용이 모자랍니다');cool(30);me.cash-=wa*15;x.cash+=wa*15;
+      if(wr()<.2+(x.g.faith??.4)*.4+(fit(x)-1)*.15){dynConvert(x,fa,.6,'court');let t=`${nm(x)} (${dynRole(x)})${josa(nm(x),'이','가').slice(-1)} ${josa(fa.name,'을','를')} 믿기로 했다`;
+        if((G.chief===x.id||G.king===x.id)&&G.stateFaith!==fa.id&&wr()<.5){G.stateFaith=fa.id;t+=` · 통치자가 ${josa(fa.name,'을','를')} 국교로 선포했다!`;dynChron(`${josa(fa.name,'이','가')} 국교가 되다`,[me.id,x.id]);mile('stateFaithCourt',`국교 선포. 통치자 ${josa(nm(x),'이','가')} ${josa(fa.name,'을','를')} 국교로 삼았다`,[x.id])}
+        return done(1,t)}
+      dynRep(me,-.02);if(dynHard()&&G.chief!==me.id&&G.king!==me.id&&wr()<.15){me.jailUntil=S.day+15;return `${josa(nm(x),'이','가')} 선물을 받고도 고발했다. 15일 갇혔다`}return `${josa(nm(x),'이','가')} 선물만 받고 정중히 거절했다`}
+    if(op==='school'){if(fa.school)throw Error('이미 운영 중입니다');if(me.cash<hr)throw Error('세우는 비용이 모자랍니다');dynPay(me,dynPayee(me),hr,'tithe');cool(YEAR);fa.school=S.day;dynChron(`${fa.name} 학교·고아원을 세우다`,[me.id]);return `${fa.name} 학교·고아원을 세웠다. 아이들이 교리를 배우며 자란다`}
+    if(op==='force'){const ruler=G&&(G.chief===me.id||G.king===me.id);cool(30);let n=0;
+      for(const x of dynPreachTargets(me,fa,12)){if(wr()<.8){dynConvert(x,fa,.12,'force');dynFamTie(x,-.15,'강제 개종');n++}}dynRep(me,-.06);if(ruler)G.approval=Math.max(0,(G.approval??.5)-.03);
+      if(G&&!dynHard())G.cases.push({t:'assault',who:me.id,amt:wa*5,ev:.4,d:S.day});return done(n,`${n}명을 강제로 ${josa(fa.name,'으로','로')} 개종시켰다. 겉으로만 따르는 이들이 많다`)}
+    throw Error('모르는 전도 방법입니다')}
+  // 열흘마다: 독실함이 성향 쪽으로 돌아가고, 낮은 신도는 떠난다. 학교는 아이들을 신도로 키운다
+  function dynPietyTick(me){if(S.day%10!==5)return;const fa=faithOf(me);if(!fa||fa.leader!==me.id)return;const wa=dynWA(),med=median();let left=0,grown=0;
+    for(const x of dynFaithMembers(fa)){if(x.piety==null)continue;x.piety=cl(x.piety+((x.g.faith??.4)*(x.faithVia==='force'?.4:1)-x.piety)*.04+(fa.temple?.01:0)-(x.faithVia==='relief'&&(x.cash||0)>med?.04:0),0,1);
+      if(x.piety<.3&&wr()<(.3-x.piety)*.6){x.faith=null;left++;if(x.faithVia==='force'&&wr()<.3)dynFamTie(x,-.1,'강제 개종의 원한')}}
+    if(fa.school){if((fa.tre||0)>=wa*2){fa.tre-=wa*2;const to=dynPayee(me);if(to)to.cash+=wa*2;else if(S.gov)S.gov.tre+=wa*2;
+        for(const x of S.agents)if(x.alive&&x.faith!==fa.id&&x.age>=8*YEAR&&x.age<=20*YEAR&&wr()<.12*dynDocFit(x,fa.doc)){dynConvert(x,fa,.9,'school');grown++}}
+      else{fa.school=null;dynChron(`${fa.name} 학교가 운영비가 없어 문을 닫다`,[me.id])}}
+    fa.members=Math.max(1,(fa.members||0)-left+grown);if(left>=3)dynChron(`${fa.name} 신도 ${left}명이 신앙이 식어 떠나다`,[me.id])}
   function dynFaithAct(me,op,arg,name){const D=S.dyn,wa=dynWA(),ad=adultsC();
     if(op==='found'){const docs=String(arg||'').split('+').filter(Boolean);
       if(docs.length<2||new Set(docs).size!==docs.length||docs.some(d=>!DOCN[d]&&!DOCN_X[d]))throw Error('교리를 2개 이상 골라 주세요');
@@ -4942,7 +5077,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(G&&G.stateFaith&&G.stateFaith!==fa.id&&wr()<.2){me.jailUntil=S.day+15;me.caught=(me.caught||0)+1;dynRep(me,-.03);return `국교가 아닌 교리를 퍼뜨리다 붙잡혀 15일 갇혔다`}
       const tries=4+Math.floor((me.rep??.5)*6+(me.g.faith??.5)*4);let n=0;
       for(let i=0;i<tries;i++){const x=ad[Math.floor(wr()*ad.length)];if(!x||x===me||x.faith===fa.id)continue;if(x.faith&&faithOf(x)?.leader===x.id)continue;
-        const p=(x.g.faith??.4)*.55*dynDocFit(x,fa.doc)*(x.faith?.4:1)*(fa.temple?1.3:1);if(wr()<p){x.faith=fa.id;n++}}
+        const p=(x.g.faith??.4)*.55*dynDocFit(x,fa.doc)*(x.faith?.4:1)*(fa.temple?1.3:1);if(wr()<p){dynConvert(x,fa,.45,'preach');n++}}
       fa.members=(fa.members||0)+n;return n?`전도로 ${n}명이 ${josa(fa.name,'을','를')} 믿게 됐다`:'전도했지만 따라오는 사람이 없었다'}
     if(op==='theo'){const est=dynTheoEst(me,fa),tc=wa*15;if(!est.ok)throw Error('신도가 모자랍니다');
       const fromT=Math.min(fa.tre||0,tc);fa.tre-=fromT;me.cash-=tc-fromT;D.cool.acttheo=S.day+YEAR*2;
@@ -5119,6 +5254,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       return goal.label+' 목표 달성 · 가문 금고 +'+won(goal.reward)
     }
     if(kind==='extra'&&['found','preach','theo'].includes(op))return dynFaithAct(me,op,arg,id);
+    if(kind==='extra'&&DYN_PREACH.has(op))return dynPreachAct(me,op,arg);
     if(op==='clergy'||op==='faith'){
       const fa=faithOf(me),cost=wa*(op==='clergy'?5:8);
       me.cash-=cost;fa.tre+=cost;SP(me,'tithe',cost);
@@ -5232,7 +5368,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(a.k.startsWith('pardon:'))a.label=dynWithRole(a.label,S.byId.get(Number(a.k.split(':')[1])));
     }
     return out}
-  function dynAct0(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');if(/^tgt:/.test(k)){const text=dynTarget(me,k);D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}const base=/^rel:/.test(k)?k.split(':').slice(0,3).join(':'):/^social:match:/.test(k)?k.split(':').slice(0,3).join(':'):/^social:/.test(k)?k.split(':').slice(0,2).join(':'):/^econ:(project|craft|market|pump|insider|trade):/.test(k)?k.split(':').slice(0,3).join(':'):/^econ:/.test(k)?k.split(':').slice(0,2).join(':'):/^merc:found:/.test(k)?'merc:found':/^merc:contract:/.test(k)?k.split(':').slice(0,4).join(':'):/^merc:/.test(k)?k.split(':').slice(0,3).join(':'):/^intervene:send:/.test(k)?k.split(':').slice(0,3).join(':'):/^wf:(poison|secret|arrange|hostage|captives):/.test(k)?k.split(':').slice(0,k.startsWith('wf:poison:')?2:3).join(':'):/^firm:new:/.test(k)?'firm:new':/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):/^law2:/.test(k)?k.split(':').slice(0,2).join(':'):/^lawval:/.test(k)?'law2:'+k.split(':')[1]:/^gig:/.test(k)?k.split(':').slice(0,3).join(':'):/^privmil:recruit:/.test(k)?'privmil:recruit':/^spyorg:recruit:/.test(k)?'spyorg:recruit':/^spyorg:order:/.test(k)?k.split(':').slice(0,3).join(':'):/^loan:lend:/.test(k)?k.split(':').slice(0,3).join(':'):/^bank:ops:/.test(k)?k.split(':').slice(0,3).join(':'):/^corp:offer:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:found:/.test(k)?'extra:found':/^fdark:politics:/.test(k)?'fdark:politics':/^extra:gang:business:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:gang:task:/.test(k)?k.split(':').slice(0,4).join(':'):/^co:dark:/.test(k)?k:/^co:/.test(k)?k.split(':').slice(0,3).join(':'):/^pol2:/.test(k)?k.split(':').slice(0,2).join(':'):/^bld:/.test(k)?k.split(':').slice(0,2).join(':'):/^crime:/.test(k)?k.split(':').slice(0,2).join(':'):/^duty:/.test(k)?k.split(':').slice(0,2).join(':'):/^adult:/.test(k)?k.split(':').slice(0,2).join(':'):/^jr:/.test(k)?k.split(':').slice(0,2).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!/^lawval:/.test(k)&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
+  function dynAct0(k){const D=S.dyn,me=dynMe();if(!D||!me)throw Error('가문 모드가 아닙니다');if(/^tgt:/.test(k)){const text=dynTarget(me,k);D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}const base=/^rel:/.test(k)?k.split(':').slice(0,3).join(':'):/^social:match:/.test(k)?k.split(':').slice(0,3).join(':'):/^social:/.test(k)?k.split(':').slice(0,2).join(':'):/^econ:(project|craft|market|pump|insider|trade):/.test(k)?k.split(':').slice(0,3).join(':'):/^econ:/.test(k)?k.split(':').slice(0,2).join(':'):/^merc:found:/.test(k)?'merc:found':/^merc:contract:/.test(k)?k.split(':').slice(0,4).join(':'):/^merc:/.test(k)?k.split(':').slice(0,3).join(':'):/^intervene:send:/.test(k)?k.split(':').slice(0,3).join(':'):/^wf:(poison|secret|arrange|hostage|captives):/.test(k)?k.split(':').slice(0,k.startsWith('wf:poison:')?2:3).join(':'):/^firm:new:/.test(k)?'firm:new':/^stock:(buy|sell):/.test(k)?k.split(':').slice(0,3).join(':'):/^law2:/.test(k)?k.split(':').slice(0,2).join(':'):/^lawval:/.test(k)?'law2:'+k.split(':')[1]:/^gig:/.test(k)?k.split(':').slice(0,3).join(':'):/^privmil:recruit:/.test(k)?'privmil:recruit':/^spyorg:recruit:/.test(k)?'spyorg:recruit':/^spyorg:order:/.test(k)?k.split(':').slice(0,3).join(':'):/^loan:lend:/.test(k)?k.split(':').slice(0,3).join(':'):/^bank:ops:/.test(k)?k.split(':').slice(0,3).join(':'):/^corp:offer:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:found:/.test(k)?'extra:found':/^extra:(debate|court):/.test(k)?k.split(':').slice(0,2).join(':'):/^fdark:politics:/.test(k)?'fdark:politics':/^extra:gang:business:/.test(k)?k.split(':').slice(0,3).join(':'):/^extra:gang:task:/.test(k)?k.split(':').slice(0,4).join(':'):/^co:dark:/.test(k)?k:/^co:/.test(k)?k.split(':').slice(0,3).join(':'):/^pol2:/.test(k)?k.split(':').slice(0,2).join(':'):/^bld:/.test(k)?k.split(':').slice(0,2).join(':'):/^crime:/.test(k)?k.split(':').slice(0,2).join(':'):/^duty:/.test(k)?k.split(':').slice(0,2).join(':'):/^adult:/.test(k)?k.split(':').slice(0,2).join(':'):/^jr:/.test(k)?k.split(':').slice(0,2).join(':'):k;const a=dynActions().find(x=>x.k===base);if(!a)throw Error('지금은 할 수 없는 행동입니다');if(a.opts&&!/^lawval:/.test(k)&&!a.opts.some(o=>base+':'+o[0]===k))throw Error('양을 골라야 합니다');if(!a.ok)throw Error(a.why);
     const ad=adultsC();let text='';
     if(k==='gig:quit')text=dynGigFinish(me,'quit')?.text||'계약이 없습니다';
     else if(k==='govern:report')text=dynGovReport(me);
@@ -5449,7 +5585,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       else if(law&&dynCool('newLaw',YEAR))dynPush('newLaw',`새 법이 시행됐습니다: ${POL_LABEL[law]||law}.`,[dynOpt('obey','따른다'),dynOpt('protest','반대 시위에 나선다',dynHard()?'강압 체제라 붙잡힐 수 있음':'법을 되돌리라는 여론을 키움')],{k:law})}
     // 권력자: 지지율 급락
     if(G&&dynExecutive(me)&&G.approval!=null&&G.approval<.3&&(s.appr==null||s.appr>=.3)&&dynCool('appr',YEAR/2))
-      dynPush('approval',`지지율이 ${Math.round(G.approval*100)}%로 떨어지고 시위가 벌어졌습니다.`,[dynOpt('yield','양보한다',`관청 돈 약 ${won(wA*20)}을 풀고 요구를 들어줌 · 지지율↑`),dynOpt('crush','진압한다',dynHard()?'시위대를 가둠 · 평판↓':'민주 체제라 역풍이 클 수 있음'),dynOpt('ignore','무시한다')],{d:S.day})
+      dynPush('approval',`지지율이 ${Math.round(G.approval*100)}%로 떨어지고 시위가 벌어졌습니다.`,[{...dynOpt('yield','양보한다',`관청 돈 약 ${won(wA*20)}을 풀고 요구를 들어줌 · 지지율↑`),fundingLabel:'국가 복지 예산',cost:wA*20,available:(dynPublicAccount(me,'welf')?.available||0)>=wA*20},dynOpt('crush','진압한다',dynHard()?'시위대를 가둠 · 평판↓':'민주 체제라 역풍이 클 수 있음'),dynOpt('ignore','무시한다')],{d:S.day})
     // 흉년·물가 폭등
     {const th=Math.max(3,S.agents.length*.02),st=S.yr.starve||0,cpi=S.cpi||1;if(D.cpiRef==null||S.day%YEAR===0)D.cpiRef=Math.min(D.cpiRef??cpi,cpi);
       if(!dynExecutive(me)&&me!==dynReigningMonarch()&&((st>=th&&s.starve<th)||cpi>=D.cpiRef*1.25)&&dynCool('famine',YEAR*2)){D.cpiRef=cpi;const food=(me.inv.grain||0)+(me.inv.meal||0),o=[];
@@ -5803,7 +5939,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   }
   function dynChoose0(id,k){const D=S.dyn;if(!D)throw Error('가문 모드가 아닙니다');
     const i=D.pending.findIndex(p=>p.id===Number(id));if(i<0)throw Error('이미 처리된 선택지입니다');
-    const p=D.pending[i];if(!p.opts.some(o=>o.k===k))throw Error('없는 선택입니다');
+    const p=D.pending[i];dynStoryRecheck(p);if(!p.opts.some(o=>o.k===k))throw Error('없는 선택입니다');if(p.opts.find(o=>o.k===k)?.stale)throw Error('그사이 상황이 바뀌어 지금은 고를 수 없는 선택입니다');
+    if(p.kind==='story'&&!String(k).startsWith('__'))dynStoryLike(p,p.opts.findIndex(o=>o.k===k)===0?-.03:.06);
     const me=dynMe(),before=dynChoiceStats(me,p),stress=dynStressCost(me,p,k),oldStory=D.storyHist;
     const text=DYN_H[p.kind](p.ctx,k,me);
     const current=D.pending.indexOf(p);if(current!==-1)D.pending.splice(current,1);
@@ -7521,9 +7658,17 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(e.valid&&!e.valid(c))return null;
     return ctx;
   }
+  // 지금 하는 일·처지와 맞는 이야기는 자주, 상관없는 일상 이야기는 한동안 조용할 때만
+  const STORY_FILLER=new Set(['마을','기이','계절','생활']);
+  function dynStoryRel(me){const D=S.dyn,G=S.gov,on=new Set(['직업','일']),f=dynFamily(me),r=dynRank(),quiet=S.day-(D.story?.lastAny??-99)>=20;
+    if(coMine(me).length||me.emp)on.add('회사').add('장사');if(D.shark||(S.banks||[]).some(b=>b.own===me.id)||S.loans.some(l=>l.l===me.id||l.b===me.id))on.add('돈').add('경제');
+    if(faithOf(me))on.add('종교').add('이단');if(r>=3||dynFullOffice(me)||G&&(G.council||[]).includes(me.id))on.add('정치').add('공직').add('왕권').add('사법');
+    if((D.heat||0)>.2||me.grp||(me.crimes||0)>0)on.add('범죄').add('조직').add('수사');if(f.partner||f.kids.length)on.add('가족').add('가문').add('상속');
+    if(!f.partner||me.affair)on.add('연애').add('관계').add('인맥');if((coMine(me).some(c=>c.merc))||S.war||me.drafted)on.add('용병').add('전쟁').add('병역').add('외교');if(bdMine(me).length)on.add('건물');
+    return e=>on.has(e.cat)?2.5:STORY_FILLER.has(e.cat)?(quiet?1:.35):.8}
   function dynStoryPick(me){const st=S.dyn.story,r=dynRank(),executive=dynExecutive(me);
     const pool=SE_LIST.filter(e=>(st.cd[e.id]||0)<=S.day&&dynStoryEligible(e,me,r));
-    const weight=e=>sWeight(e)*(executive&&(e.executive||STORY_EXEC.has(e.id)||e.cat==='정치')?3:1);
+    const rel=dynStoryRel(me),like=st.like||{},weight=e=>sWeight(e)*(executive&&(e.executive||STORY_EXEC.has(e.id)||e.cat==='정치')?3:1)*rel(e)*(1+(like[e.cat]||0));
     for(let tries=0;tries<18&&pool.length;tries++){
       let left=wr()*pool.reduce((sum,e)=>sum+weight(e),0),i=0;
       for(;i<pool.length-1;i++){left-=weight(pool[i]);if(left<=0)break}
@@ -7533,6 +7678,10 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     return null;
   }
   function dynStoryOptions(e,c){return e.o.filter(o=>!o[4]?.when||o[4].when(c))}
+  // 받은 일함에 쌓인 이야기는 며칠 뒤 고를 수 있으므로, 그 사이 조건이 바뀐 선택지는 막는다
+  function dynStoryRecheck(p){if(p.kind!=='story'||!p.inbox)return;const e=SE[p.ctx?.sid],me=dynMe();if(!e||!me)return;let okKeys;try{okKeys=new Set(dynStoryOptions(e,sCtx(me,p.ctx)).map(o=>o[0]))}catch(err){return}
+    for(const o of p.opts){if(String(o.k).startsWith('__'))continue;if(!okKeys.has(o.k)){o.available=false;o.stale=true}else if(o.stale){delete o.stale;delete o.available}}
+    if(p.opts.every(o=>o.available===false)&&!p.opts.some(o=>o.k==='__defer'))p.opts.push({k:'__defer',label:'상황이 바뀌어 넘어간다',fundingLabel:'금전 지출 없음'})}
   function dynStoryPush(e,ctx,me){
     const text=e.text(sCtx(me,ctx)),c=sCtx(me,ctx);
     ctx.title=(e.special?'⭐ 특별 · ':e.season?'🗓️ ':'')+e.title;
@@ -7543,12 +7692,13 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   }
   const STORY_GAP={1:[15,20],2:[8,12],3:[4,6]};
   function dynStoryTrig(me){
-    const st=S.dyn.story,r=dynRank(),doy=S.day%YEAR;
+    const st=S.dyn.story,r=dynRank(),doy=S.day%YEAR,rel=dynStoryRel(me),like=st.like||{};
     const candidates=[];
     for(const e of SE_TRIG){
       if((st.cd[e.id]||0)>S.day||(e.once&&Object.hasOwn(st.done||{},e.id))||!dynStoryEligible(e,me,r))continue;
       if(e.season){const [a,end]=e.season,b=Math.max(end,a+4);if(!(a<=b?doy>=a&&doy<=b:doy>=a||doy<=b))continue}
-      candidates.push({e,priority:(e.special?2:e.executive?1:0)+wr()});
+      const rw=rel(e)*(1+(like[e.cat]||0));if(!e.special&&rw<.5&&wr()<.65)continue;
+      candidates.push({e,priority:(e.special?2:e.executive?1:0)+wr()*rw});
     }
     candidates.sort((a,b)=>b.priority-a.priority);
     for(const {e} of candidates){
@@ -7561,7 +7711,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const D=S.dyn;
     D.story=D.story||{next:S.day+3,freq:2,cd:{},q:[],n:0};
     const st=D.story;
-    if(D.pending.length||st.freq===0)return;
+    if(st.freq===0||D.pending.some(p=>!p.inbox)||D.pending.filter(p=>p.inbox&&p.kind!=='notice').length>=4)return;
     for(let i=0;i<st.q.length;){
       if(st.q[i].at>S.day){i++;continue}
       const [q]=st.q.splice(i,1),e=SE[q.id];
@@ -7572,7 +7722,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(S.day%5===0&&S.day-(st.lastTrig??-99)>=10){
       const t=dynStoryTrig(me);
       if(t&&dynStoryPush(t.e,t.ctx,me)){
-        st.lastTrig=S.day;st.cd[t.e.id]=S.day+(t.e.cd||YEAR);st.n++;
+        st.lastTrig=S.day;st.lastAny=S.day;{const [lo]=STORY_GAP[st.freq]||STORY_GAP[2];st.next=Math.max(st.next,S.day+lo)}st.cd[t.e.id]=S.day+(t.e.cd||YEAR);st.n++;
         if(t.e.once)st.done={...st.done,[t.e.id]:S.day};
         return;
       }
@@ -7581,7 +7731,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const [lo,hi]=STORY_GAP[st.freq]||STORY_GAP[2];
     st.next=S.day+lo+Math.floor(wr()*(hi-lo+1));
     const p=dynStoryPick(me);
-    if(p&&dynStoryPush(p.e,p.ctx,me)){st.cd[p.e.id]=S.day+(p.e.cd||YEAR*2);st.n++}
+    if(p&&dynStoryPush(p.e,p.ctx,me)){st.cd[p.e.id]=S.day+(p.e.cd||YEAR*2);st.n++;st.lastAny=S.day}
   }
   function dynSetStory(f){const D=S.dyn;D.story=D.story||{next:S.day+3,freq:2,cd:{},q:[],n:0};D.story.freq=[0,1,2,3].includes(+f)?+f:2;if(D.story.freq)D.story.next=Math.min(D.story.next,S.day+(STORY_GAP[D.story.freq][0]));return {freq:D.story.freq}}
   function dynWorldTick(){const D=S.dyn,T=S.trade;if(!T||!T.towns||!T.towns.length)return;D.realms=D.realms||{};
@@ -7839,7 +7989,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     throw Error('모르는 행동입니다')}
   // 열흘마다: 고리대 이자·연체, 노예 탈출, 수배 열기 식기·수사
   function crTick(me){const D=S.dyn;if(!me||S.day%10!==3)return;const G=S.gov,wA=dynWA();
-    if(D.shark)for(const b of D.shark.book){const x=S.byId.get(b.id);if(!x||!x.alive||b.bal<=0)continue;const due=b.bal*.3;if(x.cash>=due){x.cash-=due;me.cash+=due;b.miss=0}else{b.bal+=due;b.miss=(b.miss||0)+1}}
+    if(D.shark){const mg=dynManageRatio(10);for(const b of D.shark.book){const x=S.byId.get(b.id);if(!x||!x.alive||b.bal<=0)continue;const due=b.bal*.3;
+      if(x.cash>=due&&!(mg===0&&wr()<.2)){x.cash-=due;me.cash+=due;b.miss=0}else{const part=mg>=.3?Math.min(Math.max(0,x.cash)*.5,due):0;x.cash-=part;me.cash+=part;b.bal+=due-part;b.miss=(b.miss||0)+1}}}
     if(D.shark)D.shark.book=D.shark.book.filter(b=>b.bal>0&&S.byId.get(b.id)?.alive);
     for(const x of S.agents){if(!x.alive||x.enslavedBy!==me.id)continue;if(wr()<.03){x.enslavedBy=null;endCt(x,'escape');x.emp=null;crHeat(.3);if(G&&wr()<.5)G.cases.push({t:'confine',who:me.id,amt:wA*10,ev:.7,d:S.day});dynChron(`${josa(nm(x),'이','가')} 노예 생활을 견디다 못해 도망쳤다`,[me.id,x.id])}}
     if(D.heat>0){if(G&&wr()<D.heat*.05)G.cases.push({t:'robbery',who:me.id,amt:wA*5,ev:.4+Math.min(.4,D.heat*.15),d:S.day});D.heat=Math.max(0,D.heat-.03)}}
@@ -8226,7 +8377,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         heir:R0.heir?{name:rName(R0.heir),age:rAge(R0.heir),sex:R0.heir.sex}:null,hist:R0.hist.slice(-6).reverse()}}).filter(Boolean);
     {const sf=G&&G.stateFaith&&(S.faiths||[]).find(f=>f.id===G.stateFaith);if(sf)us.faith=sf.name}
     return {known:true,us,realms,far:farView(r),marks:farMarks(),fw:S.fw&&S.fw.until>S.day?{a:S.fw.a,b:S.fw.b}:null,news:(D.wnews||[]).slice(-12).reverse()}}
-  function dynTick(){const D=S.dyn,me=dynMe();dynLeavePrivateEmployment(dynReigningMonarch());dynLeavePrivateEmployment(me);dynWorldTick();if(D.over)return;if(me&&D.gig)dynGigTick(me);if(me)dynMilitiaTick(me);if(me)dynSpyOrgTick(me);if(me)dynUnderworldTick(me);dynTierTick();coTick(me);crTick(me);duTick(me);adTick(me);jrTick(me);wfTick(me);mcTick();ecTick();scTick();rrTick(me);if(me&&me.alive){dynSiteTick(me);dynStressTick(me);dynFaithTick(me);dynStoryTick(me)}if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
+  function dynTick(){const D=S.dyn,me=dynMe();dynLeavePrivateEmployment(dynReigningMonarch());dynLeavePrivateEmployment(me);dynWorldTick();if(D.over)return;if(me&&D.gig)dynGigTick(me);if(me)dynMilitiaTick(me);if(me)dynSpyOrgTick(me);if(me)dynUnderworldTick(me);dynTierTick();coTick(me);crTick(me);duTick(me);adTick(me);jrTick(me);wfTick(me);mcTick();ecTick();scTick();rrTick(me);if(me&&me.alive){dynInboxTick(me);dynPietyTick(me);dynDutyTick(me);dynSiteTick(me);dynStressTick(me);dynFaithTick(me);dynStoryTick(me)}if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
     if(me&&W(me)>D.peak.w)D.peak.w=W(me);
     if(me&&me.alive){const tt=dynPolTitle(me);if(D.title===undefined)D.title=tt;else if(tt!==D.title){const t=tt?`${josa(nm(me),'이','가')} ${josa(tt,'이','가')} 됐습니다`:`${josa(nm(me),'이','가')} ${D.title} 자리에서 물러났습니다`;D.title=tt;dynChron(t,[me.id]);dynPush('notice',t,[{k:'ok',label:'확인'}],{d:S.day})}
       if(S.day%5===0&&!((me.jailUntil||0)>S.day))dynBudgetTick(me);
@@ -8299,15 +8450,15 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
           const x=/^p[0-9]+$/.test(o.k)?S.byId.get(Number(o.k.slice(1))):null;
           return {...o,...(p.kind==='story'?dynStoryFinance(SE[p.ctx.sid],sCtx(a,{...p.ctx,choice:o.k}),o.k):{}),label:dynWithRole(o.label,x),stress:dynStressCost(a,p,o.k)};
         });
-        return {id:p.id,kind:p.kind,d:p.d,text:p.text,opts,title:ctx.title||null,cast};
+        return {id:p.id,kind:p.kind,d:p.d,inbox:!!p.inbox,due:p.due??null,text:p.text,opts,title:ctx.title||null,cast};
       }),story:{freq:D.story&&D.story.freq!=null?D.story.freq:2,n:(D.story&&D.story.n)||0},chron:D.chron.slice(-40),past:D.past,notices:S.miles.slice(-8)};
     if(!a)return out;const f=dynFamily(a);const g=a.grp&&grpById(a.grp);const publicDuty=dynEmploymentBlocked(a);const emp=!publicDuty&&a.emp&&S.byId.get(a.emp);
     out.me={...dynP(a),sur:a.sur,given:a.given,health:a.health,hunger:a.hunger,happy:a.happy,rep:a.rep,edu:a.edu||0,skill:{farm:a.skill?.[FARM]||0,craft:a.skill?.[CRAFT]||0,trade:a.skill?.[TRADE]||0},g:{boss:a.g.boss,civic:a.g.civic,care:a.g.care,cheat:a.g.cheat},looks:a.looks,occ:a.occ||null,faith:a.faith||null,
       grp:g?{id:g.id,name:g.name,leader:g.leader===a.id}:null,emp:dynP(emp),publicDuty,staff:S.agents.filter(x=>x.alive&&x.emp===a.id).length,crimes:a.crimes||0,caught:a.caught||0,jail:(a.jailUntil||0)>S.day,banned:!!a.banned,pardoned:!!a.pardoned,served:!!a.served,drafted:!!a.drafted,altServ:(a.altServ||0)>S.day};
     out.gangBusiness=g?.mode==='gang'&&g.leader===a.id&&g.dynOps?{businesses:g.dynOps.businesses||[],loyalty:g.dynOps.loyalty||0,risk:g.dynOps.risk||0,daily:g.dynOps.daily||{},tre:g.tre||0,reports:(g.dynOps.reports||[]).slice(0,6)}:null;
     out.family={parents:f.parents.map(dynP),siblings:f.siblings.map(dynP),partner:dynP(f.partner),kids:f.kids.map(dynP),grand:f.grand.map(dynP)};
-    out.goals=a.alive&&!D.over?dynGoals(a):[];out.specials=(D.specials||[]).slice(-20);{const fa=faithOf(a);out.faithInfo=fa?{name:fa.name,members:fa.members||0,tre:fa.tre||0,docs:fa.doc.map(docName),heresy:fa.doc.filter(d=>DOCN_X[d]).map(docName),others:S.faiths.filter(f=>f.id!==fa.id).map(f=>`${f.name} ${f.members||0}명`),dream:fa.doc.includes('dream')&&fa.dreamRev?DYN_DREAM[fa.dreamRev]?.[0]:null,doomIn:fa.doomD?Math.max(0,fa.doomD-S.day):null,leader:fa.leader===a.id,rep:dynFRep(fa.id),repName:dynFRepName(dynFRep(fa.id)),state:!!(S.gov&&S.gov.stateFaith===fa.id),lock:!!fa.dynLock,mutual:(D.faithMutual?.[fa.id]||0)>S.day,rumor:(D.faithRisk?.[fa.id]||0)>.4}:null}out.stress=a.dynStress||0;out.clergy=faithOf(a)?.leader===a.id?'교단 지도자':D.clergy?.[a.id]===a.faith&&a.faith?'성직자':null;out.spyCareer=D.spyCareer?(()=>{const G=S.gov,on=!!(G&&(G.policy?.spyAgency||Object.values(G.min||{}).some(m=>m&&m.k==='sec')));return {title:on?'정보기관 직원 · 현장 요원':'정보기관 출신 · 전직 요원',active:on,experience:D.spyExperience||0,missionsUnlocked:true}})():null;out.spyAgency=D.spyAgency?{size:D.spyAgency.members?.length||0,upkeep:D.spyAgency.upkeep||0,loyalty:Math.round(100*(D.spyAgency.members||[]).reduce((t,x)=>t+(x.loyalty||0),0)/Math.max(1,D.spyAgency.members?.length||0)),risk:D.spyAgency.risk||0,exposed:!!D.spyAgency.exposed,reports:(D.spyReports||[]).slice(-8).reverse()}:null;
-    out.actions=dynActions();out.jobs=DYN_JOBS.filter(([k])=>!publicDuty||k!==WORK).map(([k,n,h])=>({k,n,h,days:'매일 재평가 · 선택은 바꿀 때까지 유지',wage:k===WORK?{min:Math.max(.5,(S.wageAvg||1)*.7),max:Math.max(.5,(S.wageAvg||1)*1.25)}:null,legal:k!==STEAL}));out.act=a.act;out.vault=D.vault||0;out.spent=D.spent||null;out.wageAvg=S.wageAvg||0;out.run=D.run||{};out.title=dynPolTitle(a);out.regime=S.gov?regime():'none';
+    out.goals=a.alive&&!D.over?dynGoals(a):[];out.specials=(D.specials||[]).slice(-20);{const fa=faithOf(a);out.faithInfo=fa?{...(fa.leader===a.id?(()=>{const ms=dynFaithMembers(fa),by={};for(const x of ms){const v=DYN_VIA_N[x.faithVia]||'기존';by[v]=(by[v]||0)+1}return {piety:ms.length?Math.round(ms.reduce((t,x)=>t+dynPiety(x),0)/ms.length*100):null,shaky:ms.filter(x=>dynPiety(x)<.35).length,via:by,school:!!fa.school}})():{}),name:fa.name,members:fa.members||0,tre:fa.tre||0,docs:fa.doc.map(docName),heresy:fa.doc.filter(d=>DOCN_X[d]).map(docName),others:S.faiths.filter(f=>f.id!==fa.id).map(f=>`${f.name} ${f.members||0}명`),dream:fa.doc.includes('dream')&&fa.dreamRev?DYN_DREAM[fa.dreamRev]?.[0]:null,doomIn:fa.doomD?Math.max(0,fa.doomD-S.day):null,leader:fa.leader===a.id,rep:dynFRep(fa.id),repName:dynFRepName(dynFRep(fa.id)),state:!!(S.gov&&S.gov.stateFaith===fa.id),lock:!!fa.dynLock,mutual:(D.faithMutual?.[fa.id]||0)>S.day,rumor:(D.faithRisk?.[fa.id]||0)>.4}:null}out.stress=a.dynStress||0;out.clergy=faithOf(a)?.leader===a.id?'교단 지도자':D.clergy?.[a.id]===a.faith&&a.faith?'성직자':null;out.spyCareer=D.spyCareer?(()=>{const G=S.gov,on=!!(G&&(G.policy?.spyAgency||Object.values(G.min||{}).some(m=>m&&m.k==='sec')));return {title:on?'정보기관 직원 · 현장 요원':'정보기관 출신 · 전직 요원',active:on,experience:D.spyExperience||0,missionsUnlocked:true}})():null;out.spyAgency=D.spyAgency?{size:D.spyAgency.members?.length||0,upkeep:D.spyAgency.upkeep||0,loyalty:Math.round(100*(D.spyAgency.members||[]).reduce((t,x)=>t+(x.loyalty||0),0)/Math.max(1,D.spyAgency.members?.length||0)),risk:D.spyAgency.risk||0,exposed:!!D.spyAgency.exposed,reports:(D.spyReports||[]).slice(-8).reverse()}:null;
+    out.actions=dynActions();out.jobs=[...DYN_JOBS,[MANAGE,'사업 경영','내 회사·고리대를 직접 돌봄 · 회사 매출·사기↑, 고리대 회수율↑ · 안 돌보면 직원 사기·회수가 떨어짐']].filter(([k])=>!publicDuty||k!==WORK).map(([k,n,h])=>({k,n,h,days:'매일 재평가 · 선택은 바꿀 때까지 유지',wage:k===WORK?{min:Math.max(.5,(S.wageAvg||1)*.7),max:Math.max(.5,(S.wageAvg||1)*1.25)}:null,legal:k!==STEAL}));out.act=a.act;out.today=D.today&&S.day-D.today.d<=1?{...D.today,wantN:D.today.want!=null?dynJobName(D.today.want):null,didN:D.today.kind==='duty'?'공무':dynJobName(D.today.did)}:null;out.official=dynFullOffice(a);out.canManage=dynCanManage(a);out.manageRatio=Math.round(dynManageRatio(30)*30);out.slack=Math.round(D.slack||0);out.vault=D.vault||0;out.spent=D.spent||null;out.wageAvg=S.wageAvg||0;out.run=D.run||{};out.title=dynPolTitle(a);out.regime=S.gov?regime():'none';
     const ministry=dynMinisterPost(a);out.ministry=ministry?{...ministry,budget:S.gov?.bud?.lines?.[ministry.keys.includes('def')?'def':ministry.keys.includes('edu')?'edu':ministry.keys.includes('health')?'health':ministry.keys.includes('welf')?'welf':ministry.keys.includes('sec')?'pol':ministry.keys.includes('infra')||ministry.keys.includes('land')?'pub':'adm']||0,army:ministry.keys.includes('def')&&S.mil?{level:S.mil.lvl,strength:S.mil.str||0,morale:S.mil.morale||0}:null}:null;out.ministerLobby=D.ministerLobby?.pid===a.id?D.ministerLobby:null;out.privateMilitia=D.privateMilitia?{size:D.privateMilitia.members?.length||0,loyalty:D.privateMilitia.loyalty||0,upkeep:D.privateMilitia.upkeep||0,risk:D.privateMilitia.risk||0,exposed:!!D.privateMilitia.exposed}:null;
     out.credit=S.loans.filter(l=>l.l===a.id).map(l=>({id:l.id,borrower:S.byId.get(l.b)?nm(S.byId.get(l.b)):'-',balance:l.bal,rate:l.rate,missed:l.missed||0,collateral:l.coll?.house?'집 담보':l.coll?.plot!=null?'농지 담보':'무담보',kind:l.kind}));out.corpCredit=(S.corpLoans||[]).filter(l=>l.l===a.id||firmById(l.firm)?.ceo===a.id).map(l=>({id:l.id,firm:firmById(l.firm)?.name||'-',role:l.l===a.id?'대출해 줌':'빌림',balance:l.bal,rate:l.rate,term:l.term,missed:l.missed||0,status:l.status,collateral:l.coll?'회사 건물':'무담보'}));const ownBank=(S.banks||[]).find(b=>b.own===a.id&&b.alive!==false),bf=ownBank?.finance||{};out.bank=ownBank?{id:ownBank.id,name:ownBank.name,capital:ownBank.capital||0,cash:a.cash,reserve:a.dres||0,deposits:S.deps.filter(d=>d.bank===a.id).reduce((t,d)=>t+d.amt,0),loans:S.loans.filter(l=>l.l===a.id).reduce((t,l)=>t+l.bal,0)+(S.corpLoans||[]).filter(l=>l.l===a.id&&l.status==='active').reduce((t,l)=>t+l.bal,0),corporateLoans:(S.corpLoans||[]).filter(l=>l.l===a.id&&l.status==='active').reduce((t,l)=>t+l.bal,0),interestIncome:bf.interestIncome||0,depositExpense:bf.depositExpense||0,badDebt:bf.badDebt||0,foreclosures:bf.foreclosures||0,net:((bf.interestIncome||0)-(bf.depositExpense||0)-(bf.badDebt||0)),baseRate:S.cbank?.base??(S.loans.length?S.loans.reduce((t,l)=>t+l.rate,0)/S.loans.length:.02),loanRate:ownBank.ops?.loanRate??(a.g.lendRate||.03),depositRate:ownBank.ops?.depositRate??(a.g.lendRate||.03)*.4,reserveRatio:ownBank.ops?.reserveRatio??.15}:null;
     out.world=dynWorldView(r);out.population={current:S.agents.filter(x=>x.alive).length,capacity:S.cap||0,births:S.yr.births||0,deaths:S.yr.deaths||0,in:S.yr.migIn||0,out:S.yr.migOut||0};out.heirs=dynHeirs();out.assets=dynAssets(a);out.publicOffice=dynLocalOffice(a);out.publicAccounts=Object.keys(BUD_L).map(cat=>dynPublicAccount(a,cat)).filter(Boolean).map(x=>({label:x.label,available:x.available,category:x.cat}));out.finance=(D.finance||[]).slice(-20);out.co=coView(a);out.mercenaries=mcView(a);out.relationships=rrView(a);out.statuses={heat:D.heat||0,judgeVacancies:S.gov?.jr?Math.max(0,jrCap()-jrJ().length):0,judgeStage:S.gov?.jr?.vac?.stage||'',reviews:S.gov?.jr?.rev?.length||0,lovers:out.relationships.filter(x=>x.role==='정인').length,concubines:out.relationships.filter(x=>x.role==='궁중 관계').length,relationshipWarnings:out.relationships.filter(x=>x.jealousy>.3||x.trust<.3||x.promise?.broken).length,farWars:farAlive().filter(F=>F.war?.att).map(F=>({a:F.name,b:F.war.vs})),mercenaryContracts:mcMine(a).filter(f=>f.merc.contract?.status==='active').length,mercenaryArrears:mcMine(a).reduce((n,f)=>n+Object.values(f.merc.arrears).reduce((m,v)=>m+v,0),0),mercenaryCaptives:mcMine(a).reduce((n,f)=>n+mcMembers(f).filter(x=>x.dynMercCaptive).length,0)};out.social={trip:D.social?.trip||null,trips:(D.social?.trips||[]).slice(-5),education:a.edu||0,study:a.study?{...a.study,majorName:MAJ[a.study.major]||'',days:Math.max(0,a.study.until-S.day)}:null,basic:D.social?.basic||null,major:MAJ[a.major]||'',orient:({het:'이성애',hom:'동성애',bi:'양성애'})[a.orient]||a.orient,public:!!a.dynIdentityPublic,union:scUnion(a)||null,gambling:a.gambA||0};out.economy={insurance:a.insurer?{name:a.insurer.name||nm(a)+' 보험',premiums:a.insurer.prem,claims:a.insurer.claims}:null,policies:(S.policies||[]).filter(p=>p.holder===a.id).map(p=>({...p,name:S.byId.get(p.ins)?.insurer?.name||'보험'})),coop:(S.coops||[]).find(c=>c.id===a.coop)||null,debts:(D.economy?.coopDebt||[]).filter(d=>d.borrower===a.id&&d.balance>0).map(d=>({...d})),funds:(S.funds||[]).filter(f=>f.founder===a.id).map(f=>({...f})),trades:(D.economy?.trades||[]).slice(-5)};out.mercBankruptcies=(D.mercBankruptcies||[]).slice(-5);out.interventions=(D.interventions||[]).map(x=>({...x}));out.warFamily={cruelty:D.warFamily?.cruelty||0,hostages:(D.hostages||[]).filter(h=>h.status==='held').map(h=>({id:h.id,country:h.country,name:rName(h.person),days:Math.max(0,h.until-S.day),blocks:wfHostageBlocks(h.country)})),captives:S.agents.filter(x=>x.alive&&x.warCaptive&&x.enslavedBy===a.id).length,grievances:Object.entries(D.warFamily?.grievance||{}).filter(([,n])=>n>0).map(([country,value])=>({country,value}))};out.ties=Object.entries(D.ties||{}).map(([fam,t])=>({fam:+fam,...t})).sort((x,y)=>y.v-x.v);
@@ -8389,7 +8540,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     SE.merchantsFrom.o.find(o=>o[0]==='trade')[3]=c=>{const paid=-c.cash(-c.wA*10);c.chain(c.roll(.6)?'tradeWin':'tradeLose',20,{amt:paid});return '실제 투자금을 지급했다'};
     for(const e of Object.values(SE))for(const o of e.o){const old=o[4]?.when;if(/c\.tre\(-/.test(String(o[3]))||e.finance?.[o[0]]==='public'){o[4]={...o[4],when:c=>(!old||old(c))&&!!dynPublicAccount(c.me,dynStoryCategory(e))}}}
   }
-  E('publicBudgetHearing',{cat:'공직',govNeed:true,need:c=>(c.G?.council||[]).includes(c.me.id),title:'📋 공공 예산 심의',text:()=> '의회에서 구휼 예산을 심의합니다. 의원의 개인 자금과 공공 예산은 구분됩니다.',o:[['propose','복지 예산안을 발의한다','의회 표결 · 개인 지출 없음',c=>dynPublicAct('public:proposal:welf').text],['review','자료를 검토한다','금전 지출 없음',()=> '집행 기관의 예산 자료를 검토했다']]});
+  E('publicBudgetHearing',{cat:'공직',govNeed:true,need:c=>(c.G?.council||[]).includes(c.me.id),title:'📋 공공 예산 심의',text:()=> '의회에서 구휼 예산을 심의합니다. 의원의 개인 자금과 공공 예산은 구분됩니다.',o:[['propose','복지 예산안을 발의한다','의회 표결 · 개인 지출 없음',c=>dynPublicAct('public:proposal:welf').text,{when:()=>dynActions().some(a=>a.k==='public:proposal'&&a.ok)}],['review','자료를 검토한다','금전 지출 없음',()=> '집행 기관의 예산 자료를 검토했다']]});
   E('publicLocalRelief',{cat:'공직',need:c=>!!dynPublicAccount(c.me,'welf')&&dynPublicPeople(c.me).some(a=>a.hunger>=60),title:'🍚 관할 주민 구호 요청',text:()=> '관할 주민들의 구호 요청이 들어왔습니다. 공공 예산 집행과 개인 기부 중에서 선택할 수 있습니다.',o:[['public','관할 공공 예산으로 지원한다','관할 예산',c=>dynPublicAct('public:relief').text,{when:c=>dynActions().some(a=>a.k==='public:relief'&&a.ok)}],['own','내 돈으로 지원한다',c=>won(c.wA*10),c=>{const people=dynPublicPeople(c.me).filter(a=>a.hunger>=60);if(!people.length)return '구호 대상이 없다';c.cash(-c.wA*10);for(const a of people){a.cash+=c.wA*10/people.length;a.hunger=Math.max(0,a.hunger-10)}return '개인 자금으로 관할 주민을 도왔다'}],['wait','예산 확보를 기다린다','금전 지출 없음',()=> '집행할 예산을 먼저 확인하기로 했다']]});
   SE.publicBudgetHearing.finance={propose:'none',review:'none'};SE.publicLocalRelief.finance={public:'public',own:'personal',wait:'none'};STORY_PUBLIC_CATEGORY.publicLocalRelief='welf';
   dynStoryOverrides();

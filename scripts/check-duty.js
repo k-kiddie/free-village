@@ -12,7 +12,7 @@ for(const a of S.agents.filter(a=>a.alive&&a!==me).slice(0,6))a.crimes=2;
 const r=A('duty:raid');run('duty:raid',r.opts.find(o=>o[0][0]==='c')[0]);run('duty:raid',A('duty:raid').opts.find(o=>o[0][0]==='b')[0]);
 run('duty:probe',A('duty:probe').opts[0][0]);run('duty:protect');
 const c0=me.cash;me.cash=0;D.cool.actdu=0;for(let i=0;i<31;i++)w.step();assert(me.cash>0||!me.dynCop,'월급');
-run('duty:quit');assert(!me.dynCop);
+if(!me.dynCop&&!(G().prosList||[]).includes(me.id))me.dynCop=S.day;run('duty:quit');assert(!me.dynCop);
 for(let i=0;i<10&&!(G().prosList||[]).includes(me.id);i++){D.cool.actdupros=0;run('duty:pros')}assert((G().prosList||[]).includes(me.id),'수사관');
 // 내가 맡은 사건 처리
 const sus=S.agents.find(a=>a.alive&&a!==me&&w.isAdult(a)&&!(a.jailUntil>S.day)&&a.grp!==me.grp&&!me.kids.includes(a.id)&&a.id!==me.partner);G().cases.push({t:'robbery',who:sus.id,amt:5,ev:.6,d:S.day});
