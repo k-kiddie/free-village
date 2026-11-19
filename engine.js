@@ -2836,7 +2836,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 3. 오늘 할 일 정하기
     eduTick();
     for(const a of L)if((a.jailUntil||0)>S.day){a.act=REST;a.actT={jail:1};a.fat=Math.max(0,a.fat-20)}else if(S.dyn&&(a.dynTravelUntil>S.day||a.dynBasicUntil>S.day)){a.act=REST;a.actT={market:1}}else if(S.dyn&&a.dynMercFirm){a.act=REST;a.actT={market:1};a.fat=Math.max(0,a.fat-10)}else if(a.abroadUntil>S.day){a.act=REST;a.actT={market:1}}else if(a.foreignT){a.act=TEACH}else if(a.armyUntil>S.day){a.act=REST;const bl=S.mil&&S.mil.bases&&S.mil.bases[0];a.actT=bl!=null?{lot:bl}:{market:1};a.fat=Math.max(0,a.fat-15)}else if(a.study&&isAdult(a)){a.act=REST;const sb=S.bldgs.find(b=>b.school&&b.cond>.2)||S.bldgs.find(b=>b.fx.includes('gather'));a.actT=sb?{lot:sb.lot}:{market:1};a.fat=Math.max(0,a.fat-15)}
-    const actors=L.filter(a=>isAdult(a)&&!((a.jailUntil||0)>S.day)&&!a.study&&!(a.armyUntil>S.day)&&!a.foreignT&&!a.civ&&!(S.dyn&&(a.dynMercFirm||a.dynTravelUntil>S.day||a.dynBasicUntil>S.day))&&!(a.abroadUntil>S.day));if(S.eduShare2)actors.sort((x,y)=>(y.edu||0)-(x.edu||0));
+    if(S.dyn)dynDayPass(L);
+    const actors=L.filter(a=>isAdult(a)&&!((a.jailUntil||0)>S.day)&&!a.study&&!(a.armyUntil>S.day)&&!a.foreignT&&!a.civ&&!(S.dyn&&a.dynDayD===S.day)&&!(S.dyn&&(a.dynMercFirm||a.dynTravelUntil>S.day||a.dynBasicUntil>S.day))&&!(a.abroadUntil>S.day));if(S.eduShare2)actors.sort((x,y)=>(y.edu||0)-(x.edu||0));
     const myPlots=new Map();let anyPlotFree=false;for(const pl of S.plots){if(pl.owner)myPlots.set(pl.owner,(myPlots.get(pl.owner)||0)+1);if(pl.owner&&pl.used<S._pc)anyPlotFree=true}
     const siteK=new Map(S.sites.map(x=>[x.id,x.kind]));const siteBig=new Set(S.sites.filter(x=>x.big||x.kind==='apt'||x.kind==='dev'||x.kind==='clear'||x.pub||x.firm).map(x=>x.id));const banRules=S.gov&&S.gov.rules&&S.gov.rules.length;const freeLot=hasFreeLot(),freeShop=S.shopUsed.includes(false);
     const kids=L.filter(a=>a.alive&&a.age>=6*YEAR&&a.age<ADULT),kidsN=kids.length;S.sig.kids=kidsN;for(const c of kids)c.taught=0;
@@ -2846,7 +2847,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     for(const a of actors){
       const wkF=faithHas(a,'work');const g=a.g,hu=a.hunger/100,ti=a.fat/100,po=1/(1+Math.max(0,a.cash)/20);
       const desperate=a.hunger>45&&a.inv.meal<1&&a.inv.grain<2&&a.cash<S.price.grain*3;
-      let best=REST,bv=-1e9;
+      let best=REST,bv=-1e9;const dynWant=S.dyn&&a.id===S.dyn.pid?dynPickJob(a,{myPlots,anyPlotFree,banRules,siteK,freeLot,freeShop,kidsN,monarch}):null;
       if(a.fat>=100){best=REST}else{
         for(let k=0;k<NA;k++){
           if(k===FARM&&!myPlots.get(a.id)&&!anyPlotFree)continue;
@@ -2866,10 +2867,12 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
           if(wkF)v+=PROD.includes(k)?.6:k===REST?-.5:0;
           if(k===BUILD&&a.site&&siteK.get(a.site)&&(siteBig.has(a.site)))v+=4;
           v+=3*(g.b[k]+g.h[k]*hu+g.t[k]*ti+g.p[k]*po)+gauss()*g.explore*2;
-          if(S.dyn&&a.id===S.dyn.pid&&S.dyn.budget.job!=null&&S.dyn.budget.job>=0){if(k===S.dyn.budget.job)v+=6+Math.abs(v)}
+          if(dynWant!=null&&k===dynWant)v+=6+Math.abs(v);
+          if(S.dyn&&k===a.lastJob&&a.id!==S.dyn.pid)v+=dynStickBonus(a);
           if(v>bv){bv=v;best=k}}}
       if((a.pubT||a.faithT)&&a.fat<85)best=TEACH;
       else if(a.ct&&!dynEmploymentBlocked(a,monarch)&&a.fat<85&&!a.sw){const ce=S.byId.get(a.ct.e);if(ce&&ce.alive&&a.emp===ce.id)best=WORK}
+      if(S.dyn){if(best!==REST){a.actRun=a.lastJob===best?(a.actRun||0)+1:0;a.lastJob=best}if(a.id===S.dyn.pid)best=dynNoteDay(a,best,dynWant,desperate)}
       a.act=best;a.actT=null;if(best===FARM)nFarm++}
     // 4. 실행
     const crowd=nFarm>0?Math.min(1,PLOTS.length/nFarm):1;
@@ -2969,7 +2972,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         if(!o&&a.ct&&a.emp===a.ct.e){const ce=S.byId.get(a.ct.e);if(ce&&ce.alive&&(dynContractFirm(a,ce)?.cash??ce.cash)>a.ct.w){o=offerQ.find(x=>x.e===ce);if(!o&&ce.lastSpec!=null){o={e:ce,spec:ce.lastSpec,wage:a.ct.w,slots:0,init:0};offerQ.push(o)}if(o)o.slots++}}
         if(!o){o=offerQ.find(x=>x.slots>0&&x.e.g.kin>.55&&(x.e.kids.includes(a.id)||a.kids.includes(x.e.id)||x.e.partner===a.id||a.parents.some(p=>x.e.parents.includes(p))));if(o&&o.e.id!==a.emp)mile('nepotism',`첫 친인척 채용. ${josa(nm(o.e),'이','가')} 남보다 먼저 친척 ${josa(nm(a),'을','를')} 일꾼으로 썼다`,[o.e.id,a.id])}
         if(o&&((o.research&&(a.edu||0)<3)||(o.minEdu&&Math.max(a.edu||0,a.cert?2:0)<o.minEdu)))o=null;if(!o&&Math.max(a.edu||0,a.cert?2:0)>=2)o=offerQ.find(x=>x.slots>0&&x.e!==a&&x.spec!==FARM&&x.spec!==CHOP&&x.spec!==MINE&&(!x.research||(a.edu||0)>=3));if(!o||(a.caught>=2&&o.e.g.picky>.5))o=offerQ.find(x=>x.slots>0&&x.e!==a&&!(a.caught>=2&&x.e.g.picky>.5)&&(!x.research||(a.edu||0)>=3)&&(!x.minEdu||Math.max(a.edu||0,a.cert?2:0)>=x.minEdu));
-        S.yr.tries++;if(!o){a.act=REST;a.fat-=20;S.yr.unemp++;S.unempToday=(S.unempToday||0)+1;a.jobless=(a.jobless||0)+1}else{a.jobless=0;
+        S.yr.tries++;if(!o){if(S.dyn&&a.id===S.dyn.pid&&S.dyn.today)Object.assign(S.dyn.today,{did:REST,why:'일자리를 못 구해 쉼'});a.act=REST;a.fat-=20;S.yr.unemp++;S.unempToday=(S.unempToday||0)+1;a.jobless=(a.jobless||0)+1}else{a.jobless=0;
           o.slots--;const e=o.e;
           if(a.emp!==e.id){a.emp=e.id;S.tot.hires++;if(S.tot.hires===1)mile('hire',`첫 고용. ${josa(nm(e),'이','가')} ${nm(a)}에게 하루 ${won(o.wage)} 일당을 주고 일을 시켰다`,[e.id,a.id])}
           e.workers++;
@@ -4487,6 +4490,61 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         [{k:'yes',label:'허락한다',hint:'얻는 것: '+dynGain(o).text},{k:'no',label:'반대한다',hint:`낭만적인 자녀는 반대를 무릅쓰고 혼인할 수 있음`}],{kid:kid.id,other:o.id,p})}}
   // ---- 지출 설정(7-3). 5일마다 내 캐릭터에게만 적용. 쓴 돈은 마을 사람에게 간다(돈이 사라지지 않음) ----
   // 일 고르기: 엔진이 매일 일을 고를 때 이 일에 가중치(+6). 땅·재료·일자리 조건은 그대로.
+  // ===== 하루 일: 공무·사업 경영·우선순위·끈기 (가문 모드 전용, 원래 마을은 이 함수들을 부르지 않는다) =====
+  const MANAGE=100,DYN_JOB_N={[MANAGE]:'사업 경영'};
+  // 국가의 녹을 먹는 전업 공직(의원은 겸직이라 제외)
+  function dynFullOffice(a){const G=S.gov;if(!G||!a)return '';if(G.king===a.id)return '왕';if(G.chief===a.id)return chiefTitle();if(G.regent===a.id)return '섭정';const m=dynMinisterPost(a);if(m)return m.title||'장관';
+    const c=duRole(a);if(c)return {judge:'재판관',pros:'검사',cop:'경찰'}[c];if(S.mil?.gen===a.id)return '장군';const lo=dynLocalOffice(a);if(lo)return lo.kind==='gu'?'구청장':'동장';return ''}
+  function dynCanManage(me){const D=S.dyn;return !!(me&&(coMine(me).some(f=>!f.merc&&!f.gone)||(D.shark&&D.shark.book&&D.shark.book.length)))}
+  function dynManageRatio(days){const D=S.dyn;return (D.manage||[]).filter(d=>S.day-d<days).length/days}
+  function dynJobName(k){return DYN_JOB_N[k]||(DYN_JOBS.find(j=>j[0]===k)||[])[1]||'쉬기'}
+  // 엔진의 하루 일 조건과 같은 기준으로 못 하는 이유를 돌려준다(빈 문자열이면 가능)
+  function dynJobWhy(a,k,c){
+    if(k===MANAGE)return dynCanManage(a)?'':'경영할 사업(내 회사·고리대)이 없음';
+    if(k===FARM&&!c.myPlots.get(a.id)&&!c.anyPlotFree)return '경작할 땅이 없음';
+    if(k===COOK&&a.inv.grain<2)return '곡식이 모자람';
+    if(k===CRAFT&&a.inv.wood<3)return '나무가 모자람';
+    if(k===CHOP&&c.banRules&&banned(a,'chop'))return '벌목 금지 규칙';
+    if(k===BUILD&&!(a.site&&(c.siteK.get(a.site)==='clear'||c.siteK.get(a.site)==='dev'))&&(a.inv.wood+(a.inv.plank||0)/.7<1||(a.inv.stone||0)+(a.inv.brick||0)*2.5<1.5||(!a.site&&!c.freeLot&&!c.freeShop)))return '집 지을 재료나 터가 없음';
+    if(k===WORK&&dynEmploymentBlocked(a,c.monarch))return '공직 중에는 고용될 수 없음';
+    if(k===WORK&&!S.offers.length)return '일자리 공고가 없음';
+    if(k===TRADE&&a.cash<20*PL()/(1+(a.edu||0)))return '장사 밑천이 모자람';
+    if(k===TEACH&&((!c.kidsN&&!(S._studs||[]).length)||Math.max(a.skill[FARM],a.skill[COOK],a.skill[CHOP],a.skill[BUILD],a.skill[CRAFT],a.skill[MINE])<.4-.15*(a.edu||0)))return '가르칠 학생이나 기술이 없음';
+    return ''}
+  function dynPrefs(){const B=S.dyn.budget;return [B.job,B.job2,B.job3].filter(j=>j!=null&&j>=0)}
+  function dynPickJob(a,c){const D=S.dyn,why=[];D._why=why;for(const k of dynPrefs()){const w=dynJobWhy(a,k,c);if(!w)return k;why.push([k,w])}return null}
+  function dynNoteDay(a,best,want,desperate){const D=S.dyn,prefs=dynPrefs(),slack=D.slackD===S.day,why=D._why||[];let r='';
+    if(want===MANAGE&&a.fat<100&&!(a.pubT||a.faithT)&&!(a.ct&&best===WORK)){best=REST;D.manage=(D.manage||[]).filter(d=>S.day-d<60).concat(S.day)}
+    const blocked=why.map(([k,w])=>`${dynJobName(k)}: ${w}`).join(' · ');
+    if(!prefs.length)r='성향대로 자동 선택';
+    else if(want==null)r=blocked||'원하는 일을 할 수 없음';
+    else if((a.pubT||a.faithT)&&best===TEACH&&want!==TEACH)r='맡은 가르침 일을 먼저 함';
+    else if(a.ct&&best===WORK&&want!==WORK)r='고용 계약 근무 중';
+    else if(want===MANAGE&&best===REST)r=blocked?`앞 순위 불가 → ${blocked}`:'';
+    else if(best===want)r=blocked?`앞 순위 불가 → ${blocked}`:'';
+    else if(a.fat>=100)r='피로가 쌓여 쉼';
+    else if(desperate)r='굶주려서 먹을 것부터 구함';
+    else r='다른 일이 더 급해 보여서';
+    D.today={d:S.day,kind:slack?'slack':want===MANAGE&&best===REST?'manage':'job',want,did:want===MANAGE&&best===REST?MANAGE:best,why:r,office:slack?dynFullOffice(a):''};return best}
+  // 공무: 전업 공직자는 하루 일 대신 공무를 본다. 주민 공직자는 성향대로 가끔 땡땡이친다
+  function dynDayPass(L){const D=S.dyn,me=dynMe();if(!S.gov){if(me)D.slackD=-1;return}
+    for(const a of L){if(!a.alive||!isAdult(a)||(a.jailUntil||0)>S.day||a.study||a.armyUntil>S.day||a.foreignT||a.civ||a.dynMercFirm||a.dynTravelUntil>S.day||a.dynBasicUntil>S.day||a.abroadUntil>S.day)continue;
+      const office=dynFullOffice(a);if(!office)continue;
+      if(a===me){const duty=D.budget.duty??1;if(duty===2){D.slackD=S.day;continue}D.today={d:S.day,kind:'duty',office,did:null,want:null,why:duty===0?'공무에 전념':''}}
+      else if(wr()<cl(.05+(a.g.cheat??.3)*.35+(1-(a.g.civic??.5))*.2,0,.6))continue;
+      a.dynDayD=S.day;a.act=REST;a.actT={market:1};a.fat=Math.max(0,a.fat-6)}}
+  function dynDutyTick(me){const D=S.dyn,t=D.today,G=S.gov;if(!t||t.d!==S.day||!me)return;const ruler=G&&(G.chief===me.id||G.king===me.id||G.regent===me.id);
+    if(t.kind==='duty'){D.slack=Math.max(0,(D.slack||0)-.1);if((D.budget.duty??1)===0){if(ruler)G.approval=Math.min(.95,(G.approval??.5)+.0015);me.rep=cl((me.rep??1)+.0005,0,1);me.dynStress=Math.min(100,(me.dynStress||0)+.4)}return}
+    if(t.kind!=='slack')return;D.slack=(D.slack||0)+1;if(ruler)G.approval=Math.max(0,(G.approval??.5)-.003);me.rep=cl((me.rep??1)-.0005,0,1);
+    if(D.slack>=8&&wr()<.04){D.slack=0;let txt;const mm=G&&Object.values(G.min||{}).find(m=>m.mn===me.id&&!m.into);
+      if(mm){mm.mn=null;txt=`${josa(nm(me),'이','가')} 공무를 내팽개치다 ${mm.name||'부처'} 장관 자리에서 잘렸다`}
+      else if(me.dynCop){me.dynCop=null;txt=`${josa(nm(me),'이','가')} 근무를 빼먹다 경찰복을 벗었다`}
+      else{if(ruler)G.approval=Math.max(0,(G.approval??.5)-.05);me.rep=cl((me.rep??1)-.05,0,1);txt=`${nm(me)} ${t.office||'공직자'}의 공무 태만이 소문났다`}
+      log('pol',txt,[me.id]);dynChron(txt,[me.id]);dynPush('notice',txt,[{k:'ok',label:'확인'}],{d:S.day})}}
+  // 끈기: 하던 일을 이어 가면 단골·재고·손에 익음이 남는다. 얼마나 버티는지는 사람마다 다르고 자녀에게 이어진다
+  function dynStickBonus(a){if(a.lastJob==null||a.lastJob===REST)return 0;let st=a.g.stick;
+    if(st==null){const ps=(a.parents||[]).map(id=>S.byId.get(id)).filter(p=>p&&p.g&&p.g.stick!=null);st=ps.length?cl(ps[wr()<.5?0:ps.length-1].g.stick+(wr()-.5)*.25,0,1):wr();a.g.stick=st}
+    return st*3*(1+Math.min(a.actRun||0,20)/20)}
   const DYN_JOBS=[[FARM,'농사','내 땅이나 빈 땅을 경작'],[COOK,'요리','곡식이 있어야 함'],[CHOP,'벌목·채집','숲에서 자원을 모아 장터에 팖'],[BUILD,'집짓기','나무·돌·집터가 있어야 함'],[WORK,'품팔이·농가 일손·운반','고용주가 실제 일자리를 내야 함'],[CRAFT,'장인(도구·물건 만들기)','나무가 있어야 함'],[MINE,'광산','광산과 채굴 조건이 필요'],[TEACH,'가르치기·견습','학생이나 가르칠 기술이 필요'],[TRADE,'장사','밑천이 있어야 함'],[STEAL,'도둑질','불법 · 적발되면 벌금·감옥·평판 하락']];
   const DYN_GIG_TYPES=[['day','품팔이',()=>true],['farm','농가 일손',o=>o.spec===FARM],['gather','채집·광산 보조',o=>o.spec===CHOP||o.spec===MINE],['haul','운반·공사 보조',o=>o.spec===BUILD||o.spec===TRADE],['apprentice','견습',o=>!!o.appr&&PROD.includes(o.spec)]];
   function dynGigOffers(me){if(!me||!isAdult(me)||dynEmploymentBlocked(me)||me.ct||S.dyn.gig)return[];const offers=S._offerQ||S.offers||[],out=[];
@@ -4556,7 +4614,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const rivals=S.groups.filter(x=>x.mode==='gang'&&x.id!==g.id).length;ops.risk=Math.min(.03,(ops.risk||0)+rivals*.00001);if(ops.loyalty<.18&&members.length>1&&wr()<.002){const deserter=members.filter(x=>x.id!==me.id).sort((a,b)=>(ops.orders?.[a.id]?1:0)-(ops.orders?.[b.id]?1:0))[0];if(deserter){delete ops.orders?.[deserter.id];leaveGroup(deserter);ops.loyalty=cl(ops.loyalty-.04,0,1);ops.reports.unshift({d:S.day,text:`${nm(deserter)}이 보수와 충성 문제로 조직을 떠났다`})}}ops.active=active;ops.reports=ops.reports.slice(0,20)}
   const DYN_GIVE=['없음','교회','촌장','가난한 이웃'],DYN_DEBT=['최소','빨리'];
   function dynSetBudget(b){const D=S.dyn;if(!D)throw Error('가문 모드가 아닙니다');const B=D.budget,N={...B},n=(v,lo,hi)=>{v=Number(v);if(!Number.isFinite(v))throw Error('지출 설정 값이 올바르지 않습니다');return Math.max(lo,Math.min(hi,v))};
-    if(b.job!=null){const j=Math.round(Number(b.job));if(!(j===-1||DYN_JOBS.some(x=>x[0]===j)))throw Error('없는 일입니다');if(j===WORK&&dynEmploymentBlocked(dynMe()))throw Error('통치 중에는 다른 사람에게 고용될 수 없습니다');N.job=j}
+    for(const key of ['job','job2','job3'])if(b[key]!=null){const j=Math.round(Number(b[key]));if(!(j===-1||j===MANAGE||DYN_JOBS.some(x=>x[0]===j)))throw Error('없는 일입니다');if(j===WORK&&dynEmploymentBlocked(dynMe()))throw Error('통치 중에는 다른 사람에게 고용될 수 없습니다');N[key]=j}
+    if(b.duty!=null){const d=Math.round(Number(b.duty));if(![0,1,2].includes(d))throw Error('공무 태도 값이 올바르지 않습니다');N.duty=d}
     if(b.life!=null)N.life=Math.round(n(b.life,0,4));if(b.edu!=null)N.edu=Math.round(n(b.edu,0,3));if(b.save!=null)N.save=Math.round(n(b.save,0,.5)*20)/20;if(b.give!=null)N.give=Math.round(n(b.give,0,3));if(b.debt!=null)N.debt=Math.round(n(b.debt,0,1));Object.assign(B,N);return {...B}}
   function dynPayee(me){const own=[...S.shops.map(s=>s.owner),...S.bldgs.filter(b=>!b.firm).map(b=>b.owner)].map(id=>S.byId.get(id)).filter(x=>x&&x.alive&&x!==me);if(own.length)return pick(own);const ad=adultsC().filter(x=>x!==me);return ad.length?pick(ad):null}
   function dynPay(me,to,amt,why){amt=Math.min(amt,Math.max(0,me.cash));if(!(amt>0)||!to)return 0;me.cash-=amt;SP(me,why,amt);to.cash+=amt;to.src.biz=(to.src.biz||0)+amt;return amt}
@@ -4795,8 +4854,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function coTick(me){if(S.day%30!==7)return;const wA=dynWA(),G=S.gov;
     for(const f of S.firms.slice()){if(!f.co||f.merc||!firmById(f.id))continue;const o=f.co,staff=coStaff(f),c=S.byId.get(f.ceo);if(!c||!c.alive)continue;
       // 사기: 임금·복지·장학 재단·하청 후려치기로 정해지는 목표 쪽으로 30%씩
-      const target=cl(.5+(o.wage-1)*1.5+o.wel*.12+o.fund*.05-(o.dark.sub&&S.day-o.dark.sub<YEAR?.1:0)-(o.strike>S.day?.05:0),0,1);o.morale=cl(o.morale+(target-o.morale)*.3,0,1);
-      const base=coBase(f),mult=coMult(f)*(.8+o.morale*.4)-(o.strike>S.day?.5:0)-(o.morale<.3?.1:0);
+      const mgr=me&&f.ceo===me.id?dynManageRatio(30):null,mgrM=mgr==null?0:mgr>0?mgr*.15:staff.length>=2?-.05:0;
+      const target=cl(.5+(o.wage-1)*1.5+o.wel*.12+o.fund*.05-(o.dark.sub&&S.day-o.dark.sub<YEAR?.1:0)-(o.strike>S.day?.05:0)+mgrM,0,1);o.morale=cl(o.morale+(target-o.morale)*.3,0,1);
+      const base=coBase(f),mult=coMult(f)*(.8+o.morale*.4)*(mgr?1+mgr*.3:1)-(o.strike>S.day?.5:0)-(o.morale<.3?.1:0);
       if(mult>0)o.lastGain=coDrain(f,base*mult);else{o.lastGain=-coSpend(f,base*-mult)}
       // 복지·지점 운영비
       if(o.wel&&staff.length){const per=Math.min(wA*2,(f.cash||0)*.2/staff.length);for(const x of staff){f.cash-=per;x.cash+=per}if((f.cash||0)<wA*5){o.wel=0;coNote(f,'회사 현금이 바닥나 복지를 멈췄다')}}
@@ -7839,7 +7899,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     throw Error('모르는 행동입니다')}
   // 열흘마다: 고리대 이자·연체, 노예 탈출, 수배 열기 식기·수사
   function crTick(me){const D=S.dyn;if(!me||S.day%10!==3)return;const G=S.gov,wA=dynWA();
-    if(D.shark)for(const b of D.shark.book){const x=S.byId.get(b.id);if(!x||!x.alive||b.bal<=0)continue;const due=b.bal*.3;if(x.cash>=due){x.cash-=due;me.cash+=due;b.miss=0}else{b.bal+=due;b.miss=(b.miss||0)+1}}
+    if(D.shark){const mg=dynManageRatio(10);for(const b of D.shark.book){const x=S.byId.get(b.id);if(!x||!x.alive||b.bal<=0)continue;const due=b.bal*.3;
+      if(x.cash>=due&&!(mg===0&&wr()<.2)){x.cash-=due;me.cash+=due;b.miss=0}else{const part=mg>=.3?Math.min(Math.max(0,x.cash)*.5,due):0;x.cash-=part;me.cash+=part;b.bal+=due-part;b.miss=(b.miss||0)+1}}}
     if(D.shark)D.shark.book=D.shark.book.filter(b=>b.bal>0&&S.byId.get(b.id)?.alive);
     for(const x of S.agents){if(!x.alive||x.enslavedBy!==me.id)continue;if(wr()<.03){x.enslavedBy=null;endCt(x,'escape');x.emp=null;crHeat(.3);if(G&&wr()<.5)G.cases.push({t:'confine',who:me.id,amt:wA*10,ev:.7,d:S.day});dynChron(`${josa(nm(x),'이','가')} 노예 생활을 견디다 못해 도망쳤다`,[me.id,x.id])}}
     if(D.heat>0){if(G&&wr()<D.heat*.05)G.cases.push({t:'robbery',who:me.id,amt:wA*5,ev:.4+Math.min(.4,D.heat*.15),d:S.day});D.heat=Math.max(0,D.heat-.03)}}
@@ -8226,7 +8287,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         heir:R0.heir?{name:rName(R0.heir),age:rAge(R0.heir),sex:R0.heir.sex}:null,hist:R0.hist.slice(-6).reverse()}}).filter(Boolean);
     {const sf=G&&G.stateFaith&&(S.faiths||[]).find(f=>f.id===G.stateFaith);if(sf)us.faith=sf.name}
     return {known:true,us,realms,far:farView(r),marks:farMarks(),fw:S.fw&&S.fw.until>S.day?{a:S.fw.a,b:S.fw.b}:null,news:(D.wnews||[]).slice(-12).reverse()}}
-  function dynTick(){const D=S.dyn,me=dynMe();dynLeavePrivateEmployment(dynReigningMonarch());dynLeavePrivateEmployment(me);dynWorldTick();if(D.over)return;if(me&&D.gig)dynGigTick(me);if(me)dynMilitiaTick(me);if(me)dynSpyOrgTick(me);if(me)dynUnderworldTick(me);dynTierTick();coTick(me);crTick(me);duTick(me);adTick(me);jrTick(me);wfTick(me);mcTick();ecTick();scTick();rrTick(me);if(me&&me.alive){dynSiteTick(me);dynStressTick(me);dynFaithTick(me);dynStoryTick(me)}if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
+  function dynTick(){const D=S.dyn,me=dynMe();dynLeavePrivateEmployment(dynReigningMonarch());dynLeavePrivateEmployment(me);dynWorldTick();if(D.over)return;if(me&&D.gig)dynGigTick(me);if(me)dynMilitiaTick(me);if(me)dynSpyOrgTick(me);if(me)dynUnderworldTick(me);dynTierTick();coTick(me);crTick(me);duTick(me);adTick(me);jrTick(me);wfTick(me);mcTick();ecTick();scTick();rrTick(me);if(me&&me.alive){dynDutyTick(me);dynSiteTick(me);dynStressTick(me);dynFaithTick(me);dynStoryTick(me)}if(me&&me.alive&&!((me.jailUntil||0)>S.day)){dynIntel(me);dynSpyOffer(me);dynForeignEvents(me);if(D.informant&&S.day%15===0){me.cash+=dynWA();if(wr()<.004){D.informant=0;me.rep=Math.max(0,(me.rep??1)-.2);dynChron(`${josa(nm(me),'이','가')} 정보기관 끄나풀이었다는 게 드러나다`,[me.id])}}}
     if(me&&W(me)>D.peak.w)D.peak.w=W(me);
     if(me&&me.alive){const tt=dynPolTitle(me);if(D.title===undefined)D.title=tt;else if(tt!==D.title){const t=tt?`${josa(nm(me),'이','가')} ${josa(tt,'이','가')} 됐습니다`:`${josa(nm(me),'이','가')} ${D.title} 자리에서 물러났습니다`;D.title=tt;dynChron(t,[me.id]);dynPush('notice',t,[{k:'ok',label:'확인'}],{d:S.day})}
       if(S.day%5===0&&!((me.jailUntil||0)>S.day))dynBudgetTick(me);
@@ -8307,7 +8368,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     out.gangBusiness=g?.mode==='gang'&&g.leader===a.id&&g.dynOps?{businesses:g.dynOps.businesses||[],loyalty:g.dynOps.loyalty||0,risk:g.dynOps.risk||0,daily:g.dynOps.daily||{},tre:g.tre||0,reports:(g.dynOps.reports||[]).slice(0,6)}:null;
     out.family={parents:f.parents.map(dynP),siblings:f.siblings.map(dynP),partner:dynP(f.partner),kids:f.kids.map(dynP),grand:f.grand.map(dynP)};
     out.goals=a.alive&&!D.over?dynGoals(a):[];out.specials=(D.specials||[]).slice(-20);{const fa=faithOf(a);out.faithInfo=fa?{name:fa.name,members:fa.members||0,tre:fa.tre||0,docs:fa.doc.map(docName),heresy:fa.doc.filter(d=>DOCN_X[d]).map(docName),others:S.faiths.filter(f=>f.id!==fa.id).map(f=>`${f.name} ${f.members||0}명`),dream:fa.doc.includes('dream')&&fa.dreamRev?DYN_DREAM[fa.dreamRev]?.[0]:null,doomIn:fa.doomD?Math.max(0,fa.doomD-S.day):null,leader:fa.leader===a.id,rep:dynFRep(fa.id),repName:dynFRepName(dynFRep(fa.id)),state:!!(S.gov&&S.gov.stateFaith===fa.id),lock:!!fa.dynLock,mutual:(D.faithMutual?.[fa.id]||0)>S.day,rumor:(D.faithRisk?.[fa.id]||0)>.4}:null}out.stress=a.dynStress||0;out.clergy=faithOf(a)?.leader===a.id?'교단 지도자':D.clergy?.[a.id]===a.faith&&a.faith?'성직자':null;out.spyCareer=D.spyCareer?(()=>{const G=S.gov,on=!!(G&&(G.policy?.spyAgency||Object.values(G.min||{}).some(m=>m&&m.k==='sec')));return {title:on?'정보기관 직원 · 현장 요원':'정보기관 출신 · 전직 요원',active:on,experience:D.spyExperience||0,missionsUnlocked:true}})():null;out.spyAgency=D.spyAgency?{size:D.spyAgency.members?.length||0,upkeep:D.spyAgency.upkeep||0,loyalty:Math.round(100*(D.spyAgency.members||[]).reduce((t,x)=>t+(x.loyalty||0),0)/Math.max(1,D.spyAgency.members?.length||0)),risk:D.spyAgency.risk||0,exposed:!!D.spyAgency.exposed,reports:(D.spyReports||[]).slice(-8).reverse()}:null;
-    out.actions=dynActions();out.jobs=DYN_JOBS.filter(([k])=>!publicDuty||k!==WORK).map(([k,n,h])=>({k,n,h,days:'매일 재평가 · 선택은 바꿀 때까지 유지',wage:k===WORK?{min:Math.max(.5,(S.wageAvg||1)*.7),max:Math.max(.5,(S.wageAvg||1)*1.25)}:null,legal:k!==STEAL}));out.act=a.act;out.vault=D.vault||0;out.spent=D.spent||null;out.wageAvg=S.wageAvg||0;out.run=D.run||{};out.title=dynPolTitle(a);out.regime=S.gov?regime():'none';
+    out.actions=dynActions();out.jobs=[...DYN_JOBS,[MANAGE,'사업 경영','내 회사·고리대를 직접 돌봄 · 회사 매출·사기↑, 고리대 회수율↑ · 안 돌보면 직원 사기·회수가 떨어짐']].filter(([k])=>!publicDuty||k!==WORK).map(([k,n,h])=>({k,n,h,days:'매일 재평가 · 선택은 바꿀 때까지 유지',wage:k===WORK?{min:Math.max(.5,(S.wageAvg||1)*.7),max:Math.max(.5,(S.wageAvg||1)*1.25)}:null,legal:k!==STEAL}));out.act=a.act;out.today=D.today&&S.day-D.today.d<=1?{...D.today,wantN:D.today.want!=null?dynJobName(D.today.want):null,didN:D.today.kind==='duty'?'공무':dynJobName(D.today.did)}:null;out.official=dynFullOffice(a);out.canManage=dynCanManage(a);out.manageRatio=Math.round(dynManageRatio(30)*30);out.slack=Math.round(D.slack||0);out.vault=D.vault||0;out.spent=D.spent||null;out.wageAvg=S.wageAvg||0;out.run=D.run||{};out.title=dynPolTitle(a);out.regime=S.gov?regime():'none';
     const ministry=dynMinisterPost(a);out.ministry=ministry?{...ministry,budget:S.gov?.bud?.lines?.[ministry.keys.includes('def')?'def':ministry.keys.includes('edu')?'edu':ministry.keys.includes('health')?'health':ministry.keys.includes('welf')?'welf':ministry.keys.includes('sec')?'pol':ministry.keys.includes('infra')||ministry.keys.includes('land')?'pub':'adm']||0,army:ministry.keys.includes('def')&&S.mil?{level:S.mil.lvl,strength:S.mil.str||0,morale:S.mil.morale||0}:null}:null;out.ministerLobby=D.ministerLobby?.pid===a.id?D.ministerLobby:null;out.privateMilitia=D.privateMilitia?{size:D.privateMilitia.members?.length||0,loyalty:D.privateMilitia.loyalty||0,upkeep:D.privateMilitia.upkeep||0,risk:D.privateMilitia.risk||0,exposed:!!D.privateMilitia.exposed}:null;
     out.credit=S.loans.filter(l=>l.l===a.id).map(l=>({id:l.id,borrower:S.byId.get(l.b)?nm(S.byId.get(l.b)):'-',balance:l.bal,rate:l.rate,missed:l.missed||0,collateral:l.coll?.house?'집 담보':l.coll?.plot!=null?'농지 담보':'무담보',kind:l.kind}));out.corpCredit=(S.corpLoans||[]).filter(l=>l.l===a.id||firmById(l.firm)?.ceo===a.id).map(l=>({id:l.id,firm:firmById(l.firm)?.name||'-',role:l.l===a.id?'대출해 줌':'빌림',balance:l.bal,rate:l.rate,term:l.term,missed:l.missed||0,status:l.status,collateral:l.coll?'회사 건물':'무담보'}));const ownBank=(S.banks||[]).find(b=>b.own===a.id&&b.alive!==false),bf=ownBank?.finance||{};out.bank=ownBank?{id:ownBank.id,name:ownBank.name,capital:ownBank.capital||0,cash:a.cash,reserve:a.dres||0,deposits:S.deps.filter(d=>d.bank===a.id).reduce((t,d)=>t+d.amt,0),loans:S.loans.filter(l=>l.l===a.id).reduce((t,l)=>t+l.bal,0)+(S.corpLoans||[]).filter(l=>l.l===a.id&&l.status==='active').reduce((t,l)=>t+l.bal,0),corporateLoans:(S.corpLoans||[]).filter(l=>l.l===a.id&&l.status==='active').reduce((t,l)=>t+l.bal,0),interestIncome:bf.interestIncome||0,depositExpense:bf.depositExpense||0,badDebt:bf.badDebt||0,foreclosures:bf.foreclosures||0,net:((bf.interestIncome||0)-(bf.depositExpense||0)-(bf.badDebt||0)),baseRate:S.cbank?.base??(S.loans.length?S.loans.reduce((t,l)=>t+l.rate,0)/S.loans.length:.02),loanRate:ownBank.ops?.loanRate??(a.g.lendRate||.03),depositRate:ownBank.ops?.depositRate??(a.g.lendRate||.03)*.4,reserveRatio:ownBank.ops?.reserveRatio??.15}:null;
     out.world=dynWorldView(r);out.population={current:S.agents.filter(x=>x.alive).length,capacity:S.cap||0,births:S.yr.births||0,deaths:S.yr.deaths||0,in:S.yr.migIn||0,out:S.yr.migOut||0};out.heirs=dynHeirs();out.assets=dynAssets(a);out.publicOffice=dynLocalOffice(a);out.publicAccounts=Object.keys(BUD_L).map(cat=>dynPublicAccount(a,cat)).filter(Boolean).map(x=>({label:x.label,available:x.available,category:x.cat}));out.finance=(D.finance||[]).slice(-20);out.co=coView(a);out.mercenaries=mcView(a);out.relationships=rrView(a);out.statuses={heat:D.heat||0,judgeVacancies:S.gov?.jr?Math.max(0,jrCap()-jrJ().length):0,judgeStage:S.gov?.jr?.vac?.stage||'',reviews:S.gov?.jr?.rev?.length||0,lovers:out.relationships.filter(x=>x.role==='정인').length,concubines:out.relationships.filter(x=>x.role==='궁중 관계').length,relationshipWarnings:out.relationships.filter(x=>x.jealousy>.3||x.trust<.3||x.promise?.broken).length,farWars:farAlive().filter(F=>F.war?.att).map(F=>({a:F.name,b:F.war.vs})),mercenaryContracts:mcMine(a).filter(f=>f.merc.contract?.status==='active').length,mercenaryArrears:mcMine(a).reduce((n,f)=>n+Object.values(f.merc.arrears).reduce((m,v)=>m+v,0),0),mercenaryCaptives:mcMine(a).reduce((n,f)=>n+mcMembers(f).filter(x=>x.dynMercCaptive).length,0)};out.social={trip:D.social?.trip||null,trips:(D.social?.trips||[]).slice(-5),education:a.edu||0,study:a.study?{...a.study,majorName:MAJ[a.study.major]||'',days:Math.max(0,a.study.until-S.day)}:null,basic:D.social?.basic||null,major:MAJ[a.major]||'',orient:({het:'이성애',hom:'동성애',bi:'양성애'})[a.orient]||a.orient,public:!!a.dynIdentityPublic,union:scUnion(a)||null,gambling:a.gambA||0};out.economy={insurance:a.insurer?{name:a.insurer.name||nm(a)+' 보험',premiums:a.insurer.prem,claims:a.insurer.claims}:null,policies:(S.policies||[]).filter(p=>p.holder===a.id).map(p=>({...p,name:S.byId.get(p.ins)?.insurer?.name||'보험'})),coop:(S.coops||[]).find(c=>c.id===a.coop)||null,debts:(D.economy?.coopDebt||[]).filter(d=>d.borrower===a.id&&d.balance>0).map(d=>({...d})),funds:(S.funds||[]).filter(f=>f.founder===a.id).map(f=>({...f})),trades:(D.economy?.trades||[]).slice(-5)};out.mercBankruptcies=(D.mercBankruptcies||[]).slice(-5);out.interventions=(D.interventions||[]).map(x=>({...x}));out.warFamily={cruelty:D.warFamily?.cruelty||0,hostages:(D.hostages||[]).filter(h=>h.status==='held').map(h=>({id:h.id,country:h.country,name:rName(h.person),days:Math.max(0,h.until-S.day),blocks:wfHostageBlocks(h.country)})),captives:S.agents.filter(x=>x.alive&&x.warCaptive&&x.enslavedBy===a.id).length,grievances:Object.entries(D.warFamily?.grievance||{}).filter(([,n])=>n>0).map(([country,value])=>({country,value}))};out.ties=Object.entries(D.ties||{}).map(([fam,t])=>({fam:+fam,...t})).sort((x,y)=>y.v-x.v);

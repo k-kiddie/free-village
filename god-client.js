@@ -105,8 +105,7 @@ function dynPanelHTML(v){
       !m.publicDuty&&['고용주',m.emp?dynPerson(m.emp):'없음'],m.staff&&['고용한 사람',m.staff+'명'],m.grp&&['소속',dynEsc(m.grp.name)+(m.grp.leader?' (우두머리)':'')],m.caught&&['전과',m.caught+'번'],m.jail&&['처지','수감 중']])}
       <button data-person="${m.id}">자세한 인물 카드</button></div>
       ${v.faithInfo?`<div class="sec"><h4>신앙 · ${dynEsc(v.faithInfo.name)}</h4>${dynKV([['교리',dynEsc(v.faithInfo.docs.join(' · '))],['다른 교단',v.faithInfo.others?.length?dynEsc(v.faithInfo.others.join(' · ')):'없음'],v.faithInfo.dream&&['이달의 계시',dynEsc(v.faithInfo.dream)],v.faithInfo.doomIn!=null&&['종말 예언',v.faithInfo.doomIn?v.faithInfo.doomIn+'일 남음':'오늘!'],['내 자리',v.faithInfo.leader?'교주':v.clergy?'성직자':'신도'],['신도',v.faithInfo.members+'명'],v.faithInfo.leader&&['교단 금고',money(v.faithInfo.tre)],['교단 평판',dynEsc(v.faithInfo.repName)+` (${Math.round(v.faithInfo.rep*100)})`],v.faithInfo.state&&['지위','국교'],v.faithInfo.lock&&['세습','우리 가문이 대대로 이끎'],v.faithInfo.mutual&&['상호부조 계','운영 중'],v.faithInfo.rumor&&['소문','⚠️ 수상한 소문이 돈다']])}<small class="muted">종교 행동은 ⚖️ 정치 탭(창시·전도·선행)과 🗡️ 음모 탭(어둠)에 있습니다.</small></div>`:''}
-      <div class="sec"><h4>초반 생계 · 일 고르기</h4><label class="bud">희망하는 일 <select data-bud="job"><option value="-1" ${v.budget.job==null||v.budget.job<0?'selected':''}>성향대로 자동 선택</option>${(v.jobs||[]).map(j=>`<option value="${j.k}" ${v.budget.job===j.k?'selected':''}>${dynEsc(j.n)}${j.wage?` · ${money(j.wage.min)}~${money(j.wage.max)}/일 예상`:''}</option>`).join('')}</select>
-        <small>${(()=>{const j=(v.jobs||[]).find(x=>v.budget.job===x.k);return dynEsc(j?[j.h,j.days,j.wage?`예상 품삯 ${money(j.wage.min)}~${money(j.wage.max)}/일`:''].filter(Boolean).join(' · '):'기술과 조건에 맞는 합법 일감을 엔진이 고릅니다. 품팔이 임금은 마을 일당을 바탕으로 한 예상치입니다.')} )()} · 오늘: ${dynEsc(DYN_ACT_N[v.act]??'-')}</small></label></div>
+      ${dynWorkHTML(v)}
       ${dynSocialHTML(v)}${dynRelationshipsHTML(v)}${dynActionsHTML(v,'me')}${dynNetHTML(v)}`;
   if(dynTab==='fam'){const f=v.family;const list=(t,a)=>`<div class="sec"><h4>${t}</h4>${a.length?`<ul>${a.map(x=>`<li>${dynPerson(x)}</li>`).join('')}</ul>`:'<p class="muted">없음</p>'}</div>`;
     return `<div class="sec"><h4>${dynEsc(v.house)} · ${v.gen}대째</h4>${dynKV([['가문 시작',fmtD(v.start)],['최고 재산',money(v.peak.w)],['현재 지위',v.rankName],v.world&&['우리 땅',`${dynEsc(v.world.us.name)} · 인구 ${(v.world.us.effPop||v.world.us.pop).toLocaleString()}명(속령 포함)`]])}</div>
@@ -149,6 +148,13 @@ function dynBindBudget(P){P.querySelectorAll('[data-bud]').forEach(el=>el.onchan
     try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'budget',budget:{[k]:val}})});await dynSend({action:'save'})}catch(e){alert(e.message)}});
   P.querySelectorAll('[data-vault]').forEach(b=>b.onclick=async()=>{const [dir,frac]=b.dataset.vault.split(':');b.disabled=true;
     try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'vault',dir,frac:+frac})});await dynSend({action:'save'})}catch(e){alert(e.message)}finally{b.disabled=false}})}
+function dynTodayText(v){const t=v.today;if(!t)return '';const head=t.kind==='duty'?`🏛️ 공무${t.office?' ('+t.office+')':''}`:t.kind==='slack'?`😴 땡땡이 → ${t.didN}`:t.kind==='manage'?'💼 사업 경영':`${t.didN}`;return head+(t.why?` · ${t.why}`:'')}
+function dynWorkHTML(v){const B=v.budget||{},jobs=v.jobs||[],sel=(key,cur,first)=>`<select data-bud="${key}"><option value="-1" ${cur==null||cur<0?'selected':''}>${first}</option>${jobs.filter(j=>j.k!==100||v.canManage||cur===100).map(j=>`<option value="${j.k}" ${cur===j.k?'selected':''}>${dynEsc(j.n)}${j.wage?` · ${money(j.wage.min)}~${money(j.wage.max)}/일`:''}</option>`).join('')}</select>`;
+  const j1=jobs.find(x=>x.k===B.job);
+  return `<div class="sec"><h4>하루 일</h4>${v.official?`<label class="bud">공무 (${dynEsc(v.official)}) <select data-bud="duty">${['성실 · 지지율·평판↑, 스트레스↑','보통','땡땡이 · 아래 일을 함, 쌓이면 해임·망신'].map((l,i)=>`<option value="${i}" ${(B.duty??1)===i?'selected':''}>${l}</option>`).join('')}</select>${v.slack?`<small>땡땡이 누적 ${v.slack}</small>`:''}</label>`:''}
+    <label class="bud">1순위 ${sel('job',B.job,'성향대로 자동 선택')}</label>${B.job!=null&&B.job>=0?`<label class="bud">2순위 ${sel('job2',B.job2,'없음')}</label>${B.job2!=null&&B.job2>=0?`<label class="bud">3순위 ${sel('job3',B.job3,'없음')}</label>`:''}`:''}
+    <small>${dynEsc(j1?j1.h:'기술과 조건에 맞는 합법 일감을 엔진이 고릅니다.')}${v.canManage?` · 최근 30일 경영 ${v.manageRatio}일`:''}</small>
+    <p class="today">오늘: <b>${dynEsc(dynTodayText(v)||DYN_ACT_N[v.act]||'-')}</b></p></div>`}
 const DYN_ACT_N=['농사','요리','벌목','집짓기','남의 일','도둑질','쉬기','짝 찾기','경비','장인 일','광산','가르치기','장사'];
 const DYN_ECO_G=['집·땅','주식','회사','돈'];
 function dynRelationshipsHTML(v){return (v.relationships||[]).map(r=>`<div class="sec"><h4>💬 ${dynEsc(r.name)} · ${dynEsc(r.role)}</h4>${dynKV([['애정·신뢰·질투',`${Math.round(r.affection*100)} · ${Math.round(r.trust*100)} · ${Math.round(r.jealousy*100)}`],['원하는 것',dynEsc(r.goal)]])}${r.appointment?`<p>${fmtD(r.appointment)} 만남 약속</p>`:''}${r.promise?`<p>${fmtD(r.promise.due)}까지 함께할 시간${r.promise.broken?' · 지키지 못함':''}</p>`:''}${r.history.map(h=>`<small class="muted">${dynEsc(h.text)}</small>`).join('<br>')}</div>`).join('')}
@@ -195,7 +201,7 @@ function dynHomeHTML(v){
   if(v.social?.study)warn.push([`📚 학업 ${v.social.study.days}일 남음`,'me','배움·전공']);
   const byKey=new Map(acts.map(x=>[x.k,x])),favs=[...dynFav].map(k=>byKey.get(k)).filter(Boolean);
   const quick=favs.find(x=>x.k===dynQuickKey);
-  return `<div class="sec hero"><div class="hero-top"><div class="wealth"><small>순재산</small> ${money(a.w||0)}</div><span class="pill">${dynEsc(v.title||v.rankName)}</span></div><div class="hero-sub">현금 ${money(a.cash||0)} · 하루 소득 ${money(a.incAvg||0)}</div><div class="quickstats"><div><small>건강</small><b>${Math.round(m.health)}점</b></div><div><small>행복</small><b>${pct(m.happy)}점</b></div><div><small>평판</small><b>${pct(m.rep??1)}점</b></div><div><small>스트레스</small><b>${v.stress||0}점</b></div></div></div>
+  return `<div class="sec hero"><div class="hero-top"><div class="wealth"><small>순재산</small> ${money(a.w||0)}</div><span class="pill">${dynEsc(v.title||v.rankName)}</span></div>${v.today?`<div class="hero-sub today">오늘: ${dynEsc(dynTodayText(v))}</div>`:''}<div class="hero-sub">현금 ${money(a.cash||0)} · 하루 소득 ${money(a.incAvg||0)}</div><div class="quickstats"><div><small>건강</small><b>${Math.round(m.health)}점</b></div><div><small>행복</small><b>${pct(m.happy)}점</b></div><div><small>평판</small><b>${pct(m.rep??1)}점</b></div><div><small>스트레스</small><b>${v.stress||0}점</b></div></div></div>
   ${dynStatusHTML(v)}
   <div class="home-actions"><input id="dynQ" class="dynq" type="search" aria-label="전체 행동 검색" placeholder="행동 검색 · 회사, 결혼, 용병…" value="${dynEsc(dynQuery)}"><div id="dynQR">${dynSearchHTML(v)}</div>
   ${(()=>{const okN={},TL=DYN_TL();for(const x of acts)if(x.ok){const t=dynTabOfGroup(x.group);okN[t]=(okN[t]||0)+1}const js=Object.entries(okN).filter(([t])=>TL[t]&&t!=='home');return js.length?`<div class="hjump" aria-label="바로 이동">${js.map(([t,n])=>`<button data-goto="${t}">${TL[t]} <b>${n}</b></button>`).join('')}</div>`:''})()}
@@ -517,6 +523,7 @@ body.dyn .dynmodal{background:#060c12c9;backdrop-filter:blur(6px);padding:14px}b
 #dynApp #dFeedback{padding:5px 8px;margin-top:4px;max-height:55px}
 #dynApp .dtop .who small{display:inline;margin-left:6px}
 #dynApp #dFind{font-size:17px}
+#dynApp .today{margin:6px 0 0;font-size:12px;color:#c9d6d6}#dynApp .hero .today{color:#e4c586}
 #dynApp .hjump{display:flex;gap:5px;overflow-x:auto;margin:0 0 6px;padding-bottom:2px}
 #dynApp .hjump button{flex:none;min-height:34px;padding:4px 9px;font-size:12px;white-space:nowrap;border-radius:8px}
 #dynApp .hjump button b{color:#e4c586;margin-left:3px}
