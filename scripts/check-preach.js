@@ -29,4 +29,10 @@ const v=w.dynView();assert(v.faithInfo.piety!=null,'독실함 평균 표시');
 console.log(Object.entries(out).map(([k,t])=>`  ${k}: ${t}`).join('\n'));
 console.log(`  독실함 평균(방법별): ${Object.entries(by).map(([k,v])=>k+' '+Math.round(avg(v)*100)).join(' · ')}`);
 console.log(`  1년 뒤 강압 신도 ${forced}→${stay}명, 가족 신도 ${kinStay}명 남음 · 화면 독실함 평균 ${v.faithInfo.piety}`);
-console.log('전도 다양화: 8가지 방법·독실함·이탈·통화량 보존 통과');
+// 신도 지키기: 같은 강제 신도라도 내 활동에 따라 남거나 떠남
+function keep(mode){const x=createWorld(2429,180);x.dynStart();x.dynConfigureStart({age:34,status:'king',family:'children'});x.dynChoose(x.S.dyn.pending[0].id,'go');const S2=x.S,D2=S2.dyn,m=S2.byId.get(D2.pid);x.dynSetStory(0);D2.pending=[];m.cash=1e6;
+  x.dynAct('extra:found:charity+honest:지킴');const f=S2.faiths.find(q=>q.leader===m.id);for(let i=0;i<2;i++){D2.cool={};x.dynAct('extra:force')}const cnt=()=>S2.agents.filter(y=>y.alive&&y.faith===f.id&&['force','care'].includes(y.faithVia)).length,n0=cnt();
+  for(let d=0;d<YEAR;d++){x.step();D2.pending=D2.pending.filter(p=>p.inbox);m.cash=Math.max(m.cash,1e5);if(mode)for(const k of ['extra:rite','extra:care']){const a=x.dynActions().find(a=>a.k===k);if(a&&a.ok)x.dynAct(k)}}return [n0,cnt()]}
+const [a0,a1]=keep(false),[b0,b1]=keep(true);assert(b1/b0>a1/a0+.15,`돌보면 더 많이 남음(방치 ${a0}→${a1}, 돌봄 ${b0}→${b1})`);
+console.log(`  신도 지키기: 방치 ${a0}→${a1}명 · 예배·돌봄 ${b0}→${b1}명`);
+console.log('전도 다양화: 9가지 방법·독실함·이탈·신도 지키기·통화량 보존 통과');
