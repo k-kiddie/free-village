@@ -151,7 +151,7 @@ function dynBindBudget(P){P.querySelectorAll('[data-bud]').forEach(el=>el.onchan
     try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'budget',budget:{[k]:val}})});await dynSend({action:'save'})}catch(e){alert(e.message)}});
   P.querySelectorAll('[data-vault]').forEach(b=>b.onclick=async()=>{const [dir,frac]=b.dataset.vault.split(':');b.disabled=true;
     try{await dynApi(dynApiBase+'/api/cmd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'vault',dir,frac:+frac})});await dynSend({action:'save'})}catch(e){alert(e.message)}finally{b.disabled=false}})}
-const dynUrg=v=>(v?.pending||[]).filter(p=>!p.inbox),dynInb=v=>(v?.pending||[]).filter(p=>p.inbox).sort((a,b)=>(a.due??0)-(b.due??0));
+const dynUrg=v=>v?.pending||[],dynInb=()=>[];// 모든 선택지가 멈추고 바로 뜬다(받은 일함 없음)
 function dynInboxHTML(v){const IB=dynInb(v);if(!IB.length)return '';return `<div class="sec inbox"><h4>📥 받은 일 <small>${IB.length}건 · 시간은 계속 흐릅니다</small></h4>${IB.map(p=>{const left=p.due!=null?p.due-S.day:null;return `<button class="act${left!=null&&left<=3?' warn':''}" data-inbox="${p.id}">${dynEsc(p.title||p.text.slice(0,30))}<small>${left!=null?(left>0?left+'일 남음':'오늘까지'):''}${p.kind==='notice'?' · 알림':''}</small></button>`}).join('')}</div>`}
 // 내 조직: 단체마다 정보와 양지/음지 행동을 한곳에
 let dynOrgSel=null,dynOrgSide='light';

@@ -62,7 +62,7 @@ function newWorld() {
 }
 
 // 가문 모드: 선택지가 떠 있으면 답할 때까지 하루도 진행하지 않는다.
-const dynWaiting=()=>isDynasty&&!!world?.S.dyn&&world.S.dyn.pending.some(p=>!p.inbox);
+const dynWaiting=()=>isDynasty&&!!world?.S.dyn&&world.S.dyn.pending.length>0;
 
 function makeView() {
   const S = world.S;
