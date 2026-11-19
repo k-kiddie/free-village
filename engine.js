@@ -892,28 +892,33 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 연금·실업수당
     if(G&&G.policy.pension){G.pen=G.pen||0;const old=S.agents.filter(a=>a.alive&&a.age>52*YEAR),job=adultsC().filter(a=>a.occ==='glean'&&!a.study);const need=old.length*(S.wageAvg||1)*12+job.length*(S.wageAvg||1)*6;const f=need>0?Math.min(1,G.pen/need):0;
       if(f>0){for(const a of old){const g=(S.wageAvg||1)*12*f;a.cash+=g;a.src.grant=(a.src.grant||0)+g;G.pen-=g}for(const a of job){const g=(S.wageAvg||1)*6*f;a.cash+=g;a.src.grant=(a.src.grant||0)+g;G.pen-=g}if(old.length+job.length)mile('pension',`첫 연금. 일할 때 조금씩 낸 돈으로 노인 ${old.length}명과 일자리 잃은 사람 ${job.length}명이 생활비를 받았다`,[])}}}
-  function newParty(l,kind,extra){const pn=partyName(l,'party',kind);const g={id:S.nextGroup++,name:pn,pname:pn,sur:l.sur,mode:'party',origin:'party',kind,ideo:ideoOf(l),leader:l.id,members:[],tre:0,founded:S.day,clients:0,wage:2,gens:1,st:{collected:0,punished:0,refused:0,relief:0,caught:0,absorbed:0}};Object.assign(g,extra||{});S.groups.push(g);joinGroup(l,g);return g}
+  // 가문 모드 수사·사법 공무원은 정당 창당·가입 및 선거 후보가 될 수 없다.
+  // 일반 마을의 기존 정치 시뮬레이션은 그대로 둔다.
+  function dynCanPolitical(a){return !S.dyn||!duRole(a)}
+  // 수사·사법 공무원 임명은 정당·의회·행정부·지방직과 겸할 수 없다.
+  function dynCanHoldJustice(a){const G=S.gov;return !S.dyn||!!(a&&!duRole(a)&&!a.grp&&!(G?.council||[]).includes(a.id)&&!dynExecutive(a)&&!dynMinisterPost(a)&&!dynLocalOffice(a)&&G?.king!==a.id)}
+  function newParty(l,kind,extra){if(!dynCanPolitical(l))throw Error('수사·사법 공무원은 정당을 만들 수 없습니다');const pn=partyName(l,'party',kind);const g={id:S.nextGroup++,name:pn,pname:pn,sur:l.sur,mode:'party',origin:'party',kind,ideo:ideoOf(l),leader:l.id,members:[],tre:0,founded:S.day,clients:0,wage:2,gens:1,st:{collected:0,punished:0,refused:0,relief:0,caught:0,absorbed:0}};Object.assign(g,extra||{});S.groups.push(g);joinGroup(l,g);return g}
   function partyTick(){const G=S.gov;if(G&&G.chief&&G.coalFor!==G.chief&&S.day%5===0&&elective()){const c=S.byId.get(G.chief);if(c&&c.alive)realign(c)}if(!G||S.day%30!==ph(18))return;const ad=adultsC();const parties=S.groups.filter(g=>g.origin==='party');
     if(parties.length<6){
       // 노조가 크면 노동자 정당
-      const U=(S.unions||[]).slice().sort((x,y)=>y.n-x.n)[0];if(U&&U.n>=25&&!parties.some(g=>g.kind==='labor')&&R()<.25){const l=S.byId.get(U.lead);if(l&&l.alive&&!l.grp){const g=newParty(l,'labor');for(const a of ad)if(a.union&&!a.grp&&R()<.45*(.5+a.g.join))joinGroup(a,g);
+      const U=(S.unions||[]).slice().sort((x,y)=>y.n-x.n)[0];if(U&&U.n>=25&&!parties.some(g=>g.kind==='labor')&&R()<.25){const l=S.byId.get(U.lead);if(l&&l.alive&&!l.grp&&dynCanPolitical(l)){const g=newParty(l,'labor');for(const a of ad)if(a.union&&!a.grp&&dynCanPolitical(a)&&R()<.45*(.5+a.g.join))joinGroup(a,g);
         log('pol',`노조 위원장 ${josa(nm(l),'이','가')} 노조원들과 ${josa(g.name,'을','를')} 세웠다 (${g.members.length}명)`,[l.id],{x:MARKET.x+12,y:MARKET.y+8,t:'창당'});mile('laborParty',`첫 노동자 정당. 노조가 정치로 나섰다. ${josa(nm(l),'이','가')} ${josa(g.name,'을','를')} 세웠다`,[l.id]);return}}
       // 큰 종교는 신앙 정당
-      const fc=new Map();for(const a of ad)if(a.faith)fc.set(a.faith,(fc.get(a.faith)||0)+1);for(const[fid,n]of fc){if(n<ad.length*.15||parties.some(g=>g.faithP===fid)||R()>.05)continue;const fa=S.faiths.find(x=>x.id===fid);const l=fa&&S.byId.get(fa.leader);if(!l||!l.alive||l.grp||l.g.faith<.55)continue;
-        const g=newParty(l,'faith',{faithP:fid});for(const a of ad)if(a.faith===fid&&!a.grp&&a.g.faith>.5&&R()<.3)joinGroup(a,g);log('pol',`${fa.name}의 ${josa(nm(l),'이','가')} 신자들과 ${josa(g.name,'을','를')} 세웠다 (${g.members.length}명)`,[l.id],{x:MARKET.x+12,y:MARKET.y+8,t:'창당'});
+      const fc=new Map();for(const a of ad)if(a.faith)fc.set(a.faith,(fc.get(a.faith)||0)+1);for(const[fid,n]of fc){if(n<ad.length*.15||parties.some(g=>g.faithP===fid)||R()>.05)continue;const fa=S.faiths.find(x=>x.id===fid);const l=fa&&S.byId.get(fa.leader);if(!l||!l.alive||l.grp||!dynCanPolitical(l)||l.g.faith<.55)continue;
+        const g=newParty(l,'faith',{faithP:fid});for(const a of ad)if(a.faith===fid&&!a.grp&&dynCanPolitical(a)&&a.g.faith>.5&&R()<.3)joinGroup(a,g);log('pol',`${fa.name}의 ${josa(nm(l),'이','가')} 신자들과 ${josa(g.name,'을','를')} 세웠다 (${g.members.length}명)`,[l.id],{x:MARKET.x+12,y:MARKET.y+8,t:'창당'});
         mile('faithParty',`첫 신앙 정당. ${fa.name} 신자들이 ${josa(g.name,'을','를')} 세워 정치에 나섰다`,[l.id]);return}
       // 생각이 뚜렷하고 공익심·결속력 있는 사람이 직접 정당을 세운다
       const demo=elective(),few=demo&&parties.length<3;const dom=parties.slice().sort((x,y)=>y.members.length-x.members.length)[0];
-      for(const a of ad){if(a.age<20*YEAR||a.g.civic<.45||a.g.join<.4||a.g.boss<.3||Math.abs(ideoOf(a))<.2)continue;
+      for(const a of ad){if(!dynCanPolitical(a)||a.age<20*YEAR||a.g.civic<.45||a.g.join<.4||a.g.boss<.3||Math.abs(ideoOf(a))<.2)continue;
         // 선거 나라에 당이 하나뿐이면, 큰 당과 생각이 다른 사람이 탈당해서라도 야당을 세운다
         if(a.grp){if(!(few&&dom&&a.grp===dom.id&&a.id!==dom.leader&&Math.abs(ideoOf(a)-(dom.ideo??0))>.35))continue;leaveGroup(a)}
         const near=parties.some(g=>Math.abs((g.ideo??0)-ideoOf(a))<.25);const many=parties.length>=Math.max(4,Math.round(seats()/5));if(R()>(few?(near?.03:.25):many?(near?0:.004):near?.002:.05))continue;
-        const g=newParty(a,'idea');let n=0;for(const c of ad){if(n>=12)break;if(!c.grp&&c.g.join>.4&&Math.abs(ideoOf(c)-ideoOf(a))<.3&&R()<.3){joinGroup(c,g);n++}}
+        const g=newParty(a,'idea');let n=0;for(const c of ad){if(n>=12)break;if(dynCanPolitical(c)&&!c.grp&&c.g.join>.4&&Math.abs(ideoOf(c)-ideoOf(a))<.3&&R()<.3){joinGroup(c,g);n++}}
         log('pol',`${josa(nm(a),'이','가')} 뜻이 맞는 ${n}명과 ${josa(g.name,'을','를')} 창당했다`,[a.id],{x:MARKET.x+12,y:MARKET.y+8,t:'창당'});mile('ideaParty',`첫 창당. 패거리가 아니라 생각이 같은 사람들이 모여 ${josa(g.name,'을','를')} 세웠다`,[a.id]);break}}
     // 군소 정당 정리: 정당이 너무 많으면 의석 없는 가장 작은 당이 생각이 가까운 당에 합치거나 해산한다
     if(G&&elective())for(let rep=0;rep<3;rep++){const P2=S.groups.filter(g=>g.mode==='party');const cap=Math.max(4,Math.round(seats()/5));if(P2.length>cap){const seatN=g=>(G.council||[]).filter(id=>S.byId.get(id)?.grp===g.id).length+(G.chief&&S.byId.get(G.chief)?.grp===g.id?3:0);
       const sm=P2.filter(g=>!seatN(g)).sort((a,b)=>a.members.length-b.members.length)[0]||(P2.length>cap*1.4?P2.filter(g=>seatN(g)<3).sort((a,b)=>seatN(a)-seatN(b)||a.members.length-b.members.length)[0]:null);if(sm){const tgt=P2.filter(x=>x!==sm).sort((a,b)=>Math.abs((a.ideo??0)-(sm.ideo??0))-Math.abs((b.ideo??0)-(sm.ideo??0)))[0];
-        if(tgt&&Math.abs((tgt.ideo??0)-(sm.ideo??0))<.45){for(const id of sm.members.slice()){const m=S.byId.get(id);if(m&&R()<.75)joinGroup(m,tgt);else if(m)leaveGroup(m)}tgt.tre+=sm.tre;sm.tre=0;S.groups=S.groups.filter(x=>x!==sm);X('partyMerge');log('pol',`의석 없는 ${josa(sm.name,'이','가')} ${tgt.name}에 흡수 합당했다`,[tgt.leader])}
+      if(tgt&&Math.abs((tgt.ideo??0)-(sm.ideo??0))<.45){for(const id of sm.members.slice()){const m=S.byId.get(id);if(m&&dynCanPolitical(m)&&R()<.75)joinGroup(m,tgt);else if(m)leaveGroup(m)}tgt.tre+=sm.tre;sm.tre=0;S.groups=S.groups.filter(x=>x!==sm);X('partyMerge');log('pol',`의석 없는 ${josa(sm.name,'이','가')} ${tgt.name}에 흡수 합당했다`,[tgt.leader])}
         else{for(const id of sm.members.slice()){const m=S.byId.get(id);if(m)leaveGroup(m)}S.groups=S.groups.filter(x=>x!==sm);X('partyDissolve');log('pol',`${josa(sm.name,'이','가')} 의석을 하나도 못 얻고 해산했다`,[])}}}}
     // 합당: 생각이 비슷한 작은 정당끼리 합친다
     for(const a of parties)for(const b of parties){if(a===b||!S.groups.includes(a)||!S.groups.includes(b))continue;if(Math.abs((a.ideo??0)-(b.ideo??0))>.25||(a.seats||0)+(b.seats||0)>4||R()>.06)continue;
@@ -1884,7 +1889,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         mEv('civCaught_'+a.civHow,`채용 비리 적발. ${wh?wh.name:'관청'}의 ${what}이 드러났다. ${josa(nm(a),'은','는')} 자리에서 쫓겨났다${by?`. 뒤를 봐준 ${josa(nm(by),'은','는')} 재판에 넘겨졌다`:''}`,[a.id].concat(by?[by.id]:[]));a.civ=null}}
     G.civN=total}
   // ===== 기관장 임명: 체제마다 뽑는 물이 다르고, 민주 정부는 청문회를 거친다 =====
-  function mAppoint(G,m,parts,ch,pool0,era){const r=regime();const sk=a=>parts.reduce((t,q)=>t+MINI[q].skill(a),0);let pool=pool0.filter(a=>a!==ch&&!(S.dyn&&a.id===S.dyn.pid&&(S.dyn.declineUntil||0)>S.day));/* 가문 모드: 내 캐릭터가 자리를 사양하면 1년 동안 다시 앉히지 않음 */if(!pool.length)return null;
+  function mAppoint(G,m,parts,ch,pool0,era){const r=regime();const sk=a=>parts.reduce((t,q)=>t+MINI[q].skill(a),0),eligible=a=>a!==ch&&!(S.dyn&&a.id===S.dyn.pid&&(S.dyn.declineUntil||0)>S.day)&&!(S.dyn&&a.id!==S.dyn.pid&&duRole(a));let pool=pool0.filter(eligible);/* 가문 모드: 내 캐릭터가 자리를 사양하면 1년 동안 다시 앉히지 않음 · NPC 수사·사법 공무원은 정치직 자동 임명에서 제외 */if(!pool.length)return null;
     const chG=ch&&ch.grp;const mem=(G.council||[]).map(id=>S.byId.get(id)).filter(x=>x&&x.alive);const ally=mem.filter(x=>chG&&x.grp===chG).length;const coal=ally*2<=mem.length;
     let note='';
     // 체제별 인재 풀
@@ -1892,7 +1897,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     else if(r==='com'){const pm=pool.filter(a=>chG&&a.grp===chG);if(pm.length)pool=pm;note='당원'}
     else if(r==='mon'||r==='cmon'){const king=G.king&&S.byId.get(G.king);const ws=pool.slice().sort((x,y)=>(y.w||0)-(x.w||0));const nob=new Set(ws.slice(0,Math.max(5,ws.length*.05|0)));if(king)for(const a of pool)if(a.family===king.family||(S.dyn&&dynTieOf(king.family)>.3&&dynKin().has(a.id)))nob.add(a);if(r==='mon'||R()<.5){pool=pool.filter(a=>nob.has(a));note='귀족'}}
     else if(r==='theo'){const cl=pool.filter(a=>a.major==='theo'||a.g.faith>.75);if(cl.length){pool=cl;note='성직자'}}
-    if(!pool.length)pool=pool0.filter(a=>a!==ch);
+    if(!pool.length)pool=pool0.filter(eligible);
     // 청장은 소속 부 장관이 추천
     const parM=m.tier===2&&m.par&&G.min[m.par];const recommender=parM&&parM.mn&&S.byId.get(parM.mn);const boss=recommender||ch;
     // 연정: 촌장 당이 의회 과반이 아니면 부 장관 자리 일부를 다른 당에 내준다
@@ -3161,7 +3166,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(mode==='party')mile('party',`첫 정당. ${josa(old,'이','가')} 보호비 장사를 접고 ${josa(g.name,'으로','로')} 간판을 바꿨다`,[l.id]);
     else if(mode==='mob')mile('mobParty',`첫 조폭 정당. ${josa(old,'이','가')} '${g.name}' 간판을 걸고 보호비를 걷으면서 선거에도 뛰어들었다`,[l.id]);
     else if(om&&om!=='gang')mile('backGang',`도로 패거리. ${josa(old,'이','가')} ${!G?'정부가 사라지자':G.crisis&&S.day-G.crisis<YEAR?'나라 살림이 무너지자':'선거로는 재미를 못 보자'} 다시 보호비를 뜯는 패거리로 돌아갔다`,[l.id])}
-  function joinGroup(a,g){if(a.grp===g.id)return;leaveGroup(a);a.grp=g.id;g.members.push(a.id)}
+  function joinGroup(a,g){if(S.dyn&&duRole(a)){leaveGroup(a);return false}if(a.grp===g.id)return true;leaveGroup(a);a.grp=g.id;g.members.push(a.id);return true}
   function leaveGroup(a){if(!a.grp)return;const g=grpById(a.grp);a.grp=null;if(!g)return;g.members=g.members.filter(x=>x!==a.id)}
   function dissolve(g,why){for(const id of g.members){const m=S.byId.get(id);if(m)m.grp=null}
     const l=S.byId.get(g.leader);if(l&&l.alive)l.cash+=g.tre;g.tre=0;S.groups=S.groups.filter(x=>x!==g);
@@ -3246,7 +3251,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       // 선거로 뽑는 나라에선 정당을 힘으로 삼키지 못한다. 생각이 가까운 당끼리만 드물게 합당한다
       const bothP=small&&big.origin==='party'&&small.origin==='party',demo=S.gov&&elective(),anyP=small&&(big.origin==='party'||small.origin==='party');
       if(small&&demo&&anyP&&!(bothP&&Math.abs((big.ideo??0)-(small.ideo??0))<.15&&R()<.15)){}
-      else if(small&&gStrength(big)>gStrength(small)*1.6&&R()<.5){if(bothP&&demo){for(const id of small.members.slice()){const m=S.byId.get(id);if(m&&R()<.8)joinGroup(m,big);else if(m)leaveGroup(m)}big.tre+=small.tre;small.tre=0;S.groups=S.groups.filter(x=>x!==small);X('partyMerge');mEv('partyMerge',`합당. 생각이 비슷한 ${josa(small.name,'이','가')} ${big.name}에 합쳤다`,[big.leader,small.leader]);}else{
+      else if(small&&gStrength(big)>gStrength(small)*1.6&&R()<.5){if(bothP&&demo){for(const id of small.members.slice()){const m=S.byId.get(id);if(m&&dynCanPolitical(m)&&R()<.8)joinGroup(m,big);else if(m)leaveGroup(m)}big.tre+=small.tre;small.tre=0;S.groups=S.groups.filter(x=>x!==small);X('partyMerge');mEv('partyMerge',`합당. 생각이 비슷한 ${josa(small.name,'이','가')} ${big.name}에 합쳤다`,[big.leader,small.leader]);}else{
         for(const id of small.members.slice()){const m=S.byId.get(id);if(m&&R()<.7)joinGroup(m,big);else if(m)leaveGroup(m)}
         big.tre+=small.tre;small.tre=0;big.st.absorbed++;S.groups=S.groups.filter(x=>x!==small);
         log('pol',`${josa(big.name,'이','가')} ${josa(small.name,'을','를')} 집어삼켰다`,[big.leader,small.leader],{x:60,y:60,t:'흡수'});
@@ -3474,7 +3479,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     while(G.prosList.length<n&&guard++<6){G.pros=null;appointOne(ch);if(G.pros&&!G.prosList.includes(G.pros))G.prosList.push(G.pros);else break}
     G.pros=G.prosList[0]||null}
   function appointOne(ch){const G=S.gov;
-    const taken=new Set([...(G.prosList||[]),...(G.judges||[]).map(j=>j.id)]);const ad=S.agents.filter(a=>isAdult(a)&&a.age>=22*YEAR&&a.id!==ch.id&&!a.banned&&!inJail(a)&&!taken.has(a.id)&&!(S.dyn&&(a.grp||(G.council||[]).includes(a.id))));if(!ad.length)return;
+    const taken=new Set([...(G.prosList||[]),...(G.judges||[]).map(j=>j.id)]);const ad=S.agents.filter(a=>isAdult(a)&&a.age>=22*YEAR&&a.id!==ch.id&&!a.banned&&!inJail(a)&&!taken.has(a.id)&&dynCanHoldJustice(a));if(!ad.length)return;
     const loyal=ch.g.cheat>.4&&!G.policy.indepPros;const sc=a=>loyal?(a.grp&&a.grp===ch.grp?1:0)+a.g.comply*.5+(a.parents.includes(ch.id)||ch.kids.includes(a.id)?1:0)+R()*.3:prosInt(a)+a.skill[GUARD]*.3+R()*.2;
     const order=ad.sort((x,y)=>sc(y)-sc(x)).slice(0,3);const mem=(G.council||[]).map(id=>S.byId.get(id)).filter(m=>m&&m.alive);
     for(const p of order){let y=0;for(const m of mem){let s2=(prosInt(p)-.2)*2+(m.grp&&m.grp===ch.grp?.8:0)-(m.g.civic-.4)*(prosInt(p)<.25?2:0)+gauss()*.3;if(s2>0)y++}
@@ -3485,7 +3490,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     G.judges=G.judges.filter(j=>{const x=S.byId.get(j.id);return x&&x.alive&&!x.banned&&!inJail(x)&&S.day<j.until});
     const n=nJudges();const mem=(G.council||[]).map(id=>S.byId.get(id)).filter(m=>m&&m.alive);let guard=0;
     while(G.judges.length<n&&!(S.dyn&&G.jr)&&guard++<6){const taken=new Set([...(G.prosList||[]),...G.judges.map(j=>j.id)]);
-      const ad=S.agents.filter(a=>isAdult(a)&&a.age>=25*YEAR&&!a.banned&&!inJail(a)&&!taken.has(a.id)&&(!ch||a.id!==ch.id)&&!(S.dyn&&(a.grp||(G.council||[]).includes(a.id))));if(!ad.length)break;
+      const ad=S.agents.filter(a=>isAdult(a)&&a.age>=25*YEAR&&!a.banned&&!inJail(a)&&!taken.has(a.id)&&(!ch||a.id!==ch.id)&&dynCanHoldJustice(a));if(!ad.length)break;
       const loyal=ch&&(ch.g.cheat>.4||courtKind()==='puppet');const sc=a=>loyal?(a.grp&&a.grp===ch.grp?1:0)+a.g.comply*.5+R()*.3:prosInt(a)+R()*.2;
       const cand=ad.sort((x,y)=>sc(y)-sc(x)).slice(0,3);let pickd=null;
       for(const p of cand){let y=0;for(const m of mem){const s2=(prosInt(p)-.2)*2+(ch&&m.grp&&m.grp===ch.grp?.8:0)-(m.g.civic-.4)*(prosInt(p)<.25?2:0)+gauss()*.3;if(s2>0)y++}
@@ -3651,7 +3656,8 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const G=S.gov,ad=S.agents.filter(a=>isAdult(a)&&a.age>=20*YEAR&&a.id!==G.chief&&!a.banned&&!((a.jailUntil||0)>S.day)&&(G.policy.womenVote||a.sex!=='F')&&canVote(a));if(ad.length<12)return;
     const gi1=S.hist.length?S.hist[S.hist.length-1].gini:.4;
     const sc=x=>x.g.boss*.35+x.g.civic*.35+x.g.join*.2+Math.log10((x.w||0)+10)*.12+((G.council||[]).includes(x.id)?.15:0)+x.g.equal*gi1*.6+R()*.25;
-    const cand=ad.slice().sort((x,y)=>sc(y)-sc(x)).slice(0,seats()*2);for(const g of S.groups){if(g.mode==='gang')continue;const ms=ad.filter(a=>a.grp===g.id&&!cand.includes(a)).sort((x,y)=>sc(y)-sc(x)).slice(0,Math.max(1,Math.ceil(seats()/4)));for(const m of ms){cand.push(m);mile('nominate',`첫 공천. ${josa(g.name,'이','가')} ${josa(nm(m),'을','를')} 의원 후보로 내세웠다`,[m.id])}}if(S.dyn)dynCandidacy(cand,ad,'council');const pls=cand.map(platform);voterSample();for(const c of cand)c.prom=proposeRules(c);
+    const eligible=S.dyn?ad.filter(a=>!duRole(a)):ad;
+    const cand=eligible.slice().sort((x,y)=>sc(y)-sc(x)).slice(0,seats()*2);for(const g of S.groups){if(g.mode==='gang')continue;const ms=eligible.filter(a=>a.grp===g.id&&!cand.includes(a)).sort((x,y)=>sc(y)-sc(x)).slice(0,Math.max(1,Math.ceil(seats()/4)));for(const m of ms){cand.push(m);mile('nominate',`첫 공천. ${josa(g.name,'이','가')} ${josa(nm(m),'을','를')} 의원 후보로 내세웠다`,[m.id])}}if(S.dyn)dynCandidacy(cand,ad,'council');const pls=cand.map(platform);voterSample();for(const c of cand)c.prom=proposeRules(c);
     const votes=cand.map(()=>0);const voters=adultsC().filter(v=>G.policy.womenVote||v.sex!=='F');const vD=new Map();
     for(const v of voters){if(v.g.civic<.2&&R()<.5)continue;let bi=0,bs=-1e9;cand.forEach((c,i)=>{const s2=voterScore(v,c,pls[i]);if(s2>bs){bs=s2;bi=i}});votes[bi]++;if(S.dist){const d=distOf(v);if(!vD.has(d))vD.set(d,cand.map(()=>0));vD.get(d)[bi]++}}
     const N=seats(),em=G.policy.elect||0;let order;const all=cand.map((c,i)=>({c,v:votes[i]})).sort((x,y)=>y.v-x.v);
@@ -3775,9 +3781,10 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const G=S.gov,ad0=S.agents.filter(a=>isAdult(a)&&a.age>=20*YEAR&&(G.policy.womenVote!==false||a.sex!=='F')&&canVote(a));if(ad0.length<8)return;const ad=ad0.filter(a=>!a.banned&&!((a.jailUntil||0)>S.day));
     const gi0=S.hist.length?S.hist[S.hist.length-1].gini:.4;
     const est=x=>x.g.boss*.6+x.g.civic*.4+Math.log10((x.w||0)+10)*.15+(x.id===G.chief?.3:0);
-    let cand=ad.slice().sort((x,y)=>est(y)-est(x)).slice(0,gi0>.5?2:3);
-    if(gi0>.5){const ch2=ad.filter(x=>!cand.includes(x)).reduce((b,x)=>!b||x.g.equal+x.g.boss*.3>b.g.equal+b.g.boss*.3?x:b,null);if(ch2&&ch2.g.equal>.45){cand.push(ch2);mile('leftCand',`평등주의 후보 등장. 격차에 분노한 ${josa(nm(ch2),'이','가')} 재분배를 내걸고 출마했다`,[ch2.id])}else cand=ad.slice().sort((x,y)=>est(y)-est(x)).slice(0,3)}
-    if(G.policy.termLimit&&G.chief&&(G.served||1)>=G.policy.termLimit){const n0=cand.length;cand=cand.filter(c=>c.id!==G.chief);if(cand.length<n0){const ex=S.byId.get(G.chief);if(ex)log('pol',`연임 제한으로 ${josa(nm(ex),'은','는')} 출마하지 못했다`,[ex.id]);const nx=ad.filter(x=>!cand.includes(x)&&x.id!==G.chief).sort((x,y)=>est(y)-est(x))[0];if(nx)cand.push(nx)}}
+    const eligible=S.dyn?ad.filter(a=>!duRole(a)):ad;
+    let cand=eligible.slice().sort((x,y)=>est(y)-est(x)).slice(0,gi0>.5?2:3);
+    if(gi0>.5){const ch2=eligible.filter(x=>!cand.includes(x)).reduce((b,x)=>!b||x.g.equal+x.g.boss*.3>b.g.equal+b.g.boss*.3?x:b,null);if(ch2&&ch2.g.equal>.45){cand.push(ch2);mile('leftCand',`평등주의 후보 등장. 격차에 분노한 ${josa(nm(ch2),'이','가')} 재분배를 내걸고 출마했다`,[ch2.id])}else cand=eligible.slice().sort((x,y)=>est(y)-est(x)).slice(0,3)}
+    if(G.policy.termLimit&&G.chief&&(G.served||1)>=G.policy.termLimit){const n0=cand.length;cand=cand.filter(c=>c.id!==G.chief);if(cand.length<n0){const ex=S.byId.get(G.chief);if(ex)log('pol',`연임 제한으로 ${josa(nm(ex),'은','는')} 출마하지 못했다`,[ex.id]);const nx=eligible.filter(x=>!cand.includes(x)&&x.id!==G.chief).sort((x,y)=>est(y)-est(x))[0];if(nx)cand.push(nx)}}
     // 득표욕이 큰 후보: 사람들 표를 끌 만한 공약을 계산해서 내민다 (세금은 깎고 혜택은 늘리고)
     if(S.dyn)dynCandidacy(cand,ad,'chief');
     const pls=cand.map(platform);voterSample();
@@ -5444,16 +5451,17 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     D.title=dynPolTitle(dynMe());D.res={d:S.day,kind:'act',text};dynResnap();return D.res}
   // 선거 후보 명단에 출마 등록한 플레이어를 넣는다(당락은 엔진 투표).
   // 선거 자격(엔진 election/councilElection의 후보 조건과 같다). 빈 문자열이면 자격 있음.
-  function dynEligible(kind){const me=dynMe(),G=S.gov;if(!me||!G)return '정부가 없음';if(me.age<20*YEAR)return '20세 이상이어야 함';
+  function dynEligible(kind){const me=dynMe(),G=S.gov;if(!me||!G)return '정부가 없음';if(me.age<20*YEAR)return '20세 이상이어야 함';if(duRole(me))return duPoliticsWhy(me);
     if(me.sex==='F'&&(kind==='chief'?G.policy.womenVote===false:!G.policy.womenVote))return '여성 참정권이 아직 없음';
     if(!canVote(me))return '재산 자격(땅·집·재산)이 모자람';if(me.banned&&!me.pardoned)return '유죄로 출마가 금지됨 · 통치자의 사면·복권 필요';if((me.jailUntil||0)>S.day)return '수감 중';const strict=(G.policy?.punish||1)>=3;if(strict&&!me.pardoned&&((me.crimes||0)>0||(me.caught||0)>0))return '엄격한 범죄 이력 제한 · 통치자의 사면·복권 필요';return ''}
   function dynCandidacy(cand,ad,kind){const D=S.dyn;if(!D.run||!D.run[kind])return;delete D.run[kind];const me=dynMe();
+    if(me&&duRole(me)){dynChron(`${josa(nm(me),'은','는')} ${duPoliticsWhy(me)} 선거에 나가지 못하다`,[me.id]);return}
     if(me&&!ad.includes(me)){dynChron(`${josa(nm(me),'은','는')} ${dynEligible(kind)||'자격이 없어'} ${kind==='chief'?chiefTitle():'의원'} 선거에 나가지 못하다`,[me.id]);return}
     if(me&&ad.includes(me)&&!cand.includes(me)){cand.push(me);dynChron(`${josa(nm(me),'이','가')} ${kind==='chief'?chiefTitle():'의원'} 선거에 출마하다`,[me.id])}}
   const DYN_H={
     jrCj(ctx,k,me){const G=S.gov,J=G?.jr,x=S.byId.get(Number(k.slice(1)));if(!J||!x||!x.alive)return '대법원장 자리가 이미 정리됐다';G.cj=x.id;J.cjUntil=S.day+YEAR*6;J.cjAsk=0;jrLog(`${josa(nm(x),'이','가')} 대법원장이 됐다 (임기 6년)`,[x.id],true);return `${josa(nm(x),'을','를')} 대법원장에 앉혔다`},
-    jrNom(ctx,k,me){const V=S.gov?.jr?.vac,x=S.byId.get(Number(k.slice(1)));if(!V||!x)return '절차가 바뀌었다';V.cand=x.id;V.by=me.id;V.stage=jrRuler()===me?'consent':'ruler';V.wait=0;S.gov.jr.law.noNomTemp=0;jrLog(`${josa(nm(me),'이','가')} ${josa(nm(x),'을','를')} 재판관 후보로 제청했다`,[me.id,x.id]);return `${josa(nm(x),'을','를')} 제청했다`},
-    jrRuler(ctx,k,me){const G=S.gov,V=G?.jr?.vac;if(!V)return '절차가 끝났다';V.wait=0;if(k==='accept'){V.stage='consent';return '제청을 받아들여 의회 동의로 넘겼다'}
+    jrNom(ctx,k,me){const V=S.gov?.jr?.vac,x=S.byId.get(Number(k.slice(1)));if(!V||!x)return '절차가 바뀌었다';if(!dynCanHoldJustice(x))return '후보가 수사·사법 중립 자격을 잃었다';V.cand=x.id;V.by=me.id;V.stage=jrRuler()===me?'consent':'ruler';V.wait=0;S.gov.jr.law.noNomTemp=0;jrLog(`${josa(nm(me),'이','가')} ${josa(nm(x),'을','를')} 재판관 후보로 제청했다`,[me.id,x.id]);return `${josa(nm(x),'을','를')} 제청했다`},
+    jrRuler(ctx,k,me){const G=S.gov,V=G?.jr?.vac;if(!V)return '절차가 끝났다';const nominee=S.byId.get(V.cand);if(!nominee||!dynCanHoldJustice(nominee)){V.stage='nom';V.cand=null;V.wait=0;return '후보가 수사·사법 중립 자격을 잃어 제청을 다시 해야 합니다'}V.wait=0;if(k==='accept'){V.stage='consent';return '제청을 받아들여 의회 동의로 넘겼다'}
       if(k==='hold'){V.holdUntil=S.day+30;G.approval=Math.max(0,(G.approval??.5)-.02);return '임명을 미뤘다. 사법 공백 비판이 나온다'}
       V.ren=(V.ren||0)+1;const cj=S.byId.get(G.cj);if(cj&&cj!==me&&wr()<.3+(cj.g.boss??.5)*.5){V.refused=1;V.holdUntil=S.day+30;jrLog(`대법원장 ${josa(nm(cj),'이','가')} 재제청 요구를 거부했다`,[cj.id],true);return '대법원장이 재제청 요구를 거부했다'}V.stage='nom';V.cand=null;return '대법원장이 다른 후보를 다시 제청하기로 했다'},
     jrReview(ctx,k,me){const J=S.gov?.jr,r=(J?.rev||[]).find(x=>x.k===ctx.k&&x.asked);if(!r)return '심판이 이미 끝났다';J.rev=J.rev.filter(x=>x!==r);r.mine=k;jrRule(r,me);return k==='void'?'위헌 의견을 냈다':'합헌 의견을 냈다'},
@@ -5856,7 +5864,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       for(const x of tg)add('net:friend:'+x.id,'인맥',`${josa(nm(x),'과','와')} 친해지기${dynPolTitle(x)?' ('+dynPolTitle(x)+')':''}`,`선물·술자리 약 ${won(wA*5)} · 그 집안과 관계↑`,adult||(me.cash<wA*5?'돈이 모자람':'')||dynWait('friend'+x.id))}
     {const f=S.firms.find(f=>f.ceo===me.id&&!f.gone);if(f){const x=adultsC().filter(x=>x!==me&&x.cash>f.price*shareCount(f)*.1).sort((x,y)=>y.cash-x.cash)[0];add(x?'net:partner:'+x.id:'net:partner:0','인맥',x?`${nm(x)}에게 동업 제안`:'동업 제안',`${f.name} 지분 10%를 시세에 넘기고 자금을 받음 · 그 집안과 관계↑`,!x?'투자할 만한 부자가 없음':dynWait('partner'))}}
     {const gs=S.groups.filter(g=>g.id!==me.grp&&(g.members||[]).length).sort((x,y)=>(y.members||[]).length-(x.members||[]).length).slice(0,3);
-      for(const g of gs)add('net:join:'+g.id,'조직',`${g.name} 가입${g.mode==='gang'?' (패거리)':''}`,`조직원 ${(g.members||[]).length}명`,adult||(me.grp&&grpById(me.grp)&&grpById(me.grp).leader===me.id?'내 조직의 우두머리임':''));
+      for(const g of gs)add('net:join:'+g.id,'조직',`${g.name} 가입${g.mode==='gang'?' (패거리)':''}`,`조직원 ${(g.members||[]).length}명`,adult||(duRole(me)?'수사·사법 공무원은 정당·패거리에 가입할 수 없음':me.grp&&grpById(me.grp)&&grpById(me.grp).leader===me.id?'내 조직의 우두머리임':''));
       if(me.grp){const g=grpById(me.grp);if(g)add('net:leave','조직',`${g.name} 탈퇴`,g.leader===me.id?'우두머리가 나가면 조직이 흔들림':'','');if(g?.mode==='gang'&&g.leader===me.id){const ops=g.dynOps||{businesses:[],orders:{},loyalty:.65};if(!g.dynOps){const a=add('extra:gang:business','어두운 길','소규모 조직 사업 시작','건물 없이 밀수·유통·업소를 작게 시작하고 조직원에게 임무를 배정');a.opts=Object.entries(DYN_GANG_BIZ).map(([k,v])=>[k,`${v.name} 시작`])}else for(const [k,v] of Object.entries(DYN_GANG_BIZ)){const b=ops.businesses?.find(x=>x.type===k);if(!b){const a=add('extra:gang:business','어두운 길',`${v.name} 시작`,`초기 운영비 ${won(hr*8)} · 필요 시설 없이 소규모 개시`,me.cash<hr*8?'시작 자금이 모자람':'');a.opts=[[k,`${v.name} · ${won(hr*8)}`]]}else add(`extra:gang:bizstop:${k}`,'어두운 길',`${v.name} ${b.active?'운영 중':'중단됨'}`,`규모 ${b.scale||1} · 오늘 매출 ${won(ops.daily?.income||0)} · 위험 ${Math.round((ops.risk||0)*100)}%/일`,b.active?'':'다시 시작하려면 운영비가 필요함')}
           for(const person of (g.members||[]).map(id=>by(id)).filter(x=>x&&x.alive).slice(0,12)){const opts=[['idle','대기'],...Object.entries(DYN_GANG_BIZ).map(([k,v])=>[v.task,`${v.taskName} · ${v.name}`])];const a=add(`extra:gang:task:${person.id}`,'어두운 길',`${nm(person)}에게 임무 배정`,`현재 ${ops.orders?.[person.id]||'대기'} · 충성도 ${Math.round((ops.loyalty||.65)*100)}%`);a.opts=opts}
         }}}
@@ -5875,7 +5883,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 작위·최고 영예: 왕정은 군주 승인, 선거 체제는 의원 발의와 의회 표결, 그 밖의 체제는 집권 기구 승인
     if(G&&isAdult(me)){const ix=DYN_NOBLE_TITLES.indexOf(me.dynNoble||''),next=DYN_NOBLE_TITLES[ix+1],mon=['mon','cmon'].includes(regime()),chamber=elective()&&(G.council||[]).includes(me.id),office=!!(dynMinisterPost(me)||G.chief===me.id||G.king===me.id||G.regent===me.id),authority=mon?dynReigningMonarch():dynRuler(),eligible=mon||chamber||office,threshold=[hr*10,hr*30,hr*100,hr*300][ix+1]||hr*10,cost=hr*(ix<0?12:18+ix*12);if(next)add('extra:noble:petition','작위',`${next} 작위 청원`,`${mon?'군주 승인':chamber?'의원 발의 · 의회 표결':`집권 기구 승인 · ${authority?nm(authority):'지도부'}`} · 직업 배경 무관 · 재산 ${won(threshold)} · 청원 비용 ${won(cost)}`,!eligible?'의원·장관 등 공직을 맡아야 발의할 수 있음':!authority?'승인할 집권 기구가 없음':W(me)<threshold?`순재산 ${won(threshold)} 이상 필요`:me.cash<cost?`청원 비용 ${won(cost)}이 필요`:dynWait('nobleTitle'))}
     // 권력: 측근 임명(재판관)
-    if(G&&dynExecutive(me)){const c=adultsC().filter(x=>x!==me&&(dynKin().has(x.id)||(me.grp&&x.grp===me.grp))&&!(G.judges||[]).some(j=>j.id===x.id)).sort((x,y)=>(y.edu||0)-(x.edu||0)).slice(0,2);
+    if(G&&dynExecutive(me)){const c=adultsC().filter(x=>x!==me&&(dynKin().has(x.id)||(me.grp&&x.grp===me.grp))&&dynCanHoldJustice(x)&&!(G.judges||[]).some(j=>j.id===x.id)).sort((x,y)=>(y.edu||0)-(x.edu||0)).slice(0,2);
       for(const x of c)add('pow:judge:'+x.id,'권력',`측근 ${josa(nm(x),'을','를')} 재판관으로 임명`,'내 사람에게 재판을 맡김 · 측근 비리를 덮기 쉬워짐 · 부패 소문 위험',dynWait('judge'));
       if(!c.length)add('pow:judge:0','권력','측근을 재판관으로 임명','','임명할 측근(가족·같은 조직의 어른)이 없음')}}
   function dynMore(me,k){const D=S.dyn,G=S.gov,wA=dynWA(),hr=S.houseRef||100,[cat,op,arg]=k.split(':'),id=Number(arg),x=S.byId.get(id);const cool=(key,d)=>{D.cool['act'+key]=S.day+d};
@@ -5891,7 +5899,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(op==='friend'){cool('friend'+id,YEAR/2);dynPay(me,x,wA*5,'lux');dynTie(x.family,.1,'친분',x);return `${josa(nm(x),'과','와')} 술자리를 하며 가까워졌다`}
       if(op==='partner'){cool('partner',YEAR);const f=S.firms.find(f=>f.ceo===me.id&&!f.gone);if(!f||!x)return '';if(R()>.4+x.g.join*.4){dynTie(x.family,-.05,'동업 거절',x);return `${josa(nm(x),'이','가')} 동업 제안을 거절했다`}
         const n=tradeStock(f,me.id,x.id,Math.floor(shareCount(f)*.1),f.price);dynTie(x.family,.15,'동업',x);dynChron(`${josa(nm(me),'이','가')} ${josa(nm(x),'과','와')} 동업하다`,[me.id,x.id]);return n?`${josa(nm(x),'이','가')} ${f.name} 주식 ${n.toLocaleString()}주를 사며 동업자가 됐다`:'넘길 주식이 없었다'}
-      if(op==='join'){const g=grpById(id);if(!g)throw Error('없는 조직입니다');if(g.mode!=='gang'&&R()<.15)return `${josa(g.name,'이','가')} 가입을 받아 주지 않았다`;joinGroup(me,g);dynChron(`${josa(nm(me),'이','가')} ${g.name}에 들어가다`,[me.id]);return `${g.name}에 들어갔다`}
+      if(op==='join'){const g=grpById(id);if(!g)throw Error('없는 조직입니다');if(duRole(me))throw Error('수사·사법 공무원은 정당·패거리에 가입할 수 없습니다');if(g.mode!=='gang'&&R()<.15)return `${josa(g.name,'이','가')} 가입을 받아 주지 않았다`;joinGroup(me,g);dynChron(`${josa(nm(me),'이','가')} ${g.name}에 들어가다`,[me.id]);return `${g.name}에 들어갔다`}
       if(op==='leave'){const g=grpById(me.grp);leaveGroup(me);dynChron(`${josa(nm(me),'이','가')} ${g?g.name:'조직'}에서 나오다`,[me.id]);return `${g?g.name:'조직'}에서 나왔다`}
       if(op==='bribe'){cool('bribe',YEAR/2);const r=dynRuler();const p=dynPay(me,r,hr*.3,'bribe');dynTie(r.family,.25,'뇌물·후원',r);if(G&&R()<(G.policy.indepPros?.2:.08))dynCase2('bribe',me,p,.55);return `${nm(r)}에게 ${won(p)}을 건넸다`}
       if(op==='back'){cool('back'+id,YEAR);const p=dynPay(me,x,wA*15,'bribe');x.campaign=(x.campaign||0)+p;dynTie(x.family,.15,'선거 후원',x);return `${nm(x)}에게 선거 자금 ${won(p)}을 댔다`}}
@@ -8282,7 +8290,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   const jrIndep=j=>j?cl((j.g.civic??.5)*(1-(j.g.cheat??.3))+(j.g.boss??.5)*.2,0,1):0;
   function jrSide(j,ch){return !!(j&&ch&&((j.grp&&j.grp===ch.grp)||j.jrBy===ch.id))}
   function jrLog(t,ids,big){const G=S.gov;G.jr.log=(G.jr.log||[]).concat({d:S.day,text:t}).slice(-12);log('pol',t,ids||[]);if(big)dynChron(t,ids||[])}
-  function jrCandidates(by){const G=S.gov,taken=new Set([...(G.prosList||[]),...(G.judges||[]).map(j=>j.id),G.chief,G.king]);return adA().filter(a=>a.age>=25*YEAR&&!a.banned&&!inJail(a)&&!taken.has(a.id)&&a.id!==by?.id).sort((x,y)=>(by&&y.grp===by.grp?1:0)+jrIndep(y)*.5-((by&&x.grp===by.grp?1:0)+jrIndep(x)*.5)).slice(0,4)}
+  function jrCandidates(by){const G=S.gov,taken=new Set([...(G.prosList||[]),...(G.judges||[]).map(j=>j.id),G.chief,G.king]);return adA().filter(a=>a.age>=25*YEAR&&!a.banned&&!inJail(a)&&!taken.has(a.id)&&a.id!==by?.id&&dynCanHoldJustice(a)).sort((x,y)=>(by&&y.grp===by.grp?1:0)+jrIndep(y)*.5-((by&&x.grp===by.grp?1:0)+jrIndep(x)*.5)).slice(0,4)}
   function jrConsent(c){const mem=p2Mem(),ch=jrRuler();if(mem.length<3)return true;let y=0;for(const m of mem){const s2=(jrIndep(c)-.3)*1.5+(ch&&p2Same(m,ch)?.6:-.2)+(c.grp&&m.grp===c.grp?.6:0)+(wr()-.5)*.6;if(s2>0)y++}return y*2>mem.length}
   // 열흘마다: 대법원장 임기, 빈자리 진행(제청→동의→임명), 위헌 심판 판결, 정부가 알아서 하는 몫
   function jrTick(me){const G=S.gov;if(!jrOn()||S.day%10!==4){return}G.judges=G.judges||[];if(!G.jr)G.jr={vac:null,rev:[],law:{},log:[],cjUntil:0};const J=G.jr,ch=jrRuler();
@@ -8299,7 +8307,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
         if(ch===me&&V.by!==me.id){V.wait=1;dynPush('jrRuler',`${josa(V.by?nm(S.byId.get(V.by)):'대법원장','이','가')} ${josa(nm(c),'을','를')} 재판관 후보로 제청했습니다.${jrSide(c,me)?' 내 편 사람입니다.':' 내 편이 아닙니다.'}`,[dynOpt('accept','받아들인다','의회 동의로 넘김'),dynOpt('renom','재제청을 요구한다','대법원장이 거부할 수 있음 · 공백이 길어짐'),dynOpt('hold','임명을 미룬다','공백 · 비판')],{})}
         else if(ch&&ch!==me&&!jrSide(c,ch)&&V.by!==ch.id&&wr()<.35&&V.ren<2){V.ren++;V.stage='nom';V.cand=null;jrLog(`${josa(nm(ch),'이','가')} 재제청을 요구했다. 재판관 공백이 길어진다`,[ch.id]);const cj2=S.byId.get(G.cj);if(cj2&&cj2!==me&&wr()<(cj2.g.boss??.5)*.6){V.stage='ruler';V.cand=c.id;V.refused=1;jrLog(`대법원장 ${josa(nm(cj2),'이','가')} 재제청 요구를 거부했다`,[cj2.id],true)}}
         else V.stage='consent'}
-      else if(V.stage==='consent'){const c=S.byId.get(V.cand);if(!c){J.vac={stage:'nom',d:V.d,ren:V.ren};return}if(jrConsent(c)){G.judges.push({id:c.id,until:S.day+YEAR*8,by:ch?.id||null});c.jrBy=V.by;J.vac=null;jrLog(`의회 동의를 거쳐 ${josa(nm(c),'이','가')} 재판관에 임명됐다 (공백 ${S.day-V.d}일)`,[c.id],true)}else{jrLog(`의회가 ${nm(c)} 임명동의안을 부결했다`,[c.id]);J.vac={stage:'nom',d:V.d,ren:V.ren}}}}
+      else if(V.stage==='consent'){const c=S.byId.get(V.cand);if(!c||!dynCanHoldJustice(c)){jrLog('후보의 수사·사법 중립 자격이 바뀌어 제청을 다시 시작한다');J.vac={stage:'nom',d:V.d,ren:V.ren};return}if(jrConsent(c)){G.judges.push({id:c.id,until:S.day+YEAR*8,by:ch?.id||null});c.jrBy=V.by;J.vac=null;jrLog(`의회 동의를 거쳐 ${josa(nm(c),'이','가')} 재판관에 임명됐다 (공백 ${S.day-V.d}일)`,[c.id],true)}else{jrLog(`의회가 ${nm(c)} 임명동의안을 부결했다`,[c.id]);J.vac={stage:'nom',d:V.d,ren:V.ren}}}}
     // 위헌 심판 판결
     for(const r of (J.rev||[]).slice()){if(S.day<r.at)continue;J.rev=J.rev.filter(x=>x!==r);jrRule(r,me)}
     // 야당이 알아서 청구
