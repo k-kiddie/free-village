@@ -7,8 +7,9 @@ const { randomUUID } = require('node:crypto');
 const { createCommands } = require('./commands');
 const { reconcile } = require('./contracts');
 const { createPresenter } = require('./presenter');
+const living = require('./living');
 const FORMAT = 'free-village.canonical';
-const VERSION = 2;
+const VERSION = 3;
 let occupied = false;
 const copy = value => structuredClone(value);
 const collections = Object.freeze({
@@ -47,7 +48,7 @@ function createSession(options = {}) {
   if (hasCheckpoint && hasLegacy) throw new Error('AMBIGUOUS_SNAPSHOT');
   let source, strategy;
   if (hasCheckpoint) {
-    if (!checkpoint || checkpoint.format !== FORMAT || ![1, VERSION].includes(checkpoint.version) ||
+    if (!checkpoint || checkpoint.format !== FORMAT || ![1, 2, VERSION].includes(checkpoint.version) ||
         !checkpoint.strategy || !Number.isSafeInteger(checkpoint.strategy.revision) ||
         checkpoint.strategy.revision < 0) throw new Error('UNSUPPORTED_CHECKPOINT');
     source = checkpoint.engine;
@@ -72,12 +73,16 @@ function createSession(options = {}) {
   let world;
   try {
     world = createWorld(seed, population);
-    if (source) world.importState(copy(source)); // importState mutates its input.
+    if (source) world.importState(copy(source));
+    if (hasCheckpoint && checkpoint.continuation) world.restoreContinuation(copy(checkpoint.continuation)); // importState mutates its input.
+    // 기본 도로값은 native import도 0으로 채운다. 새 canonical 세계도 같은 표현을 쓴다.
     if (strategy.enabled) {
+      if(world.S.paved===undefined)world.S.paved=0;
       if (!world.S.dyn) world.dynStart();
       if (strategy.playerId === null) strategy.playerId = world.S.dyn.pid;
       if (strategy.playerId !== world.S.dyn.pid) throw new Error('CONTROL_MISMATCH');
       reconcile(world, strategy);
+      living.connect(world,strategy);
     }
     if (strategy.playerId !== null && !world.S.byId.has(strategy.playerId)) {
       throw new Error('PLAYER_NOT_FOUND');
@@ -115,6 +120,7 @@ function createSession(options = {}) {
   return Object.freeze({
     summary,
     view() { active(); return presenter.view(); },
+    living() { active(); if(!strategy.enabled)throw new Error('STRATEGY_DISABLED');return living.view(world,strategy); },
     map(options) { active(); return presenter.map(options); },
     people(options) { active(); return presenter.people(options); },
     detail(ref) { active(); return presenter.detail(ref); },
@@ -130,7 +136,7 @@ function createSession(options = {}) {
       if (strategy.revision === Number.MAX_SAFE_INTEGER) throw new Error('REVISION_OVERFLOW');
       if (strategy.enabled) {
         const saved = copy(strategy);
-        try { world.commandTransaction(() => { world.step(); strategy.playerId = world.S.dyn.pid; strategy.revision++; reconcile(world, strategy); }); }
+        try { world.commandTransaction(() => { world.step(); strategy.playerId = world.S.dyn.pid; strategy.revision++; reconcile(world, strategy); living.observe(world,strategy); }); }
         catch (error) { for (const k of Object.keys(strategy)) delete strategy[k]; Object.assign(strategy, saved); throw error; }
       } else { world.step(); strategy.revision++; }
       return summary();
@@ -148,7 +154,9 @@ function createSession(options = {}) {
         const person = world.S.byId.get(id);
         if (person && !person.alive && !engine.dead.some(x => x.id === id)) engine.dead.push(copy(person));
       }
-      return { format: FORMAT, version: VERSION, engine, strategy: copy(strategy) };
+      const continuation = strategy.enabled ? world.commandContinuation() : undefined;
+      if (continuation) for (const offer of continuation.offers || []) { const person=world.S.byId.get(offer.employerId);if(person&&!person.alive&&!engine.dead.some(a=>a.id===person.id))engine.dead.push(copy(person)); }
+      return { format: FORMAT, version: VERSION, engine, strategy: copy(strategy), ...(continuation?{continuation}:{}) };
     },
     close() { if (!closed) { closed = true; occupied = false; commands = null; presenter = null; world = null; } },
   });

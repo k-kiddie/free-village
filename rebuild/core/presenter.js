@@ -1,5 +1,6 @@
 'use strict';
 const engine = require('../../engine');
+const living = require('./living');
 const copy = x => structuredClone(x);
 function createPresenter(world, strategy) {
   const meta = () => ({ worldId: strategy.worldId, revision: strategy.revision, day: world.S.day });
@@ -55,7 +56,7 @@ function createPresenter(world, strategy) {
     };
   }
   function map(options = {}) {
-    const S = world.S;
+    const S = world.S, geography = strategy.enabled ? living.geography(world) : null;
     const width = S.mapBig ? 496 : 352, height = S.mapBig ? 384 : 272;
     const v = options.bounds || { x: 0, y: 0, w: width, h: height };
     if (!['x','y','w','h'].every(k => Number.isFinite(v[k])) || v.w <= 0 || v.h <= 0) throw Error('지도 범위가 올바르지 않습니다');
@@ -72,7 +73,7 @@ function createPresenter(world, strategy) {
     for (const a of S.agents) { if(!a.alive)continue; const p = position(a); if (!inside(p)) continue; residentCount++; if (residents.length < 300 || a.id === strategy.playerId) residents.push({ ref: { kind: 'person', id: a.id }, ...p, name: world.nm(a), mine: a.id === strategy.playerId }); }
     const m = center(S.geo.mkt), dest = [{x:4,y:m.y},{x:width-2,y:m.y},{x:m.x,y:2},{x:m.x,y:height-2},center(S.geo.quarry),center(S.geo.forest),center(S.geo.camp)];
     return { ...meta(), width, height, bounds: v, paved: S.paved || 0,
-      terrain: S.geo.lots.flatMap((r, id) => inside(center(r)) ? [{ id, x:r.x, y:r.y, type:S.terr[id]?.t || 'g', owner:S.lotOwn[id] || null }] : []),
+      terrain: S.geo.lots.flatMap((r, id) => inside(center(r)) ? [{ id, x:r.x, y:r.y, type:S.terr[id]?.t || 'g', region:geography?.atLot(id)?.id || null, owner:S.lotOwn[id] || null }] : []),
       roads: dest.map(p => [m, {x:p.x,y:m.y}, p]), market: S.geo.mkt, entities, residents, residentCount,
       residentsLimited: residentCount > residents.length };
   }
@@ -92,9 +93,10 @@ function createPresenter(world, strategy) {
     const a = ref.kind === 'plot' ? S.plots[ref.id] : ref.kind === 'lot' ? S.geo.lots[ref.id] && { owner:S.lotOwn[ref.id] } : S[key].find(a => a.id === ref.id);
     if (!a) return null;
     const name = ref.kind === 'site' ? '공사 중 · ' + ((a.fx || []).map(f => engine.FXN[f]).join('·') || a.kind) : ref.kind === 'house' ? '주택 ' + a.id : ref.kind === 'building' ? world.bName(a) : ref.kind === 'firm' ? a.name : ref.kind === 'shop' ? '공방 ' + a.id : (ref.kind === 'lot' ? '집터 ' : '농지 ') + (ref.id + 1);
-    return { ...meta(), ref, name, owner: named(a.dynOwner || a.owner), progress: a.prog, need: a.need, occupant: named(a.occ),
+    const primaryLot=ref.kind==='firm'?S.bldgs.find(b=>b.id===a.bld?.[0])?.lot:a.lot??(ref.kind==='lot'?ref.id:null);
+    return { ...meta(), ref, name, manager:named(a.ceo), region:primaryLot!=null?living.geography(world).atLot(primaryLot):null, owner: named(a.dynOwner || a.owner), progress: a.prog, need: a.need, occupant: named(a.occ),
       condition: a.cond, sale: a.sale ?? null, rent: a.tenantRent ?? a.rent ?? null, deposit: a.deposit || 0,
-      position: ref.kind === 'plot' ? center(engine.PLOTS[ref.id]) : ref.kind === 'shop' ? center(S.geo.shop[a.slot]) : lot(a.lot ?? ref.id),
+      position: ref.kind === 'plot' ? center(engine.PLOTS[ref.id]) : ref.kind === 'shop' ? center(S.geo.shop[a.slot]) : primaryLot!=null ? lot(primaryLot) : null,
       functions: (a.fx || []).map(x => engine.FXN[x] || x),
       ...(a.owner === strategy.playerId || a.ceo === strategy.playerId ? { cash:a.cash, debt:a.debt } : {}),
       related: [...new Set([a.owner, a.occ, a.ceo])].filter(Boolean).map(named).filter(Boolean),

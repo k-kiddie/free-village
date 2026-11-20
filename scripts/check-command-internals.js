@@ -4,12 +4,12 @@ const { createWorld } = require('../engine');
 const { reconcile } = require('../rebuild/core/contracts');
 const clone = x => structuredClone(x);
 
-function stockRun(preview) {
+function stockRun(preview, resume=false) {
   const world = createWorld(612, 100), [a, b, c, d] = world.S.agents;
   const f = { id: 1, name: '검사상사', pre: '검사', suf: '상사', ceo: a.id, founder: a.id,
     sh: { [a.id]: 100, [b.id]: 100, [c.id]: 9800 }, totalShares: 10000, shareVersion: 74,
-    price: .01, p30: .01, born: 0, bld: [], cash: 100, debt: 0 };
-  world.S.firms.push(f); world.S.nextFirm = 2;
+    price: .01, p30: .01, born: 0, bld: [], hist: [], cash: 100, debt: 0 };
+  world.S.firms.push(f); world.S.nextFirm = 2; world.S.paved=0;
   // 삭제 시 swap으로 만든 비정렬 내부 주주 인덱스 순서를 보존해야 한다.
   world.tradeStock(f, a.id, d.id, 100, .01);
   if (preview) {
@@ -17,10 +17,13 @@ function stockRun(preview) {
     world.commandTransaction(() => world.tradeStock(f, b.id, a.id, 100, .01), true);
     assert.deepEqual(world.exportState(), before);
   }
+  if(resume){const snapshot=clone(world.exportState()),continuation=world.commandContinuation();world.importState(snapshot);world.restoreContinuation(continuation);}
   for (let i = 0; i < 10; i++) world.step();
   return clone(world.exportState());
 }
 assert.deepEqual(stockRun(true), stockRun(false), '미리보기가 비공개 주주 캐시 순서·후속 계산을 바꾸지 않음');
+
+assert.deepEqual(stockRun(false,true),stockRun(false),'canonical 이어가기가 비정렬 주주 캐시 순서·후속 계산을 보존');
 
 const world = createWorld(42, 100), S = world.S, [employee, boss, heir] = S.agents;
 const strategy = { revision: 0 };

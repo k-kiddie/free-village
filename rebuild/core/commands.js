@@ -2,6 +2,7 @@
 const { createHash } = require('node:crypto');
 const { accounts, changes, resources } = require('./accounts');
 const { reconcile } = require('./contracts');
+const living = require('./living');
 const clone = value => structuredClone(value);
 const stable = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v) ?
   Object.fromEntries(Object.keys(v).sort().map(k => [k, v[k]])) : v);
@@ -15,6 +16,7 @@ const messages = { UNKNOWN_ACTION: '알 수 없는 행동입니다.', INVALID_AR
   PREVIEW_REQUIRED: '실행 전에 현재 조건과 비용을 확인해 주세요.', REVISION_OVERFLOW: '상태 번호의 저장 범위를 초과했습니다.' };
 const fail = (code, message = messages[code] || code) => { const e = new Error(message); e.code = code; throw e; };
 const operations = Object.freeze({
+  ...Object.fromEntries(['living.buyFood','living.rest','living.lesson','living.rent','living.support'].map(action=>[action,(w,a,s)=>living.perform(w,s,action,a)])),
   advance: w => { w.step(); return { text: '하루가 지났습니다.' }; },
   act: (w, a) => w.dynAct(a.key),
   choose: (w, a) => w.dynChoose(a.id, a.key),
@@ -25,14 +27,22 @@ const operations = Object.freeze({
   story: (w, a) => w.dynSetStory(a.freq),
 });
 const fields = {
+  'living.buyFood':['supplierId','quantity'],'living.rest':['hours'],'living.lesson':['teacherId','skill','hours'],'living.rent':['houseId'],'living.support':['personId','quantity'],
   advance: [], act: ['key'], choose: ['id', 'key'], budget: ['budget'], vault: ['dir', 'frac'],
   rename: ['sur', 'given'], configureStart: ['character'], story: ['freq'],
 };
 function validateArgs(action, args) {
-  if (!Object.hasOwn(operations, action)) fail('UNKNOWN_ACTION');
+  if (typeof action !== 'string' || !Object.hasOwn(operations, action)) fail('UNKNOWN_ACTION');
   if (!args || typeof args !== 'object' || Array.isArray(args) ||
       Object.keys(args).some(k => !fields[action].includes(k))) fail('INVALID_ARGUMENT');
   const number = n => typeof n === 'number' && Number.isFinite(n);
+  if (action.startsWith('living.')) {
+    const id = action === 'living.buyFood' ? args.supplierId : action === 'living.lesson' ? args.teacherId : action === 'living.rent' ? args.houseId : action === 'living.support' ? args.personId : null;
+    if (id !== null && (!Number.isSafeInteger(id)||id<1)) fail('INVALID_ARGUMENT');
+    if (['living.buyFood','living.support'].includes(action) && (!number(args.quantity)||args.quantity<.5||args.quantity>20)) fail('INVALID_ARGUMENT');
+    if (['living.rest','living.lesson'].includes(action) && (!Number.isInteger(args.hours)||args.hours<1||args.hours>(action==='living.rest'?4:2))) fail('INVALID_ARGUMENT');
+    if(action==='living.lesson'&&!Number.isInteger(args.skill))fail('INVALID_ARGUMENT');
+  }
   if (action === 'act' || action === 'choose') {
     if (typeof args.key !== 'string' || args.key.length < 1 || args.key.length > 500) fail('INVALID_ARGUMENT');
     if (action === 'choose' && (!Number.isSafeInteger(args.id) || args.id < 1)) fail('INVALID_ARGUMENT');
@@ -61,7 +71,7 @@ function createCommands(world, strategy) {
     if (control && (!actor || (!actor.alive && !deathChoice))) fail('ACTOR_UNAVAILABLE');
     validateArgs(request.action, request.args);
     if (control && world.S.dyn?.over && !deathChoice) fail('GAME_OVER');
-    if (control && ['act', 'advance'].includes(request.action) && world.S.dyn.pending.length) fail('DECISION_PENDING');
+    if (control && (['act', 'advance'].includes(request.action)||request.action.startsWith('living.')) && world.S.dyn.pending.length) fail('DECISION_PENDING');
     return { client: m[1], seq: Number(m[2]) };
   }
   const identity = r => ({ worldId: r.worldId, commandId: r.commandId, expectedRevision: r.expectedRevision,
@@ -79,7 +89,7 @@ function createCommands(world, strategy) {
           const account = world.commandPublicAccount(world.S.byId.get(strategy.playerId), cat);
           return account && { category: cat, label: account.label, available: account.available, scope: account.kind };
         }).filter(Boolean);
-        const quote = ['act','choose'].includes(request.action) ? world.commandTransaction(() => {
+        const quote = request.action.startsWith('living.') ? (()=>{const {target,...value}=living.quote(world,strategy,request.action,request.args);return value;})() : ['act','choose'].includes(request.action) ? world.commandTransaction(() => {
         let quote = null;
         if (request.action === 'choose') {
           const decision = world.S.dyn.pending.find(p => p.id === request.args.id);
@@ -92,7 +102,7 @@ function createCommands(world, strategy) {
         }
         return quote;
         }, true) : null;
-        const result = operations[request.action](world, request.args);
+        const result = operations[request.action](world, request.args, strategy);
         let ledger = changes(before, accounts(world), request.action === 'advance');
         let inventory = changes(stockBefore, resources(world), request.action === 'advance');
         if (request.action === 'advance') {
@@ -105,6 +115,7 @@ function createCommands(world, strategy) {
         if (strategy.revision >= Number.MAX_SAFE_INTEGER) fail('REVISION_OVERFLOW');
         strategy.revision++;
         reconcile(world, strategy);
+        if(request.action==='advance')living.observe(world,strategy);
         const uncertain = randomBefore !== stable(world.commandRandomState());
         return clone({ ...meta(), actor: request.actor, controlledPersonId: strategy.playerId,
           result, ledger, inventory, publicAccounts, quote,
