@@ -9,7 +9,7 @@ const {createLifecycle}=require('./server-lifecycle');
 
 const BOOT_ID=crypto.randomBytes(8).toString('hex');
 const PORT = Math.max(1, Number(process.env.PORT) || 80);
-// 두 마을: 원래 자유방임 마을('/')과 가문 모드 마을('/god'). 1GB 서버를 위해 한 번에 한 Worker만 메모리에 둔다.
+// 세 마을: 자유방임('/'), 가문('/god'), 새 전략 게임('/play'). 1GB 서버를 위해 한 번에 한 Worker만 메모리에 둔다.
 const WORLDS = {
   village:{ seed:Number(process.env.SEED)||20261116, population:Number(process.env.POPULATION)||5000 },
   rebuild:{ seed:Number(process.env.REBUILD_SEED)||20261120, population:60 },

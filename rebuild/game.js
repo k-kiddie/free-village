@@ -51,7 +51,7 @@ function createGame(seed=20261120,saved){
     case 'work': {if(P.office)throw Error('공직 중에는 공공사업에 집중하세요');energy(2);const income=Math.min(S.market,12+P.skill*2);pay(market(),P,income);P.skill+=.05;note('하루 품삯',`노동 소득 ${income.toFixed(0)}원. 재기를 위한 생계 활동입니다.`);break}
     case 'visit': {const d=district(c.district);energy(2);P.trust=clamp(P.trust+1,0,100);d.support=clamp(d.support+2+P.organization*.1,0,100);note('현장 면담',`${d.name}: 식량 충족 ${Math.round(d.food*100)}%, 고용 ${Math.round(d.jobs*100)}%. 생활 개선 약속이 실제 성과로 이어져야 지지가 유지됩니다.`);break}
     case 'organize': district(c.district);plan('organize',c.district,35,5,'지역 주민 조직');break;
-    case 'campaign': {if(P.office||P.candidate)throw Error('이미 출마했거나 집행 중입니다');if(!['jobs','food','education'].includes(c.value))throw Error('공약을 선택하세요');energy();P.candidate=true;P.platform=c.value;note('출마 선언',`${S.election}일 선거 · 생활 성과, 신뢰, 조직이 득표에 반영됩니다.`);break}
+    case 'campaign': {if(P.candidate)throw Error('이미 출마했습니다');if(!['jobs','food','education'].includes(c.value))throw Error('공약을 선택하세요');energy();P.candidate=true;P.platform=c.value;note('출마 선언',`${S.election}일 선거 · 생활 성과, 신뢰, 조직이 득표에 반영됩니다.`);break}
     case 'road':case 'school': {const d=district(c.district);if(!P.office)throw Error('공공 예산 집행 권한이 없습니다');if(d[c.action]>=2)throw Error('이미 충분히 확충했습니다');plan(c.action,d.id,c.action==='road'?140:180,8,`${d.name} ${c.action==='road'?'도로':'학교'} 건설`);break}
     case 'tax': if(!P.office)throw Error('조세 정책 권한이 없습니다');if(![.04,.08,.12].includes(c.value))throw Error('허용된 세율이 아닙니다');energy();S.tax=c.value;note('세율 변경',`사업 매출의 ${Math.round(c.value*100)}%. 국고 수입과 사업 현금에 영향을 줍니다.`);break;
     case 'educate': plan('educate',0,45,12,'후계자 실무 교육');break;
