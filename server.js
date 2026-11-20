@@ -12,6 +12,7 @@ const PORT = Math.max(1, Number(process.env.PORT) || 80);
 // 세 마을: 자유방임('/'), 가문('/god'), 새 전략 게임('/play'). 1GB 서버를 위해 한 번에 한 Worker만 메모리에 둔다.
 const WORLDS = {
   village:{ seed:Number(process.env.SEED)||20261116, population:Number(process.env.POPULATION)||5000 },
+  editor:{ seed:Number(process.env.REBUILD_SEED)||20261120, population:60 },
   rebuild:{ seed:Number(process.env.REBUILD_SEED)||20261120, population:60 },
   dynasty:{ seed:Number(process.env.DYNASTY_SEED)||0, population:Number(process.env.DYNASTY_POPULATION)||100 },
 };
@@ -37,7 +38,7 @@ const pages={village:makePage(''),dynasty:makePage('/god',true),rebuild:{html:re
 function spawnWorld(name){
   const w={name,gen:++gen,latestView:null,ready:false,waiting:new Map(),intended:false};
   let resolveReady,rejectReady;w.readyPromise=new Promise((res,rej)=>{resolveReady=res;rejectReady=rej});
-  w.worker=new Worker(path.join(__dirname,name==='rebuild'?'rebuild/worker.js':'sim-worker.js'),{
+  w.worker=new Worker(path.join(__dirname,['rebuild','editor'].includes(name)?'rebuild/worker.js':'sim-worker.js'),{
     workerData:{name,...WORLDS[name]},
     resourceLimits:{maxOldGenerationSizeMb:Number(process.env.VILLAGE_HEAP_MB)||512,maxYoungGenerationSizeMb:32}
   });
@@ -141,10 +142,16 @@ async function handleWorld(name,sub,req,res,url){
     return res.end(v.body);
   }
   const person=req.method==='GET'&&sub.match(/^\/api\/resident\/(\d+)$/);
-  const known=person||(req.method==='GET'&&sub==='/api/panel')||(req.method==='POST'&&sub==='/api/cmd')||(req.method==='POST'&&sub==='/api/import'&&name==='village');
+  const peoplePage=req.method==='GET'&&sub==='/api/people'&&['rebuild','editor'].includes(name);
+  const exporting=req.method==='GET'&&sub==='/api/export'&&['rebuild','editor'].includes(name);
+  const preview=req.method==='POST'&&sub==='/api/migration-preview'&&['rebuild','editor'].includes(name);
+  const known=preview||peoplePage||exporting||person||(req.method==='GET'&&sub==='/api/panel')||(req.method==='POST'&&sub==='/api/cmd')||(req.method==='POST'&&sub==='/api/import'&&['village','rebuild','editor'].includes(name));
   if(!known)return sendJson(res,404,{error:'요청 경로를 찾을 수 없습니다'});
-  const input=req.method==='POST'?await readBody(req,sub==='/api/import'?128*1024*1024:16384,sub!=='/api/import'):null;
+  const input=req.method==='POST'?await readBody(req,['/api/import','/api/migration-preview'].includes(sub)?128*1024*1024:16384,!['/api/import','/api/migration-preview'].includes(sub)):null;
   const w=await readyWait(name);if(!w)return preparing(res,name);
+  if(preview)return sendJson(res,200,await request(w,'preview',{raw:input}));
+  if(peoplePage)return sendGzip(res,await request(w,'people',{page:Number(url.searchParams.get('page')||0),filter:url.searchParams.get('filter')||'all'}));
+  if(exporting){res.setHeader('Content-Disposition','attachment; filename=free-village-'+name+'.json');return sendGzip(res,await request(w,'export'));}
   if(person){const body=await request(w,'resident',{id:Number(person[1])});if(body===false)return sendJson(res,403,{error:'지금은 잘 모르는 사람입니다'});if(!body)return sendJson(res,404,{error:'주민을 찾을 수 없습니다'});return sendGzip(res,body)}
   if(sub==='/api/panel')return sendGzip(res,await request(w,'panel',{tab:url.searchParams.get('tab')||'sum',filter:url.searchParams.get('filter')||'all',selected:Number(url.searchParams.get('selected'))||null}));
   if(sub==='/api/cmd')return sendJson(res,200,await request(w,'command',{command:input}));
@@ -167,9 +174,12 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==='GET'&&p==='/health'){const ok=booted&&!lifecycle.stopping;
       return sendJson(res,ok?200:503,{ok,ready:ok,stopReady:lifecycle.stopReady,world:active?.name??null,worldReady:!!active?.ready&&!switching,switching,workers:liveWorkers,day:active?.latestView?.day??null,rssBytes:process.memoryUsage().rss});}
+    if(req.method==='GET'&&(p==='/editor'||p==='/editor/'))return sendPage(req,res,pages.rebuild);
+    if(p.startsWith('/editor/api/'))return await handleWorld('editor',p.slice(7),req,res,url);
     if(req.method==='GET'&&(p==='/play'||p==='/play/'))return sendPage(req,res,pages.rebuild);
     if(p.startsWith('/play/api/'))return await handleWorld('rebuild',p.slice(5),req,res,url);
-    if(req.method==='GET'&&p==='/')return sendPage(req,res,pages.village);
+    if(req.method==='GET'&&p==='/')return sendPage(req,res,pages.rebuild);
+    if(req.method==='GET'&&(p==='/classic'||p==='/classic/'))return sendPage(req,res,pages.village);
     if(req.method==='GET'&&(p==='/god'||p==='/god/'))return sendPage(req,res,pages.dynasty);
     if(p.startsWith('/god/api/'))return await handleWorld('dynasty',p.slice(4),req,res,url);
     if(p.startsWith('/api/'))return await handleWorld('village',p,req,res,url);
@@ -178,7 +188,7 @@ const server=http.createServer(async(req,res)=>{
 });
 
 server.listen(PORT,'0.0.0.0',()=>console.log(`free-village 서버가 ${PORT} 포트에서 실행 중`));
-use('village').catch(e=>console.error('원래 마을 시작 실패',e));
+use(process.env.INITIAL_WORLD==='village'?'village':'rebuild').catch(e=>console.error('마을 시작 실패',e));
 const lifecycleTimer=setInterval(()=>lifecycle.tick(),5000);lifecycleTimer.unref();
 let closing=false;
 async function shutdown(){if(closing)return;closing=true;clearInterval(lifecycleTimer);server.close();
