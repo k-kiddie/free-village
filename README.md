@@ -1,6 +1,6 @@
 # 프리빌리지
 
-지도에서 입지와 수요를 살피고, 주민·사업·조직을 운영하며 정치와 가문으로 이어가는 전략 게임입니다.
+지도·주민·사업·정치·가문을 연결하는 리빌드 작업 중인 프로젝트입니다. 현재 브랜치의 새 게임은 시제품이며 전체 계획 완료 상태가 아닙니다.
 
 - `/` 또는 `/play`: 새 게임
 - `/editor`: 별도 저장을 쓰는 세계 편집실
@@ -9,7 +9,7 @@
 
 Node.js 22 이상에서 `PORT=8080 node server.js`로 실행합니다. 런타임 외부 패키지는 없습니다. 새 게임은 `save/rebuild.json.gz`, 편집실은 `save/rebuild-editor.json.gz`에 저장합니다.
 
-[리빌드 계획](REBUILD_PLAN.md) · [8단계 구현·검증 기록](rebuild/IMPLEMENTATION.md)
+[리빌드 계획](REBUILD_PLAN.md) · [14단계 실행 계획](REBUILD_EXECUTION_PLAN.md) · [1단계 조사 결과](rebuild/audit/README.md) · [시제품 구현 기록과 한계](rebuild/IMPLEMENTATION.md)
 
 ---
 
