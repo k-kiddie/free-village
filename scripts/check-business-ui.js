@@ -14,7 +14,7 @@ async function main(){
  start();await ready();browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/rebuild');await page.getByRole('button',{name:'▥ 사업 시작',exact:true}).click();await page.locator('[data-company]').waitFor();
  await page.locator('#company-fund-'+fixture.firmId).fill('50');await page.getByRole('button',{name:'운영자금 지원 조건 확인',exact:true}).click();await confirmed();assert.equal((await get('/business')).companies[0].cash,50);
- await page.locator('[data-business-good]').selectOption('wood');const o=page.locator('#company-offers-'+fixture.firmId+' .living-offer').first();await o.getByRole('spinbutton').fill('3');await o.getByRole('button').click();await page.getByRole('dialog').getByText(/물품은 도착 전까지/).waitFor();await confirmed();
+ await page.locator('[data-business-good]').selectOption('wood');const o=page.locator('#company-offers-'+fixture.firmId+' .living-offer').first();await o.getByRole('spinbutton').fill('3');await o.locator('[data-business-offer]').click();await page.getByRole('dialog').getByText(/물품은 도착 전까지/).waitFor();await confirmed();
  const dispatched=await get('/business');assert.equal(dispatched.orders[0].quantity,3);assert.equal(dispatched.orders[0].status,'transit');assert.equal(dispatched.companies[0].warehouse.inv.wood,undefined);
  await page.screenshot({path:'/workspace/artifacts/stage6-order-mobile.png',fullPage:true});
  // 실제 프로세스 재시작 뒤 같은 화물을 이어 받는다.

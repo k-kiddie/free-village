@@ -19,8 +19,8 @@ const fail = (code, message = messages[code] || code) => { const e = new Error(m
 const operations = Object.freeze({
   ...Object.fromEntries(['living.buyFood','living.rest','living.lesson','living.rent','living.support'].map(action=>[action,(w,a,s)=>living.perform(w,s,action,a)])),
   advance: w => { w.step(); return { text: '하루가 지났습니다.', deliveries: business.tick(w) }; },
-  ...Object.fromEntries(['business.fund','business.order'].map(action=>[action,(w,a,s)=>business.perform(w,s,action,a)])),
-  act: (w, a) => w.dynAct(a.key),
+  ...Object.fromEntries(['business.fund','business.order','business.policy','business.recover','business.supply','business.payArrears','business.hire'].map(action=>[action,(w,a,s)=>business.perform(w,s,action,a)])),
+  act: (w, a) => {business.guardAction(w,a.key);return w.dynAct(a.key);},
   choose: (w, a) => w.dynChoose(a.id, a.key),
   budget: (w, a) => w.dynSetBudget(a.budget),
   vault: (w, a) => w.dynVault(a.dir, a.frac),
@@ -31,6 +31,7 @@ const operations = Object.freeze({
 const fields = {
   'living.buyFood':['supplierId','quantity'],'living.rest':['hours'],'living.lesson':['teacherId','skill','hours'],'living.rent':['houseId'],'living.support':['personId','quantity'],
   'business.fund':['firmId','amount'],'business.order':['firmId','supplierId','carrierId','good','quantity'],
+  'business.policy':['firmId','recipe','mode','limit','markup','enabled'],'business.recover':['firmId','orderId','carrierId'],'business.supply':['firmId','supplierId','carrierId','good','quantity','minimum','maxCost','enabled'],'business.payArrears':['firmId'],'business.hire':['firmId','personId','wage'],
   advance: [], act: ['key'], choose: ['id', 'key'], budget: ['budget'], vault: ['dir', 'frac'],
   rename: ['sur', 'given'], configureStart: ['character'], story: ['freq'],
 };
@@ -42,6 +43,8 @@ function validateArgs(action, args) {
   if(action.startsWith('business.')){
     if(!Number.isSafeInteger(args.firmId)||args.firmId<1)fail('INVALID_ARGUMENT');
     if(action==='business.fund'&&(!number(args.amount)||args.amount<=0||args.amount>1e9))fail('INVALID_ARGUMENT');
+    if(action==='business.hire'&&(!Number.isSafeInteger(args.personId)||args.personId<1||!number(args.wage)||args.wage<=0||args.wage>1e9))fail('INVALID_ARGUMENT');
+    if(action==='business.recover'&&(!Number.isSafeInteger(args.orderId)||args.orderId<1||!Number.isSafeInteger(args.carrierId)||args.carrierId<1))fail('INVALID_ARGUMENT');
     if(action==='business.order'&&(!Number.isSafeInteger(args.supplierId)||args.supplierId<1||!Number.isSafeInteger(args.carrierId)||args.carrierId<1||!business.GOODS.includes(args.good)||!number(args.quantity)||args.quantity<1||args.quantity>20))fail('INVALID_ARGUMENT');
   }
   if (action.startsWith('living.')) {
@@ -106,7 +109,7 @@ function createCommands(world, strategy) {
           const candidates = [...world.dynActions(), ...world.dynTargetActions(Number(request.args.key.split(':').at(-1)))];
           const action = candidates.filter(row => request.args.key === row.k || request.args.key.startsWith(row.k + ':'))
             .sort((a, b) => b.k.length - a.k.length)[0];
-          if (action) quote = { label: action.label, hint: action.hint, preliminaryReason: action.why };
+          if (action) {const described=business.describeAction(world,action);const selected=described.opts?.find(([value])=>request.args.key===action.k+':'+value);quote = { label: described.label, hint: described.hint+(selected?' · '+selected[1]:''), preliminaryReason: described.why };}
         }
         return quote;
         }, true) : null;
@@ -161,7 +164,7 @@ function createCommands(world, strategy) {
         if (!D) return { ...meta(), actions: [], decisions: [] };
         for (const p of D.pending) world.commandRecheck(p);
         return clone({ ...meta(), actions: [...world.dynActions(), ...(targetId === undefined ? [] : world.dynTargetActions(targetId))]
-          .map(({ ok, why, ...row }) => ({ ...row, allowed: null, preliminaryReason: why, requiresPreview: true })),
+          .map(row=>business.describeAction(world,row)).map(({ ok, why, ...row }) => ({ ...row, allowed: null, preliminaryReason: why, requiresPreview: true })),
           decisions: D.pending.map(p => ({ ...p, opts: p.opts.map(o => ({ ...o, requiresPreview: true })) })) });
       }, true);
     },

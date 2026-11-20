@@ -7,7 +7,7 @@ function reconcile(world, strategy) {
   const registry = strategy.contracts ||= { nextId: 1, entries: [] };
   const sources = [...(S.loans || []), ...(S.corpLoans || []), ...(S.deps || []), ...(S.policies || []),
     ...S.agents.map(a => a.ct).filter(Boolean), ...(S.firms || []).map(f => f.merc?.contract).filter(Boolean),
-    ...(S.dyn?.economy?.coopDebt || []),...(S.business?.orders||[])];
+    ...(S.dyn?.economy?.coopDebt || []),...(S.business?.orders||[]),...(S.business?.arrears||[]),...(S.business?.orders||[]).flatMap(o=>o.recoveries||[])];
   for (const row of [...sources, ...registry.entries.map(row => ({ canonicalContractId: row.id }))]) {
     if (Number.isSafeInteger(row.canonicalContractId) && row.canonicalContractId > 0) {
       registry.nextId = Math.max(registry.nextId, row.canonicalContractId + 1);
@@ -50,9 +50,12 @@ function reconcile(world, strategy) {
   for (const row of S.dyn?.economy?.coopDebt || []) visit('cooperativeLoan', row,
     `coopDebt:${row.canonicalContractId ?? registry.nextId}`,
     { borrower: row.borrower, cooperative: row.coop ?? null }, row, row.balance > 0);
-  for(const o of S.business?.orders||[])visit('supply',o,`business:order:${o.id}`,
-    {firm:o.firmId,buyer:o.managerId,supplier:o.supplierId,carrier:o.carrierId},
+  for(const o of S.business?.orders||[]){visit('supply',o,`business:order:${o.id}`,
+    {firm:o.firmId,buyer:o.managerId,supplier:o.supplierId,carrier:o.originalCarrierId??o.carrierId},
     {good:o.good,quantity:o.quantity,goodsCost:o.goodsCost,freight:o.freight,arrivalDay:o.arrivalDay,status:o.status,reason:o.reason||null},['transit','blocked'].includes(o.status));
+    for(const [i,r]of(o.recoveries||[]).entries())visit('freight',r,`business:order:${o.id}:recovery:${i}`,{firm:o.firmId,carrier:r.carrierId},{orderId:o.id,freight:r.freight,day:r.day,arrivalDay:o.arrivalDay},i===o.recoveries.length-1&&['transit','blocked'].includes(o.status));
+  }
+  for(const c of S.business?.arrears||[])visit('businessWage',c,`business:wage:${c.id}`,{firm:c.firmId,employee:c.workerId},{amount:c.amount,createdDay:c.createdDay},c.amount>1e-8);
   for (const a of S.agents) if (a.alive && a.emp) {
     if (a.ct && a.ct.e === a.emp) {
       const { canonicalContractId, ...terms } = a.ct;
