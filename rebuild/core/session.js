@@ -1,15 +1,18 @@
 'use strict';
 
-// 2단계 경계 검증용. 서버에 연결하지 않는다. engine.js의 모듈 전역 지형 때문에
+// 2·3단계 canonical 실행 경계. 기존 서버 주소에는 아직 연결하지 않는다. engine.js의 모듈 전역 지형 때문에
 // 이 모듈을 사용하는 Worker에서는 다른 createWorld 호출을 금지한다.
 const { createWorld, YEAR } = require('../../engine');
+const { randomUUID } = require('node:crypto');
+const { createCommands } = require('./commands');
+const { reconcile } = require('./contracts');
 const FORMAT = 'free-village.canonical';
-const VERSION = 1;
+const VERSION = 2;
 let occupied = false;
 const copy = value => structuredClone(value);
 const collections = Object.freeze({
   firm: 'firms', house: 'houses', building: 'bldgs', shop: 'shops',
-  bank: 'banks', group: 'groups', faith: 'faiths', district: 'dist',
+  bank: 'banks', fund: 'funds', cooperative: 'coops', group: 'groups', faith: 'faiths', district: 'dist',
   borough: 'gu', loan: 'loans', corporateLoan: 'corpLoans', design: 'designs',
 });
 
@@ -39,7 +42,7 @@ function createSession(options = {}) {
   if (hasCheckpoint && hasLegacy) throw new Error('AMBIGUOUS_SNAPSHOT');
   let source, strategy;
   if (hasCheckpoint) {
-    if (!checkpoint || checkpoint.format !== FORMAT || checkpoint.version !== VERSION ||
+    if (!checkpoint || checkpoint.format !== FORMAT || ![1, VERSION].includes(checkpoint.version) ||
         !checkpoint.strategy || !Number.isSafeInteger(checkpoint.strategy.revision) ||
         checkpoint.strategy.revision < 0) throw new Error('UNSUPPORTED_CHECKPOINT');
     source = checkpoint.engine;
@@ -49,6 +52,9 @@ function createSession(options = {}) {
     strategy = { revision: 0, playerId: options.playerId ?? null };
   }
   if (hasCheckpoint || hasLegacy) validateEngine(source);
+  strategy.worldId ||= options.worldId || randomUUID();
+  if (typeof strategy.worldId !== 'string' || !strategy.worldId.length || strategy.worldId.length > 100) throw new Error('INVALID_WORLD_ID');
+  if (!hasCheckpoint) strategy.enabled = options.mode === 'strategy';
   if (strategy.playerId !== null &&
       (!Number.isSafeInteger(strategy.playerId) || strategy.playerId <= 0)) {
     throw new Error('INVALID_PLAYER');
@@ -62,6 +68,12 @@ function createSession(options = {}) {
   try {
     world = createWorld(seed, population);
     if (source) world.importState(copy(source)); // importState mutates its input.
+    if (strategy.enabled) {
+      if (!world.S.dyn) world.dynStart();
+      if (strategy.playerId === null) strategy.playerId = world.S.dyn.pid;
+      if (strategy.playerId !== world.S.dyn.pid) throw new Error('CONTROL_MISMATCH');
+      reconcile(world, strategy);
+    }
     if (strategy.playerId !== null && !world.S.byId.has(strategy.playerId)) {
       throw new Error('PLAYER_NOT_FOUND');
     }
@@ -69,6 +81,7 @@ function createSession(options = {}) {
     occupied = false;
     throw error;
   }
+  let commands = strategy.enabled ? createCommands(world, strategy) : null;
   let closed = false;
   const active = () => { if (closed) throw new Error('SESSION_CLOSED'); };
   function read(ref) {
@@ -76,6 +89,7 @@ function createSession(options = {}) {
     if (!ref || !Number.isSafeInteger(ref.id)) throw new Error('INVALID_REFERENCE');
     let value;
     if (ref.kind === 'person') value = world.S.byId.get(ref.id);
+    else if (ref.kind === 'contract') value = strategy.contracts?.entries.find(row => row.id === ref.id);
     else if (ref.kind === 'plot' || ref.kind === 'lot') {
       const list = ref.kind === 'plot' ? world.S.plots : world.S.geo?.lots;
       value = ref.id >= 0 ? list?.[ref.id] : undefined;
@@ -88,20 +102,27 @@ function createSession(options = {}) {
   }
   function summary() {
     active();
-    return { revision: strategy.revision, day: world.S.day, yearDays: YEAR,
+    return { worldId: strategy.worldId, revision: strategy.revision, day: world.S.day, yearDays: YEAR,
       population: world.S.agents.length, playerId: strategy.playerId,
       pendingDecision: (world.S.dyn?.pending?.length ?? 0) > 0 };
   }
   return Object.freeze({
     summary,
     read,
-    // 경계 검증 전용. 실사용 명령·시간 루프 통합은 3단계 이후에 한다.
+    catalog(targetId) { active(); if (!commands) throw new Error('STRATEGY_DISABLED'); return commands.catalog(targetId); },
+    preview(request) { active(); if (!commands) throw new Error('STRATEGY_DISABLED'); return commands.preview(request); },
+    execute(request) { active(); if (!commands) throw new Error('STRATEGY_DISABLED'); return commands.execute(request); },
+    contracts() { active(); return copy(strategy.contracts?.entries || []); },
+    // 하루 전진도 명령과 동일한 Worker 큐에서만 호출한다. 서버 연결은 4단계 이후.
     advance() {
       active();
       if (world.S.dyn?.pending?.length > 0) throw new Error('DECISION_PENDING');
       if (strategy.revision === Number.MAX_SAFE_INTEGER) throw new Error('REVISION_OVERFLOW');
-      world.step();
-      strategy.revision++;
+      if (strategy.enabled) {
+        const saved = copy(strategy);
+        try { world.commandTransaction(() => { world.step(); strategy.revision++; reconcile(world, strategy); }); }
+        catch (error) { for (const k of Object.keys(strategy)) delete strategy[k]; Object.assign(strategy, saved); throw error; }
+      } else { world.step(); strategy.revision++; }
       return summary();
     },
     checkpoint() {
@@ -112,9 +133,14 @@ function createSession(options = {}) {
       if (player && !player.alive && !engine.dead.some(x => x.id === player.id)) {
         engine.dead.push(copy(player));
       }
+      for (const entry of strategy.contracts?.entries || []) for (const [role, id] of Object.entries(entry.parties)) {
+        if (role === 'firm' || role === 'cooperative' || entry.kind === 'mercenary' && role === 'employer') continue;
+        const person = world.S.byId.get(id);
+        if (person && !person.alive && !engine.dead.some(x => x.id === id)) engine.dead.push(copy(person));
+      }
       return { format: FORMAT, version: VERSION, engine, strategy: copy(strategy) };
     },
-    close() { if (!closed) { closed = true; occupied = false; world = null; } },
+    close() { if (!closed) { closed = true; occupied = false; commands = null; world = null; } },
   });
 }
 

@@ -9,7 +9,7 @@
 
 Node.js 22 이상에서 `PORT=8080 node server.js`로 실행합니다. 런타임 외부 패키지는 없습니다. 새 게임은 `save/rebuild.json.gz`, 편집실은 `save/rebuild-editor.json.gz`에 저장합니다.
 
-[리빌드 계획](REBUILD_PLAN.md) · [14단계 실행 계획](REBUILD_EXECUTION_PLAN.md) · [1단계 조사 결과](rebuild/audit/README.md) · [2단계 구조·데이터 기준](rebuild/architecture/README.md) · [시제품 구현 기록과 한계](rebuild/IMPLEMENTATION.md)
+[리빌드 계획](REBUILD_PLAN.md) · [14단계 실행 계획](REBUILD_EXECUTION_PLAN.md) · [1단계 조사 결과](rebuild/audit/README.md) · [2단계 구조·데이터 기준](rebuild/architecture/README.md) · [3단계 공통 실행기](rebuild/architecture/COMMANDS.md) · [시제품 구현 기록과 한계](rebuild/IMPLEMENTATION.md)
 
 ---
 
