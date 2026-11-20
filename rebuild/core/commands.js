@@ -3,6 +3,7 @@ const { createHash } = require('node:crypto');
 const { accounts, changes, resources } = require('./accounts');
 const { reconcile } = require('./contracts');
 const living = require('./living');
+const business = require('./business');
 const clone = value => structuredClone(value);
 const stable = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v) ?
   Object.fromEntries(Object.keys(v).sort().map(k => [k, v[k]])) : v);
@@ -17,7 +18,8 @@ const messages = { UNKNOWN_ACTION: '알 수 없는 행동입니다.', INVALID_AR
 const fail = (code, message = messages[code] || code) => { const e = new Error(message); e.code = code; throw e; };
 const operations = Object.freeze({
   ...Object.fromEntries(['living.buyFood','living.rest','living.lesson','living.rent','living.support'].map(action=>[action,(w,a,s)=>living.perform(w,s,action,a)])),
-  advance: w => { w.step(); return { text: '하루가 지났습니다.' }; },
+  advance: w => { w.step(); return { text: '하루가 지났습니다.', deliveries: business.tick(w) }; },
+  ...Object.fromEntries(['business.fund','business.order'].map(action=>[action,(w,a,s)=>business.perform(w,s,action,a)])),
   act: (w, a) => w.dynAct(a.key),
   choose: (w, a) => w.dynChoose(a.id, a.key),
   budget: (w, a) => w.dynSetBudget(a.budget),
@@ -28,6 +30,7 @@ const operations = Object.freeze({
 });
 const fields = {
   'living.buyFood':['supplierId','quantity'],'living.rest':['hours'],'living.lesson':['teacherId','skill','hours'],'living.rent':['houseId'],'living.support':['personId','quantity'],
+  'business.fund':['firmId','amount'],'business.order':['firmId','supplierId','carrierId','good','quantity'],
   advance: [], act: ['key'], choose: ['id', 'key'], budget: ['budget'], vault: ['dir', 'frac'],
   rename: ['sur', 'given'], configureStart: ['character'], story: ['freq'],
 };
@@ -36,6 +39,11 @@ function validateArgs(action, args) {
   if (!args || typeof args !== 'object' || Array.isArray(args) ||
       Object.keys(args).some(k => !fields[action].includes(k))) fail('INVALID_ARGUMENT');
   const number = n => typeof n === 'number' && Number.isFinite(n);
+  if(action.startsWith('business.')){
+    if(!Number.isSafeInteger(args.firmId)||args.firmId<1)fail('INVALID_ARGUMENT');
+    if(action==='business.fund'&&(!number(args.amount)||args.amount<=0||args.amount>1e9))fail('INVALID_ARGUMENT');
+    if(action==='business.order'&&(!Number.isSafeInteger(args.supplierId)||args.supplierId<1||!Number.isSafeInteger(args.carrierId)||args.carrierId<1||!business.GOODS.includes(args.good)||!number(args.quantity)||args.quantity<1||args.quantity>20))fail('INVALID_ARGUMENT');
+  }
   if (action.startsWith('living.')) {
     const id = action === 'living.buyFood' ? args.supplierId : action === 'living.lesson' ? args.teacherId : action === 'living.rent' ? args.houseId : action === 'living.support' ? args.personId : null;
     if (id !== null && (!Number.isSafeInteger(id)||id<1)) fail('INVALID_ARGUMENT');
@@ -71,7 +79,7 @@ function createCommands(world, strategy) {
     if (control && (!actor || (!actor.alive && !deathChoice))) fail('ACTOR_UNAVAILABLE');
     validateArgs(request.action, request.args);
     if (control && world.S.dyn?.over && !deathChoice) fail('GAME_OVER');
-    if (control && (['act', 'advance'].includes(request.action)||request.action.startsWith('living.')) && world.S.dyn.pending.length) fail('DECISION_PENDING');
+    if (control && (['act', 'advance'].includes(request.action)||request.action.startsWith('living.')||request.action.startsWith('business.')) && world.S.dyn.pending.length) fail('DECISION_PENDING');
     return { client: m[1], seq: Number(m[2]) };
   }
   const identity = r => ({ worldId: r.worldId, commandId: r.commandId, expectedRevision: r.expectedRevision,
@@ -89,7 +97,7 @@ function createCommands(world, strategy) {
           const account = world.commandPublicAccount(world.S.byId.get(strategy.playerId), cat);
           return account && { category: cat, label: account.label, available: account.available, scope: account.kind };
         }).filter(Boolean);
-        const quote = request.action.startsWith('living.') ? (()=>{const {target,...value}=living.quote(world,strategy,request.action,request.args);return value;})() : ['act','choose'].includes(request.action) ? world.commandTransaction(() => {
+        const quote = request.action.startsWith('business.') ? business.quote(world,strategy,request.action,request.args) : request.action.startsWith('living.') ? (()=>{const {target,...value}=living.quote(world,strategy,request.action,request.args);return value;})() : ['act','choose'].includes(request.action) ? world.commandTransaction(() => {
         let quote = null;
         if (request.action === 'choose') {
           const decision = world.S.dyn.pending.find(p => p.id === request.args.id);
@@ -108,7 +116,7 @@ function createCommands(world, strategy) {
         if (request.action === 'advance') {
           const firms = new Set(world.S.firms.filter(f => f.ceo === strategy.playerId).map(f => f.id));
           const visible = row => row.id.startsWith('person:'+strategy.playerId+':') || row.id === 'family:vault' ||
-            row.id.startsWith('firm:') && firms.has(Number(row.id.split(':')[1]));
+            row.id.startsWith('firm:') && firms.has(Number(row.id.split(':')[1])) || row.firmId && firms.has(row.firmId);
           ledger = ledger.filter(visible); inventory = inventory.filter(visible);
         }
         strategy.playerId = world.S.dyn.pid;

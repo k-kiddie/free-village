@@ -8,6 +8,7 @@ const { createCommands } = require('./commands');
 const { reconcile } = require('./contracts');
 const { createPresenter } = require('./presenter');
 const living = require('./living');
+const business = require('./business');
 const FORMAT = 'free-village.canonical';
 const VERSION = 3;
 let occupied = false;
@@ -120,6 +121,7 @@ function createSession(options = {}) {
   return Object.freeze({
     summary,
     view() { active(); return presenter.view(); },
+    business() { active(); if(!strategy.enabled)throw new Error('STRATEGY_DISABLED');return business.view(world,strategy); },
     living() { active(); if(!strategy.enabled)throw new Error('STRATEGY_DISABLED');return living.view(world,strategy); },
     map(options) { active(); return presenter.map(options); },
     people(options) { active(); return presenter.people(options); },
@@ -136,7 +138,7 @@ function createSession(options = {}) {
       if (strategy.revision === Number.MAX_SAFE_INTEGER) throw new Error('REVISION_OVERFLOW');
       if (strategy.enabled) {
         const saved = copy(strategy);
-        try { world.commandTransaction(() => { world.step(); strategy.playerId = world.S.dyn.pid; strategy.revision++; reconcile(world, strategy); living.observe(world,strategy); }); }
+        try { world.commandTransaction(() => { world.step(); business.tick(world); strategy.playerId = world.S.dyn.pid; strategy.revision++; reconcile(world, strategy); living.observe(world,strategy); }); }
         catch (error) { for (const k of Object.keys(strategy)) delete strategy[k]; Object.assign(strategy, saved); throw error; }
       } else { world.step(); strategy.revision++; }
       return summary();
