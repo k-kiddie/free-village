@@ -12,6 +12,7 @@ const PORT = Math.max(1, Number(process.env.PORT) || 80);
 // 두 마을: 원래 자유방임 마을('/')과 가문 모드 마을('/god'). 1GB 서버를 위해 한 번에 한 Worker만 메모리에 둔다.
 const WORLDS = {
   village:{ seed:Number(process.env.SEED)||20261116, population:Number(process.env.POPULATION)||5000 },
+  rebuild:{ seed:Number(process.env.REBUILD_SEED)||20261120, population:60 },
   dynasty:{ seed:Number(process.env.DYNASTY_SEED)||0, population:Number(process.env.DYNASTY_POPULATION)||100 },
 };
 const SWITCH_MIN_MS = Math.max(0, Number(process.env.WORLD_SWITCH_MIN_MS ?? 15000));
@@ -30,12 +31,13 @@ function makePage(apiBase,dynasty){
   return {html,gzip:zlib.gzipSync(Buffer.from(html)),tag:'"'+crypto.createHash('sha256').update(html).digest('hex')+'"'};
 }
 // /god는 원래 화면(지도·기존 탭)에 가문 모드 화면(god-client.js)을 얹는다.
-const pages={village:makePage(''),dynasty:makePage('/god',true)};
+const rebuildHtml=fs.readFileSync(path.join(__dirname,'rebuild/index.html'),'utf8').replace('/*REBUILD_CLIENT*/',()=>fs.readFileSync(path.join(__dirname,'rebuild/client.js'),'utf8'));
+const pages={village:makePage(''),dynasty:makePage('/god',true),rebuild:{html:rebuildHtml,gzip:zlib.gzipSync(rebuildHtml),tag:'\"'+crypto.createHash('sha256').update(rebuildHtml).digest('hex')+'\"'}};
 
 function spawnWorld(name){
   const w={name,gen:++gen,latestView:null,ready:false,waiting:new Map(),intended:false};
   let resolveReady,rejectReady;w.readyPromise=new Promise((res,rej)=>{resolveReady=res;rejectReady=rej});
-  w.worker=new Worker(path.join(__dirname,'sim-worker.js'),{
+  w.worker=new Worker(path.join(__dirname,name==='rebuild'?'rebuild/worker.js':'sim-worker.js'),{
     workerData:{name,...WORLDS[name]},
     resourceLimits:{maxOldGenerationSizeMb:Number(process.env.VILLAGE_HEAP_MB)||512,maxYoungGenerationSizeMb:32}
   });
@@ -165,6 +167,8 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==='GET'&&p==='/health'){const ok=booted&&!lifecycle.stopping;
       return sendJson(res,ok?200:503,{ok,ready:ok,stopReady:lifecycle.stopReady,world:active?.name??null,worldReady:!!active?.ready&&!switching,switching,workers:liveWorkers,day:active?.latestView?.day??null,rssBytes:process.memoryUsage().rss});}
+    if(req.method==='GET'&&(p==='/play'||p==='/play/'))return sendPage(req,res,pages.rebuild);
+    if(p.startsWith('/play/api/'))return await handleWorld('rebuild',p.slice(5),req,res,url);
     if(req.method==='GET'&&p==='/')return sendPage(req,res,pages.village);
     if(req.method==='GET'&&(p==='/god'||p==='/god/'))return sendPage(req,res,pages.dynasty);
     if(p.startsWith('/god/api/'))return await handleWorld('dynasty',p.slice(4),req,res,url);
