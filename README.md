@@ -1,4 +1,23 @@
-# 자유방임 마을 · v74
+# 프리빌리지
+
+지도·주민·사업·정치·가문을 연결하는 리빌드 작업 중인 프로젝트입니다. 현재 브랜치는 14단계 중 1~5단계를 구현·검증했으며 전체 계획 완료 상태가 아닙니다.
+
+- `/rebuild`: 기존 5,000명 엔진에 연결한 새 모바일 플레이·생활·지역 경제 · `save/canonical.json.gz`
+- `/` 또는 `/play`: 초기 60명 시제품
+- `/editor`: 별도 저장을 쓰는 세계 편집실
+- `/classic`: 기존 자유방임 시뮬레이션
+- `/god`: 기존 가문 게임
+
+Node.js 22 이상에서 `PORT=8080 node server.js`로 실행합니다. 새 화면을 바로 시작하려면 `INITIAL_WORLD=canonical PORT=8080 node server.js`로 실행하고 `/rebuild`에 접속합니다. 런타임 외부 패키지는 없습니다. 새 기본 플레이는 `save/canonical.json.gz`, 초기 시제품은 `save/rebuild.json.gz`, 편집실은 `save/rebuild-editor.json.gz`에 저장합니다.
+
+[리빌드 계획](REBUILD_PLAN.md) · [14단계 실행 계획](REBUILD_EXECUTION_PLAN.md) · [1단계 조사 결과](rebuild/audit/README.md) · [2단계 구조·데이터 기준](rebuild/architecture/README.md) · [3단계 공통 실행기](rebuild/architecture/COMMANDS.md) · [4단계 지도·모바일 플레이](rebuild/architecture/UI.md) · [5단계 생활·지역 경제](rebuild/architecture/LIVING.md) · [시제품 구현 기록과 한계](rebuild/IMPLEMENTATION.md)
+
+---
+
+## 기존 자유방임 마을 · v74
+
+아래는 `/classic`과 기존 단독 실행 파일의 안내입니다.
+
 
 주민이 진화하고 학습하는 마을 시뮬레이션. 서버 실행 시 계산과 저장은 서버에서 하고, 폰은 지도와 열린 탭을 표시한다.
 

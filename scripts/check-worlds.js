@@ -4,7 +4,7 @@ const assert=require('node:assert/strict'),path=require('node:path'),fs=require(
 const root=path.resolve(__dirname,'..');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function start(port,saveDir,extra={}){
-  const child=spawn(process.execPath,['server.js'],{cwd:root,env:{...process.env,PORT:String(port),POPULATION:'300',DYNASTY_POPULATION:'100',WORLD_SWITCH_MIN_MS:'0',VILLAGE_SAVE_DIR:saveDir,...extra},stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.execPath,['server.js'],{cwd:root,env:{...process.env,PORT:String(port),INITIAL_WORLD:'village',POPULATION:'300',DYNASTY_POPULATION:'100',WORLD_SWITCH_MIN_MS:'0',VILLAGE_SAVE_DIR:saveDir,...extra},stdio:['ignore','pipe','pipe']});
   let out='';child.stdout.on('data',b=>out+=b);child.stderr.on('data',b=>{out+=b;process.stderr.write(b)});
   const base='http://127.0.0.1:'+port;
   return {child,base,log:()=>out};
@@ -18,7 +18,7 @@ async function main(){
   const sampler=(async()=>{while(sampling){const t=performance.now();try{const h=await(await fetch(base+'/health')).json();healthSamples.push({ms:performance.now()-t,workers:h.workers,world:h.world})}catch{}await sleep(25)}})();
   try{
     await waitHealth(base);
-    const page=await(await fetch(base+'/')).text(),god=await(await fetch(base+'/god')).text();
+    const page=await(await fetch(base+'/classic')).text(),god=await(await fetch(base+'/god')).text();
     assert(page.includes('window.API_BASE=""')&&god.includes('window.API_BASE="/god"'),'페이지별 API 접두어');
     assert(page.includes('id="modeLink"'),'가문 모드 링크');
     async function view(prefix,wantDay){

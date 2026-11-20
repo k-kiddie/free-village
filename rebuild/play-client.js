@@ -1,0 +1,231 @@
+'use strict';
+(() => {
+  const $ = selector => document.querySelector(selector), esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const readStore = (key, fallback) => { try { return JSON.parse(localStorage.getItem('fv4:' + key)) ?? fallback; } catch { return fallback; } };
+  const store = (key, value) => { try { localStorage.setItem('fv4:' + key, JSON.stringify(value)); } catch {} };
+  const filters = readStore('filters', {business:''});
+  const client = readStore('client', null) || 'phone-' + crypto.randomUUID(); store('client', client);
+  const api = '/rebuild/api';
+  let mapRequest=0, L=null, livingActions=[];
+  let V, M, selected = null, tab = 'map', camera = null, layer = 'all', refs = [], targetData = null, busy = false, loadId = 0, drawItems = [], catalog = null, prepared = null, actionChoices = [], clustered = [];
+  function setBusy(value){busy=value;document.body.setAttribute('aria-busy',String(value));document.body.classList.toggle('busy',value);document.querySelectorAll('button').forEach(b=>b.disabled=value);}
+  const money = n => Number.isFinite(n) ? (n / (V?.currencyUnit || 1)).toLocaleString('ko-KR', {maximumFractionDigits:1}) + '냥' : '미확인';
+  const note = text => { $('#status').textContent = text; $('#status').style.display = 'block'; clearTimeout(note.timer); note.timer = setTimeout(() => $('#status').style.display = 'none', 4000); };
+  async function call(path, body) {
+    const response = await fetch(api + path, body === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const value = await response.json(); if (!response.ok) throw Error(value.error || '연결을 확인해 주세요'); return value;
+  }
+  const same = data => data && V && data.worldId === V.worldId && data.revision === V.revision;
+  const accountName = id => id.startsWith('family:') ? '가문 금고' : id.startsWith('government:') ? '공공 예산' : id.startsWith('firm:') ? '회사 자금' : id.startsWith('person:' + V.me.ref.id + ':') ? '내 자금' : '거래 상대 계정';
+  const goods = {grain:'곡식',meal:'밥',wood:'목재',tool:'도구',stone:'돌',gold:'금',iron:'쇠',jewel:'보석',fiber:'삼',plank:'판재',brick:'벽돌',cloth:'옷',furn:'가구',liquor:'술'};
+  const jobName = n => ({0:'농사',1:'요리',2:'벌목·채집',3:'건축',4:'품팔이',5:'도둑질',6:'휴식',7:'짝찾기',8:'치안',9:'제조',10:'채석',11:'가르치기',12:'장사',100:'사업 경영',[-1]:'주민 판단'})[n] || '선택한 일';
+  const jobPlan = b => [b.job,b.job2,b.job3].map(jobName).join(' → ');
+  function resultHTML(r) {
+    return `${r.result?.job !== undefined ? '<p>하루 일: '+esc(jobPlan(r.result))+'</p>' : ''}<p>${esc(r.result?.text || (r.duration?.advancedDays ? '하루를 마쳤습니다.' : '지침을 반영했습니다.'))}</p>${(r.ledger || []).map(x => `<div class="kv"><span>${esc(accountName(x.id))}</span><b>${x.amount > 0 ? '+' : ''}${money(x.amount)}</b></div>`).join('')}${(r.inventory||[]).map(x=>`<p class="muted">${x.id.startsWith('person:'+V.me.ref.id+':')?'내 재고':'상대 재고'} · ${esc(goods[x.good]||x.good)} ${x.before.toFixed(1)} → ${x.after.toFixed(1)}</p>`).join('')}${r.result?.hours!==undefined?`<p class="muted">사용한 여유 시간 ${r.result.hours.toFixed(1)}시간${r.result.gain!==undefined?' · 기술 숙련 +'+(r.result.gain*100).toFixed(3)+'%p':''}</p>`:''}${r.duration?.cooldowns?.length ? `<p class="muted">다음 실행: ${r.duration.cooldowns.map(x => x.remainingDays + '일 뒤').join(' · ')}</p>` : ''}`;
+  }
+  function renderBase() {
+    $('#hud').innerHTML = `<div><span>마을의 시간</span><b>${V.day + 1}일 <small class="season">${esc(V.season)}</small></b></div><div><span>내 자금</span><b>${money(V.me.cash)}</b></div><div><span>주민</span><b>${V.population.toLocaleString()}명</b></div>`;
+    $('#identity').innerHTML = `<div class="avatar">${esc(V.me.name.slice(0,1))}</div><h3>${esc(V.me.name)}</h3><p class="muted">${Math.floor(V.me.age)}세 · ${esc(V.me.job || '주민')}</p><button class="small" data-do="me">내 위치 보기</button>`;
+    $('#connection').textContent = V.savedRevision === V.revision ? '저장됨 · 연결됨' : '연결됨';
+    const pending = readStore('pending', null);
+    $('#banner').innerHTML = pending ? `<div class="error">이전 요청의 처리 결과를 확인해야 합니다. 중복 실행 없이 이어서 확인합니다. <button data-do="retry">결과 다시 확인</button></div>` : V.pending.length ? `<div class="notice"><strong>결정할 일이 ${V.pending.length}건 있습니다.</strong> 선택 전까지 시간은 멈춥니다. <button data-do="decision">내용 보기</button></div>` : '';
+    document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  }
+  async function refresh(full = true) {
+    const next = await call('/view');
+    const changed = !V || next.worldId !== V.worldId || next.revision !== V.revision;
+    if (V && V.worldId !== next.worldId) { L=null; selected = null; refs = []; camera = null; M = null; }
+    if(!V) refs=readStore('compare:'+next.worldId,[]);
+    V = next; renderBase();
+    if (full || changed) { const scroll=window.scrollY; await render(); window.scrollTo(0,scroll); }
+  }
+  function heading(title, subtitle, buttons = '') { return `<div class="heading"><div><p class="eyebrow">YOUR VILLAGE, YOUR STORY</p><h2>${title}</h2><p class="muted">${subtitle}</p></div><div class="row">${buttons}</div></div>`; }
+  async function render() {
+    const generation = ++loadId;
+    if (tab === 'map') {
+      $('#main').innerHTML = heading('마을을 읽다', '장소와 사람을 선택해 기회와 관계를 살펴보세요.', '<button data-do="advance">하루 진행 →</button>') + `<div class="map-layout"><section><div class="map-card"><div class="map-toolbar"><div class="tabs" aria-label="지도 표시"><button class="small ${layer === 'all' ? 'active' : ''}" data-layer="all">전체</button><button class="small ${layer === 'person' ? 'active' : ''}" data-layer="person">주민</button><button class="small ${layer === 'assets' ? 'active' : ''}" data-layer="assets">건물·농지</button><button class="small ${layer==='food'?'active':''}" data-layer="food">식량</button><button class="small ${layer==='needs'?'active':''}" data-layer="needs">생활 압박</button></div><div class="row"><button class="small" data-do="zoom-in" aria-label="지도 확대">＋</button><button class="small" data-do="zoom-out" aria-label="지도 축소">−</button><button class="small" data-do="reset-map">전체 보기</button></div></div><canvas id="map" tabindex="0" aria-label="마을 지도. 드래그와 방향키로 이동, 확대 버튼으로 확대, 아래 목록으로 대상 선택"></canvas><div class="map-footer"><span><i class="dot"></i>초록: 내 자산 · 주황: 내 인물</span><span id="map-count">실제 공간을 불러오는 중</span></div></div><div class="compare-bar"><button data-do="compare">비교함 (${refs.length}/3)</button><button data-do="me">내 위치</button><button data-do="nearby">이 화면의 대상 목록</button><button data-do="people">주민 찾기</button></div></section><section id="target" class="card target" aria-live="polite"></section></div>`;
+      if (!M || M.revision !== V.revision) { const data = await call('/map'); if (generation !== loadId || !same(data)) return; M = data; }
+      if(['food','needs'].includes(layer)&&!same(L)){const current=await call('/living');if(generation!==loadId||!same(current))return;L=current;}
+      if (!camera) camera = readStore('camera:' + V.worldId, null) || {x:0,y:0,w:M.width,h:M.height};
+      attachMap(); draw();
+      if (selected) await select(selected, false, false); else $('#target').innerHTML = `<p class="eyebrow">EXPLORE</p><h2>여기서 시작하세요</h2><p>집, 농지, 건물, 주민을 누르면 현재 상태와 연결된 행동이 나타납니다.</p><p class="muted">같은 장소에 모인 주민은 목록에서 고를 수 있습니다.</p><button data-do="me">내 인물 살펴보기</button>`;
+    } else if (tab === 'life') {
+      const food = (V.me.goods?.grain || 0) + (V.me.goods?.meal || 0) * 1.5;
+      $('#main').innerHTML = heading('오늘의 생활과 일', '일 지침을 비교하고, 하루를 보낸 뒤 실제 수입과 상태를 확인하세요.', '<button data-do="advance">하루 진행 →</button>') + `<div class="grid"><div class="card"><p class="muted">식량 보유 · 곡물 환산</p><b class="stat">${food.toFixed(1)}</b><p class="muted">곡식 ${V.me.goods?.grain?.toFixed(1) || 0} · 식사 ${V.me.goods?.meal?.toFixed(1) || 0}</p></div><div class="card"><p class="muted">건강 / 배고픔</p><b class="stat">${Math.round(V.me.health)} / ${Math.round(V.me.hunger)}</b><p class="muted">배고픔은 낮을수록 좋습니다.</p></div></div><section class="card job" style="margin-top:14px"><h3>하루 일 지침</h3><p class="muted">현재 1순위: ${['농사','요리','벌목','건축','품팔이','도둑질','휴식','짝찾기','치안','제조','채석','가르치기','장사'][V.budget.job] || '자율 선택'}. 실제로 가능한 일인지 매일 다시 판단합니다.</p><div class="row toolbar"><button data-job="work">품팔이 중심</button><button data-job="trade">장사 중심</button><button data-job="auto">주민 판단에 맡기기</button></div>${V.today ? `<p>최근 하루: ${esc(V.today.kind==='duty'?'공무':jobName(V.today.did))} · ${esc(V.today.why || '실제 가능한 일을 수행했습니다.')}</p>` : ''}<p class="help">지침 변경만으로 임금이나 물건이 생기지 않습니다. 하루 진행 후 결과를 확인하세요.</p></section><section id="living-details" class="card"><p class="muted">생활권의 실제 재고·주거·학습 조건을 확인하고 있습니다.</p></section><section class="card"><h3>가문 금고</h3><p>보관 중 ${money(V.vault)} · 내 현금과 분리해서 보관합니다.</p><div class="row toolbar"><button data-do="vault-in">현금 절반 보관</button><button data-do="vault-out">금고 절반 꺼내기</button></div></section><h3>실제 일감과 생활 기회</h3><div id="opportunities" class="action-list"></div>`;
+      await Promise.all([opportunities('life', generation),loadLiving(generation)]);
+    } else if (tab === 'business') {
+      $('#main').innerHTML = heading('작게 시작하는 사업', '내 공간과 자금을 확인하고 실제 비용을 비교하세요.', '<button data-do="advance">하루 진행 →</button>') + `<div class="card"><div class="business-path"><span>생활·자금</span>→<span>건물 마련</span>→<span>회사 설립</span></div><p class="muted">회사는 내 건물이 있어야 세울 수 있습니다. 자금이 부족하면 생계를 유지하거나 차입 조건을 비교하세요.</p><div class="row toolbar"><button data-go="life">생활·일로 돌아가기</button><button data-do="me">내 자산 위치 보기</button><button data-do="compare">비교함 (${refs.length}/3)</button></div>${V.firms.map(f => `<button data-select="firm:${f.ref.id}">${esc(f.name)} · ${money(f.cash)}</button>`).join('')}${V.projects.length ? '<p>진행 중인 공사 ' + V.projects.length + '건 · ' + V.projects.map(p => Math.round(p.progress/p.need*100)+'%').join(' · ') + ' · 하루씩 진행하며 완공을 확인하세요.</p>' : ''}</div><p class="muted">내 현금 ${money(V.me.cash)} · 금고 ${money(V.vault)}</p><div class="row toolbar"><button data-do="vault-out">금고에서 절반 꺼내기</button></div><label>기회 찾기 <input id="action-search" type="search" value="${esc(filters.business || '')}" placeholder="공방, 가게, 회사, 대출…"></label><div id="opportunities" class="action-list"></div>`;
+      await opportunities('business', generation);
+    } else {
+      $('#main').innerHTML = heading('결정이 남긴 변화', '처리 결과와 실제 계정 변화를 다시 확인하세요.', '<button data-do="save">지금 저장</button>') + (V.activity.length ? V.activity.map(r => `<article class="card activity"><small>${r.day+1}일 · ${esc(r.commandId?.split(':')[0] === client ? '내 결정' : '처리 기록')}</small>${resultHTML(r)}</article>`).join('') : '<div class="empty">아직 처리한 행동이 없습니다.</div>') + V.news.map(n => `<article class="card"><p>${esc(n.text)}</p></article>`).join('');
+    }
+  }
+  async function opportunities(kind, generation) {
+    $('#opportunities').innerHTML='<div class="empty" role="status">현재 기회와 조건을 확인하고 있습니다.</div>';
+    const data = await call('/catalog'); if (generation !== loadId || !same(data)) return;
+    catalog = data;
+    const rows = data.actions.filter(a => kind === 'life' ? ['일자리','배움·전공','자녀 교육'].includes(a.group) || /^gig:/.test(a.k) : /^(biz:build:|firm:new|loan:take:|dep:|stock:|house:|land:)/.test(a.k));
+    actionChoices = rows;
+    function fill(query = '') { $('#opportunities').innerHTML = rows.map((a,i) => ({a,i})).filter(({a}) => (a.label + a.hint).includes(query)).map(({a,i}) => `<button class="action" data-action-index="${i}"><strong>${esc(a.label)}</strong><span>${esc(a.hint)}</span>${a.preliminaryReason ? `<span class="warning">${esc(a.preliminaryReason)}</span>` : ''}<span>조건과 비용 확인</span></button>`).join('') || '<div class="empty">지금은 해당하는 모집·기회가 없습니다. 하루가 지나면 상황이 바뀔 수 있습니다.</div>'; }
+    if ($('#action-search')) { filters.business=$('#action-search').value; store('filters',filters); }
+    fill(kind === 'business' ? filters.business || '' : ''); if ($('#action-search')) $('#action-search').oninput = e => { filters.business=e.target.value; store('filters',filters); fill(e.target.value); };
+  }
+  async function loadLiving(generation){
+    const data=await call('/living');if(generation!==loadId||!same(data)||!$('#living-details'))return;L=data;livingActions=[];
+    const action=(item,hint,quantity=false)=>{const i=livingActions.push(item)-1;return `<div class="living-offer"><p class="muted">${hint}</p>${quantity?`<label>구매 수량 <input id="living-quantity-${i}" type="number" min=".5" max="20" step=".5" value="${item.command.args.quantity}" style="width:90px"></label>`:''}<button class="action" data-living-index="${i}">${esc(item.label)}</button></div>`;};
+    const row=L.regions.find(r=>r.id===L.region.id);
+    $('#living-details').innerHTML=`<h3>${esc(L.region.name)} · 내 생활 조건</h3><dl class="kv"><dt>오늘 여유 시간</dt><dd>${L.me.freeHours.toFixed(1)} / 4시간</dd><dt>피로 / 건강</dt><dd>${L.me.fatigue.toFixed(1)} / ${L.me.health.toFixed(1)}</dd><dt>열흘 임대료</dt><dd>${money(L.me.rent)}</dd><dt>다음 임대료 / 생활비 정산</dt><dd>${L.me.nextRentDay+1}일 / ${L.me.nextBudgetDay+1}일</dd><dt>내 학력</dt><dd>${['없음','초등','중등','고등','대학'][L.me.education]||'없음'}${L.me.study?' · 학습 중':''}</dd>${L.me.study?`<dt>학습 진척 / 평가일</dt><dd>${(L.me.study.p??L.me.study.progress??0).toFixed(1)} / ${L.me.study.need??15} · ${L.me.study.until+1}일</dd>`:''}</dl><p class="muted">불만 요인: ${esc(L.me.pressure.reasons.join(' · ')||'뚜렷한 생활 압박 없음')}</p><div class="row toolbar"><button data-do="living-rest">두 시간 쉬기</button><button data-do="regions">생활권 비교</button></div><p class="help">여유 시간은 기존 하루 일과 별도의 4시간 한도입니다. 구매·수업·이사에 쓰면 피로와 배고픔도 늘어납니다.</p>
+    <h3>생활비·자녀 교육 지침</h3><div class="row toolbar"><label>생활 수준 <select id="living-life">${['긴축','검소','보통','여유','사치'].map((name,i)=>`<option value="${i}" ${V.budget.life===i?'selected':''}>${name}</option>`).join('')}</select></label><label>자녀 과외 <select id="living-edu">${['없음','기본 과외','추가 과외','집중 과외'].map((name,i)=>`<option value="${i}" ${V.budget.edu===i?'selected':''}>${name}</option>`).join('')}</select></label><label>저축 <select id="living-save">${[0,.05,.1,.2,.3,.5].map(n=>`<option value="${n}" ${V.budget.save===n?'selected':''}>${n*100}%</option>`).join('')}</select></label><button data-do="living-budget">지침 비용 확인</button></div><p class="help">기존 5일 정산을 사용합니다. 긴축은 건강 부담이 있고 과외는 실제 자녀·교사 조건이 맞아야 진행됩니다. 기술 수업과 학력 교육은 별개입니다.</p>
+    <h3>같은 생활권의 식량</h3><p class="muted">인당 곡물환산 재고 ${row?.foodPerCapita?.toFixed(1)||'미확인'} · 관측 곡식 거래가 ${money(row?.foodPrices.grain)}</p>${L.offers.sellers.map(o=>action(o,`여유 곡식 ${o.stock.toFixed(1)} · 단위당 ${money(o.price)}`,true)).join('')||'<p class="muted">여유 곡식을 파는 주민이 없습니다. 실제 생산·공급이나 거주 생활권을 확인하세요.</p>'}
+    <h3>지역 기술 수업</h3>${L.offers.teachers.map(o=>action(o,`제안 숙련 ${(o.level*100).toFixed(1)} · 1시간 수업료 ${money(o.cost)}`)).join('')||'<p class="muted">같은 생활권에 숙련 차이가 충분한 교사가 없습니다.</p>'}
+    <h3>가족의 식량·부양</h3>${L.family.map(a=>action(a.support,`${esc(a.name)} · ${Math.floor(a.age)}세 · 식량 ${a.food.toFixed(1)} · ${esc(a.needs.join(' · ')||'긴급 필요 없음')}`)).join('')||'<p class="muted">현재 연결된 배우자·부모·자녀가 없습니다.</p>'}
+    <h3>가까운 실제 임대 매물</h3>${L.offers.homes.map(o=>action(o,`${esc(o.region.name)} · 열흘 ${money(o.rent)} · 첫 기간분 즉시 납부`)+`<button class="small" data-select="house:${o.id}">주택 ${o.id} 지도·비교</button>`).join('')||'<p class="muted">현재 가까운 빈 임대 매물이 없습니다. 기존 주민·정부가 공급하는 주택만 표시합니다.</p>'}`;
+  }
+  function showRegions(metric='needs'){
+    if(!L)return;const flow=L.history.at(-1)?.movement||{};
+    const columns=metric==='work'?[['고용 연결',r=>r.wageWorkers],['휴식 성인',r=>r.restingAdults],['기록 소득/인',r=>money(r.meanIncome)],['학습 중',r=>r.students],['최근 교사',r=>r.teachers]]:metric==='movement'?[['출생',r=>flow[r.id]?.births||0],['사망',r=>flow[r.id]?.deaths||0],['외부 유입',r=>flow[r.id]?.arrivals||0],['외부 이탈',r=>flow[r.id]?.departures||0],['주소 이동 입/출',r=>(flow[r.id]?.movedIn||0)+' / '+(flow[r.id]?.movedOut||0)],['구역 변경',r=>flow[r.id]?.reclassified||0]]:[['인당 식량',r=>r.foodPerCapita.toFixed(1)],['굶주림 주민',r=>r.hungry],['주거 없음',r=>r.homeless],['곡식 거래가',r=>money(r.foodPrices.grain)],['평균 열흘 임대료',r=>money(r.meanRent)],['공실 임대',r=>r.vacancies],['생활 압박',r=>(r.pressure*100).toFixed(0)+'%']];
+    show(`<h2 id="dialogTitle">생활권 비교</h2><div class="tabs toolbar"><button data-region-metric="needs">식량·주거</button><button data-region-metric="work">일·교육</button><button data-region-metric="movement">인구 이동</button></div><p class="muted">실제 주민·재고·기록 소득·거래 가격입니다. 가격 미확인은 관측 거래가 없다는 뜻입니다. 생활 압박은 식량·주거·지불 능력·건강의 필요 지표입니다.</p><div class="scroll"><table><thead><tr><th>생활권</th><th>인구</th>${columns.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${L.regions.filter(r=>r.population).map(r=>`<tr><td><button data-region-history="${esc(r.id)}">${esc(r.name)}</button></td><td>${r.population}</td>${columns.map(c=>`<td>${esc(c[1](r))}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="muted">저장된 ${L.history.length}일 관측. 휴식한 성인 수를 실업자 수로 간주하지 않습니다. 주소 변경과 행정구역 재편도 구분합니다.</p>`);
+  }
+  function showRegionHistory(id){
+    const name=L.regions.find(r=>r.id===id)?.name||'이전 생활권';
+    const rows=L.history.map(h=>({day:h.day,row:h.regions.find(r=>r.id===id)})).filter(x=>x.row);
+    const actions=L.actions.filter(a=>a.region===id||a.fromRegion===id||a.toRegion===id).slice().reverse();
+    show(`<h2 id="dialogTitle">${esc(name)} · 관측 기록</h2><p class="muted">하루 계산 후의 실제 관측입니다. 주민의 생산·거래·출생·사망도 함께 반영되므로 한 행동만의 효과로 단정하지 않습니다.</p><div class="scroll"><table><thead><tr><th>날짜</th><th>인구</th><th>인당 식량</th><th>기록 소득/인</th><th>굶주림</th><th>학습 중</th></tr></thead><tbody>${rows.map(({day,row:r})=>`<tr><td>${day+1}일</td><td>${r.population}</td><td>${r.foodPerCapita?.toFixed(1)||'—'}</td><td>${money(r.meanIncome)}</td><td>${r.hungry}</td><td>${r.students}</td></tr>`).join('')}</tbody></table></div><h3>기록된 내 개입</h3>${actions.map(a=>`<p>${a.day+1}일 · ${esc(a.label||a.action)} · 지출 ${money(a.cost)} · ${a.hours?.toFixed(1)||0}시간${a.quantity?` · 곡식 ${a.quantity}`:''}${a.gain?` · 숙련 +${(a.gain*100).toFixed(3)}%p`:''}</p>`).join('')||'<p class="muted">보관 중인 내 생활 개입 기록이 없습니다.</p>'}<button class="toolbar" data-do="regions">현재 생활권 비교로 돌아가기</button>`);
+  }
+  function show(html) { $('#dialog').innerHTML = `<button class="close" data-do="close" aria-label="닫기">×</button>${html}`; if (!$('#dialog').open) $('#dialog').showModal(); }
+  async function select(ref, move = true, reveal = true) {
+    selected = ref;
+    if (tab !== 'map') { tab = 'map'; await render(); return; }
+    const data = await call(`/detail?kind=${encodeURIComponent(ref.kind)}&id=${ref.id}`);
+    if (!same(data) || selected?.id !== ref.id || selected?.kind !== ref.kind || !$('#target')) return;
+    targetData = data;
+    if (move && data.position) { camera.x = data.position.x - camera.w/2; camera.y = data.position.y - camera.h/2; draw(); }
+    $('#target').innerHTML = `<p class="eyebrow">${ref.kind === 'person' ? 'RESIDENT' : 'PLACE'}</p><h2>${esc(data.name)}</h2><dl class="kv">${ref.kind === 'person' ? `<dt>현재 상태</dt><dd>${data.known ? esc(data.job) : '아직 잘 모르는 인물'}</dd><dt>현금</dt><dd>${money(data.cash)}</dd>${data.known && data.alive ? `<dt>건강 / 배고픔</dt><dd>${Math.round(data.health)} / ${Math.round(data.hunger)}</dd>` : ''}` : `<dt>${ref.kind==='firm'?'대표':'소유자'}</dt><dd>${esc(ref.kind==='firm'?data.manager?.name||'대표 없음':data.owner?.name || '공공·주인 없음')}</dd><dt>입주자</dt><dd>${esc(data.occupant?.name || '없음')}</dd><dt>상태</dt><dd>${Number.isFinite(data.condition) ? Math.round(data.condition*100) + '%' : '—'}</dd><dt>매매가</dt><dd>${data.sale ? money(data.sale) : '매물 아님'}</dd><dt>임대료 / 보증금</dt><dd>${money(data.rent || 0)} / ${money(data.deposit || 0)}</dd>`}</dl><div class="row"><button data-do="add-compare">비교함에 담기</button><button data-do="map-focus">지도 보기</button><button data-do="business">사업 기회</button></div>${(data.related || []).map(r => `<button data-select="person:${r.id}">${esc(r.name)} 살펴보기 →</button>`).join('')}${Number.isFinite(data.progress) ? `<p>공사 진행 ${data.progress.toFixed(1)} / ${data.need}</p>` : ''}<div id="target-actions" class="action-list"></div>`;
+    {
+      const actions = await call(ref.kind === 'person' ? '/catalog?target=' + ref.id : '/catalog'); if (!same(actions) || selected?.id !== ref.id || selected?.kind !== ref.kind || !$('#target-actions')) return;
+      actionChoices = actions.actions.filter(a => ref.kind === 'person' ? a.k.startsWith('tgt:') : ref.kind === 'house' ? a.k.startsWith('house:') && a.k.split(':')[2] === String(ref.id) : ref.kind === 'plot' ? a.k.startsWith('land:') && a.k.split(':')[2] === String(ref.id) : ref.kind === 'building' && data.owner?.id === V.me.ref.id ? a.k === 'firm:new' : false);
+      $('#target-actions').innerHTML = actionChoices.map((a,i) => `<button class="action" data-action-index="${i}"><strong>${esc(a.label)}</strong><span>${esc(a.hint)}</span><span>${esc(a.preliminaryReason || '조건과 비용 확인')}</span></button>`).join('');
+    }
+    draw();
+    if(reveal && innerWidth<=720) $('#target').scrollIntoView({block:'nearest',behavior:'instant'});
+  }
+  async function compare() {
+    const data = await Promise.all(refs.map(r => call(`/detail?kind=${r.kind}&id=${r.id}`)));
+    if (data.some(x => !same(x))) { await refresh(); note('상황이 바뀌어 비교 자료를 새로 확인합니다.'); return; }
+    show(`<h2 id="dialogTitle">대상 비교</h2><p class="muted">같은 시점의 정보입니다. 미확인 정보는 추정하지 않습니다.</p>${data.length ? `<div class="scroll"><table><thead><tr><th>항목</th>${data.map(x => `<th>${esc(x.name)}</th>`).join('')}</tr></thead><tbody>${[['현금',x=>money(x.cash)],['매매가',x=>x.sale?money(x.sale):'매물 아님'],['임대료',x=>money(x.rent)],['보증금',x=>money(x.deposit)],['소유자',x=>x.owner?.name || '—'],['건강',x=>x.health ?? '—']].map(([label,fn]) => `<tr><th>${label}</th>${data.map(x=>`<td>${esc(fn(x))}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="row toolbar">${data.map(x => `<button data-select="${x.ref.kind}:${x.ref.id}" data-return="1">${esc(x.name)}로 돌아가기</button>`).join('')}</div><button data-do="clear-compare">비교함 비우기</button>` : '<p>지도에서 대상을 선택해 최대 3개까지 담아 보세요.</p>'}`);
+  }
+  function request(action, args) { const n = readStore('sequence:' + V.worldId, 0) + 1; return { worldId:V.worldId,commandId:client+':'+n,expectedRevision:V.revision,actor:V.me.ref,action,args }; }
+  async function preview(action, args, title, immediate = false) {
+    if (readStore('pending',null)) { note('이전 요청의 결과부터 확인해 주세요.'); return; }
+    setBusy(true);
+    try {
+      const command = request(action,args), p = await call('/preview',command);
+      if (p.alreadyExecuted) { await refresh(); return; }
+      prepared = p.allowed ? {...command,previewToken:p.previewToken} : null;
+      if (immediate && prepared) return await execute(prepared);
+      show(`<h2 id="dialogTitle">${esc(title)}</h2>${p.allowed ? `<p>${action === 'budget' && args.budget.job!==undefined ? esc(jobPlan(args.budget)) + '</p><p class="muted">고용주·밑천·토지 조건이 맞아야 실행됩니다. 다음 순위도 못 하면 주민의 판단을 따릅니다.</p><p>' : ''}${action==='budget'&&args.budget.life!==undefined?esc('생활 수준 '+['긴축','검소','보통','여유','사치'][args.budget.life]+' · 자녀 과외 '+['없음','기본','추가','집중'][args.budget.edu]+' · 저축 '+(args.budget.save*100)+'%')+'<br>':''}${esc(p.quote?.hint || p.quote?.label || (action === 'budget' ? '일 지침은 다음 하루부터, 생활비·자녀 과외·저축은 5일 정산에 반영됩니다.' : '현재 조건에서 실행할 수 있습니다.'))}</p>${action.startsWith('living.')&&p.quote?.cost!==undefined?`<p>지금 지불 ${money(p.quote.cost)} · ${p.quote.hours.toFixed(1)}시간</p>${p.quote.details?.gain!==undefined?`<p>기술 숙련 증가 ${(p.quote.details.gain*100).toFixed(3)}%p · 배고픔·건강에 따라 달라집니다.</p>`:''}${p.quote.details?.rent?`<p>이후 열흘 임대료 ${money(p.quote.details.rent)} · 첫 납부는 다음 정산까지 기간분입니다.</p>`:''}`:''}${p.uncertainty ? '<div class="notice">결과가 달라질 수 있습니다. 아래 설명은 확정 수익이나 성공을 보장하지 않습니다.</div>' : (p.accounts || []).map(x=>`<div class="kv"><span>${esc(accountName(x.id))}</span><b>${money(x.before)} → ${money(x.after)}</b></div>`).join('')}${(p.inventory || []).map(x=>`<p class="muted">보유 물량 변화 · ${esc(goods[x.good] || x.good)} ${x.amount>0?'+':''}${x.amount.toFixed(1)}</p>`).join('')}<p class="muted">날짜 진행: ${p.duration.advancedDays}일${p.duration.cooldowns.length ? ' · 다시 실행까지 '+p.duration.cooldowns.map(x=>x.remainingDays+'일').join(', ') : ''}</p><div class="actions"><button data-do="close">돌아가기</button><button class="primary" data-do="execute">이 조건으로 실행</button></div>` : `<div class="error">${p.reasons.map(r=>esc(r.message)).join('<br>')}</div><p class="muted">이 요청으로 돈·물건·시간은 바뀌지 않았습니다. 조건을 마련하거나 다른 방법을 비교해 보세요.</p><div class="actions"><button data-do="close">돌아가기</button></div>`}`);
+    } finally { setBusy(false); }
+  }
+  async function execute(command) {
+    store('pending',command); setBusy(true);
+    try {
+      const r = await call('/execute',command);
+      store('pending',null);
+      if (!r.allowed) { await refresh(); show(`<h2 id="dialogTitle">조건을 다시 확인해 주세요</h2><p class="error">${r.reasons.map(x=>esc(x.message)).join('<br>')}</p><button data-do="close">돌아가기</button>`); return; }
+      store('sequence:' + command.worldId,Number(command.commandId.split(':').at(-1)));
+      prepared = null; await refresh();
+      if (command.action === 'advance') { $('#dialog').close(); note('하루를 마쳤습니다. 생활과 활동에서 변화를 확인하세요.'); }
+      else show(`<h2 id="dialogTitle">결정이 반영되었습니다</h2>${resultHTML(r)}<div class="actions"><button data-do="close">이전 화면으로</button><button data-go="activity">활동에서 다시 보기</button></div>`);
+    } catch (e) { renderBase(); show(`<h2 id="dialogTitle">처리 결과를 확인하지 못했습니다</h2><p>${esc(e.message)}</p><p class="muted">같은 요청 번호로 결과를 다시 확인합니다. 돈이나 행동이 두 번 집행되지 않습니다.</p><button data-do="retry">다시 확인</button>`); }
+    finally { setBusy(false); }
+  }
+  function chooseAction(a) {
+    if (a.opts?.length) { show(`<h2 id="dialogTitle">${esc(a.label)}</h2><p>${esc(a.hint)}</p><div class="cluster">${a.opts.map((o,i)=>`<button data-option="${i}">${esc(o[1])}</button>`).join('')}</div>`); chooseAction.current=a; }
+    else if (a.companyNameSpec) { show(`<h2 id="dialogTitle">회사 설립</h2><p>${esc(a.hint)}</p><label>회사 이름 (선택) <input id="company-name" maxlength="20"></label><div class="actions"><button data-do="company-preview">조건과 비용 확인</button></div>`); }
+    else preview('act',{key:a.k},a.label).catch(e=>note(e.message));
+  }
+  async function people(page = 0, query = '') {
+    const data=await call('/people?'+new URLSearchParams({page,q:query})); if(!same(data))return;
+    show(`<h2 id="dialogTitle">주민 찾기</h2><div class="row toolbar"><input id="people-query" aria-label="주민 이름" placeholder="이름으로 찾기" value="${esc(query)}"><button data-do="people-search">찾기</button></div><p class="muted">${data.total}명 · ${page+1}페이지</p><div class="cluster">${data.people.map(a=>`<button data-select="person:${a.ref.id}">${esc(a.name)}</button>`).join('')}</div><div class="row toolbar">${page>0?`<button data-people-page="${page-1}">이전</button>`:''}${(page+1)*40<data.total?`<button data-people-page="${page+1}">다음</button>`:''}</div>`);
+  }
+  function draw() {
+    const c = $('#map'); if (!c || !M || !camera) return;
+    camera.w=Math.max(25,Math.min(M.width,camera.w));camera.h=Math.max(20,Math.min(M.height,camera.h));
+    camera.x=Math.max(-5,Math.min(M.width-camera.w+5,camera.x));camera.y=Math.max(-5,Math.min(M.height-camera.h+5,camera.y));
+    store('camera:'+V.worldId,camera);
+    const ratio=devicePixelRatio||1; c.width=c.clientWidth*ratio; c.height=c.clientHeight*ratio;
+    const ctx=c.getContext('2d'); ctx.scale(ratio,ratio); const sx=c.clientWidth/camera.w,sy=c.clientHeight/camera.h;
+    const px=x=>(x-camera.x)*sx, py=y=>(y-camera.y)*sy;
+    ctx.fillStyle='#e3ead7';ctx.fillRect(0,0,c.clientWidth,c.clientHeight);
+    const colors={g:'#d6e0bd',f:'#96b38c',r:'#c7c6b4',w:'#9ac8ca',m:'#a6afa0'};
+    for(const t of M.terrain){ctx.fillStyle=colors[t.type]||colors.g;ctx.fillRect(px(t.x),py(t.y),11*sx,10*sy);ctx.strokeStyle='#ffffff25';ctx.strokeRect(px(t.x),py(t.y),11*sx,10*sy);}
+    if(['food','needs'].includes(layer)&&L&&same(L)){const regions=new Map(L.regions.map(r=>[r.id,r]));for(const t of M.terrain){const r=regions.get(t.region);if(!r?.population)continue;const severity=layer==='food'?Math.max(0,Math.min(1,1-r.foodPerCapita/12)):r.pressure;ctx.fillStyle=`rgba(${Math.round(95+severity*135)},${Math.round(160-severity*85)},65,.6)`;ctx.fillRect(px(t.x),py(t.y),11*sx,10*sy);}
+      for(const r of L.regions.filter(r=>r.id.startsWith('camp:')&&r.population&&r.position)){const severity=layer==='food'?Math.max(0,Math.min(1,1-r.foodPerCapita/12)):r.pressure;ctx.fillStyle=`rgba(${Math.round(95+severity*135)},${Math.round(160-severity*85)},65,.75)`;ctx.beginPath();ctx.ellipse(px(r.position.x),py(r.position.y),16*sx,12*sy,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#243f33';ctx.font='11px system-ui';ctx.fillText('공터 거주',px(r.position.x-12),py(r.position.y-14));}}
+    ctx.strokeStyle=M.paved>2000?'#b5b4a5':'#c7b48e';ctx.lineWidth=Math.max(2,2*sx);for(const path of M.roads){ctx.beginPath();path.forEach((p,i)=>i?ctx.lineTo(px(p.x),py(p.y)):ctx.moveTo(px(p.x),py(p.y)));ctx.stroke();}
+    ctx.fillStyle='#dbb77b';ctx.fillRect(px(M.market.x),py(M.market.y),M.market.w*sx,M.market.h*sy);ctx.fillStyle='#72512c';ctx.font='12px system-ui';ctx.fillText('장터',px(M.market.x+8),py(M.market.y+18));
+    drawItems=[];
+    if(layer!=='person')for(const e of M.entities){ctx.fillStyle=e.mine?'#275a40':e.ref.kind==='plot'?'#c2a978':e.ref.kind==='house'?'#e9dfc5':'#987e61';ctx.strokeStyle=e.mine?'#163e29':'#8e8f78';const size=e.ref.kind==='plot'?8:5;ctx.fillRect(px(e.x)-size,py(e.y)-size,size*2,size*2);ctx.strokeRect(px(e.x)-size,py(e.y)-size,size*2,size*2);drawItems.push(e);}
+    if(layer!=='assets')for(const e of M.residents){ctx.beginPath();ctx.fillStyle=e.mine?'#d07e32':'#37584c';ctx.arc(px(e.x),py(e.y),e.mine?6:2.5,0,Math.PI*2);ctx.fill();if(e.mine){ctx.strokeStyle='white';ctx.lineWidth=2;ctx.stroke();}drawItems.push(e);}
+    const sel=drawItems.find(e=>e.ref.kind===selected?.kind&&e.ref.id===selected.id);if(sel){ctx.strokeStyle='#cf6f2f';ctx.lineWidth=2;ctx.strokeRect(px(sel.x)-10,py(sel.y)-10,20,20);}
+    $('#map-count').textContent=(layer==='food'?'식량: 인당 재고가 적을수록 붉음 · ':layer==='needs'?'생활 압박이 높을수록 붉음 · ':'')+`표시 주민 ${M.residents.length} / ${M.residentCount}${M.residentsLimited?' · 확대 후 주변 주민 보기':''}`;
+  }
+  function attachMap() {
+    const c=$('#map'); let drag=null;
+    c.onpointerdown=e=>{drag={x:e.offsetX,y:e.offsetY,camera:{...camera},moved:false};c.setPointerCapture(e.pointerId);};
+    c.onpointermove=e=>{if(!drag)return;const dx=e.offsetX-drag.x,dy=e.offsetY-drag.y;if(Math.hypot(dx,dy)>5)drag.moved=true;if(drag.moved){camera.x=drag.camera.x-dx/c.clientWidth*camera.w;camera.y=drag.camera.y-dy/c.clientHeight*camera.h;draw();}};
+    c.onpointercancel=()=>{drag=null;};
+    c.onpointerup=async e=>{if(!drag||tab!=='map'||c!==$('#map'))return;const moved=drag.moved;drag=null;if(moved){await loadViewport();return;}const points=drawItems.filter(p=>Math.hypot((p.x-camera.x)/camera.w*c.clientWidth-e.offsetX,(p.y-camera.y)/camera.h*c.clientHeight-e.offsetY)<13);if(points.length===1)await select(points[0].ref,false);else if(points.length>1)cluster(points);else{const tile=M.terrain.find(t=>(e.offsetX/c.clientWidth*camera.w+camera.x)>=t.x&&(e.offsetX/c.clientWidth*camera.w+camera.x)<=t.x+11&&(e.offsetY/c.clientHeight*camera.h+camera.y)>=t.y&&(e.offsetY/c.clientHeight*camera.h+camera.y)<=t.y+10);if(tile)await select({kind:'lot',id:tile.id},false);}};
+    c.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();camera.x+=(e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0)*camera.w*.1;camera.y+=(e.key==='ArrowDown'?1:e.key==='ArrowUp'?-1:0)*camera.h*.1;draw();loadViewport().catch(x=>note(x.message));};
+  }
+  async function loadViewport(){if(!camera)return;const request=++mapRequest;draw();const data=await call('/map?'+new URLSearchParams(camera));if(request===mapRequest&&same(data)){M=data;draw();}}
+  function cluster(points, page=0){clustered=points;show(`<h2 id="dialogTitle">이곳의 사람과 장소</h2><p class="muted">${points.length}개 대상 · ${page+1}페이지. 같은 위치의 대상은 이름으로 선택하세요.</p><div class="cluster">${points.slice(page*40,page*40+40).map(e=>`<button data-select="${e.ref.kind}:${e.ref.id}">${esc(e.name)}</button>`).join('')}</div><div class="row toolbar">${page>0?`<button data-cluster-page="${page-1}">이전</button>`:''}${(page+1)*40<points.length?`<button data-cluster-page="${page+1}">다음</button>`:''}</div>`);}
+  document.addEventListener('click',async e=>{
+    const b=e.target.closest('button');if(!b||busy||!V)return;
+    try{
+      if(b.dataset.regionMetric){showRegions(b.dataset.regionMetric);return;}
+      if(b.dataset.regionHistory){showRegionHistory(b.dataset.regionHistory);return;}
+      if(b.dataset.livingIndex!==undefined){const item=livingActions[Number(b.dataset.livingIndex)],command=structuredClone(item.command);const input=$('#living-quantity-'+b.dataset.livingIndex);if(input)command.args.quantity=Number(input.value);await preview(command.action,command.args,item.label);return;}
+      if(b.dataset.clusterPage){cluster(clustered,Number(b.dataset.clusterPage));return;}
+      if(b.dataset.peoplePage){await people(Number(b.dataset.peoplePage),$('#people-query').value);return;}
+      if(b.dataset.tab||b.dataset.go){tab=b.dataset.tab||b.dataset.go;$('#dialog').close();window.scrollTo(0,0);renderBase();await render();return;}
+      if(b.dataset.layer){layer=b.dataset.layer;if(['food','needs'].includes(layer)){const data=await call('/living');if(same(data))L=data;}await render();return;}
+      if(b.dataset.select){$('#dialog').close();const[k,id]=b.dataset.select.split(':');await select({kind:k,id:Number(id)},!b.dataset.return);return;}
+      if(b.dataset.actionIndex){chooseAction(actionChoices[Number(b.dataset.actionIndex)]);return;}
+      if(b.dataset.option){const a=chooseAction.current;await preview('act',{key:a.k+':'+a.opts[Number(b.dataset.option)][0]},a.label);return;}
+      if(b.dataset.job){const job={work:[4,2,-1],trade:[12,0,-1],auto:[-1,-1,-1]}[b.dataset.job];await preview('budget',{budget:{job:job[0],job2:job[1],job3:job[2]}},'하루 일 지침 비교');return;}
+      if(b.dataset.choice){const p=V.pending.find(p=>p.id===Number(b.dataset.decision));await preview('choose',{id:p.id,key:b.dataset.choice},'결정 전 확인');return;}
+      switch(b.dataset.do){
+        case 'close':$('#dialog').close();break;
+        case 'decision':{const p=V.pending[0];if(!p)return;show(`<h2 id="dialogTitle">${esc(p.title)}</h2><p>${esc(p.text)}</p><div class="cluster">${p.opts.map(o=>`<button data-decision="${p.id}" data-choice="${esc(o.k)}">${esc(o.label)}${o.hint?'<span class="muted"> · '+esc(o.hint)+'</span>':''}</button>`).join('')}</div>`);break;}
+        case 'vault-in':await preview('vault',{dir:'in',frac:.5},'현금 절반을 금고에 보관');break;
+        case 'vault-out':await preview('vault',{dir:'out',frac:.5},'금고 절반을 꺼내기');break;
+        case 'advance':await preview('advance',{},'하루 진행',true);break;
+        case 'execute':if(prepared)await execute(prepared);break;
+        case 'retry':{const pending=readStore('pending',null);if(pending)await execute(pending);break;}
+        case 'save':await call('/cmd',{action:'save'});note('마을을 저장했습니다.');break;
+        case 'living-rest':await preview('living.rest',{hours:2},'두 시간 쉬기');break;
+        case 'living-budget':await preview('budget',{budget:{life:Number($('#living-life').value),edu:Number($('#living-edu').value),save:Number($('#living-save').value)}},'생활비·과외·저축 지침');break;
+        case 'regions':showRegions();break;
+        case 'map-focus':$('#map')?.scrollIntoView({block:'start'});break;
+        case 'me':tab='map';await render();await select(V.me.ref);break;
+        case 'business':tab='business';renderBase();await render();break;
+        case 'company-preview':await preview('act',{key:'firm:new:'+encodeURIComponent($('#company-name').value)},'회사 설립');break;
+        case 'add-compare':if(selected&&!refs.some(r=>r.kind===selected.kind&&r.id===selected.id)){if(refs.length>=3){note('비교함에는 3개까지 담을 수 있습니다.');break;}refs.push({...selected});store('compare:'+V.worldId,refs);}note('비교함에 담았습니다.');if(tab==='map')await render();break;
+        case 'compare':await compare();break;
+        case 'clear-compare':refs=[];store('compare:'+V.worldId,refs);await compare();break;
+        case 'people':await people();break;
+        case 'people-search':await people(0,$('#people-query').value);break;
+        case 'nearby':cluster(drawItems.filter(p=>p.x>=camera.x&&p.x<=camera.x+camera.w&&p.y>=camera.y&&p.y<=camera.y+camera.h));break;
+        case 'zoom-in':case 'zoom-out':{const scale=b.dataset.do==='zoom-in'?.65:1.5;camera.x+=camera.w*(1-scale)/2;camera.y+=camera.h*(1-scale)/2;camera.w*=scale;camera.h*=scale;await loadViewport();break;}
+        case 'reset-map':camera=null;M=null;await render();break;
+      }
+    }catch(error){note(error.message);}
+  });
+  addEventListener('resize',draw);
+  const sessionId=crypto.randomUUID();
+  const heartbeat=active=>fetch(api+'/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:sessionId,active}),keepalive:true}).catch(()=>{});
+  document.addEventListener('visibilitychange',()=>heartbeat(!document.hidden));addEventListener('pagehide',()=>heartbeat(false));
+  async function boot(){try{await refresh();refs=readStore('compare:'+V.worldId,[]);heartbeat(true);}catch(e){$('#main').innerHTML=`<div class="card"><h2>마을을 준비하고 있습니다</h2><p class="muted">${esc(e.message)}</p></div>`;setTimeout(boot,2000);}}
+  setInterval(()=>{if(!document.hidden&&!busy&&!$('#dialog').open)refresh(false).catch(e=>$('#connection').textContent=e.message);heartbeat(!document.hidden);},15000);
+  boot();
+})();

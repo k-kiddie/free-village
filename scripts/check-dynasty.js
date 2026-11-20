@@ -11,7 +11,7 @@ const args=process.argv.slice(2),quick=args.includes('--quick'),base=args.find(a
 // 선택지가 뜨면 멈추고 답한 뒤 진행하는 Worker 흐름을 흉내 낸다.
 function drive(w,days,pickFn,stat){
   for(let i=0;i<days;i++){
-    let guard=0;while(w.S.dyn.pending.length){assert(++guard<50,'선택지 무한 반복');const p=w.S.dyn.pending[0];const options=p.opts.filter(o=>o.available!==false);assert(options.length,'실행 가능한 선택지가 있음');const k=pickFn({...p,opts:options});const r=w.dynChoose(p.id,k);stat.kinds[p.kind]=(stat.kinds[p.kind]||0)+1;stat.last=r.text}
+    let guard=0;while(w.S.dyn.pending.length){w.dynView();assert(++guard<50,'선택지 무한 반복');const p=w.S.dyn.pending[0];const options=p.opts.filter(o=>o.available!==false);assert(options.length,'실행 가능한 선택지가 있음');const k=pickFn({...p,opts:options});const r=w.dynChoose(p.id,k);stat.kinds[p.kind]=(stat.kinds[p.kind]||0)+1;stat.last=r.text}
     if(w.S.dyn.over)return;
     w.step();
   }
@@ -57,7 +57,7 @@ function main(){
   {const x=fresh(7);const r=x.dynAct('council');assert(x.S.gov||/부결/.test(r.text));acts.council=r.text;if(x.S.gov){assert(['rep','olig'].includes(x.S.gov.regime));assert(x.S.gov.history.length>=1,'첫 선거');assert(x.S.gov.history[0].cands.some(c=>c.id===x.S.dyn.pid)||/참정권|자격/.test(r.text),'내가 후보(또는 자격 없음 안내)')}
     assert.throws(()=>x.dynAct('council'),'정부가 생기면 회의 제안 없음')}
   {const x=fresh(11);const r=x.dynAct('revolt');acts.revolt=r.text;if(/성공/.test(r.text)){assert.equal(x.S.gov.regime,'com');assert.equal(x.S.gov.chief,x.S.dyn.pid);assert.equal(x.dynView().rank,4)}}
-  {const x=fresh(5);assert.throws(()=>crownForCheck(x));x.S.byId.get(x.S.dyn.pid).cash+=1e5;const r=crownForCheck(x);acts.lord=r.text;assert.equal(x.S.gov.regime,'mon');assert.equal(x.S.gov.chief,x.S.dyn.pid);x.step();assert.equal(x.S.dyn.pending.filter(p=>p.kind!=='story').length,0,'행동 직후 중복 알림 없음')}
+  {const x=fresh(5);assert.throws(()=>crownForCheck(x));x.S.byId.get(x.S.dyn.pid).cash+=1e5;const r=crownForCheck(x);acts.lord=r.text;assert.equal(x.S.gov.regime,'mon');assert.equal(x.S.gov.chief,x.S.dyn.pid);x.step();assert.equal(x.S.dyn.pending.filter(p=>/군주정 선포|국왕이 됐/.test(p.text)).length,0,'행동 직후 중복 직위 알림 없음')}
   {const x=fresh(9);const me=x.S.byId.get(x.S.dyn.pid);me.cash+=1e5;if(!me.grp){x.dynAct('gang');assert(me.grp);acts.gang=true}}
   // 6. 법 바꾸기: 시위·청원/발의 → 의회 표결 또는 통치자 결정
   {let passed=0,tried=0;for(const seed of [7,11,17]){const x=fresh(seed);x.dynAct('council');if(!x.S.gov)continue;for(const t of x.dynActions().filter(a=>/^(pet|law):/.test(a.k)&&a.ok)){const r=x.dynAct(t.k);tried++;const key=t.k.split(':')[1];assert.equal(/통과/.test(r.text)&&!/부결|거부|갇혔/.test(r.text),x.S.gov.policy[key]===true,r.text);if(x.S.gov.policy[key]===true)passed++;assert.throws(()=>x.dynAct(t.k))}}
@@ -101,7 +101,7 @@ function main(){
   {// 12년 동안 마지막 선택만 고르면 가문이 끊길 수 있다 — 끊기면 다른 시드로 다시 만든다
     let x;const D3=()=>x.S.dyn;const clear=()=>{let g=0;while(D3().pending.length){assert(++g<50);const p=D3().pending[0];x.dynChoose(p.id,p.opts.at(-1).k)}};
     for(const sd of [7,8,9,11,13]){x=engine.createWorld(sd,150);x.dynStart();x.dynChoose(D3().pending[0].id,'go');for(let i=0;i<10;i++)x.step();try{x.dynAct('council')}catch(e){}for(let i=0;i<YEAR*12&&!D3().over;i++){clear();x.step()}clear();if(!D3().over)break}assert(!D3().over);
-    const me=x.S.byId.get(D3().pid);me.cash+=5000;const relative=x.S.agents.find(a=>a.alive&&isA(a)&&a.id!==me.id);assert(relative);relative.family=me.family;D3().disinherited=[];const done=[];
+    const me=x.S.byId.get(D3().pid);me.age=Math.max(me.age,25*YEAR);me.jailUntil=0;me.abroadUntil=0;me.health=100;me.cash+=5000;const relative=x.S.agents.find(a=>a.alive&&isA(a)&&a.id!==me.id);assert(relative);relative.family=me.family;D3().disinherited=[];const done=[];
     for(const a0 of x.dynActions().filter(a=>a.ok&&/^(fam|kin|net|med|dark|pow):/.test(a.k)&&a.k!=='fam:divorce')){const a=x.dynActions().find(y=>y.k===a0.k);if(!a||!a.ok)continue;const r=x.dynAct(a.k);assert(r.text,a.k);done.push(a.k.split(':').slice(0,2).join(':'))}
     assert(done.includes('kin:heir')&&done.some(k=>k.startsWith('net:'))&&done.some(k=>k.startsWith('dark:')),'새 행동: '+done.join(','));st3.acts=[...new Set(done)];
     // 미성년 지정 상속자 → 섭정

@@ -1,0 +1,7351 @@
+{
+  "schemaVersion": 1,
+  "auditedCodeCommit": "c48651f3cb4f47dd43bf9eb0879c8bbb7693d012",
+  "sourceFiles": [
+    {
+      "file": "engine.js",
+      "bytes": 1837161,
+      "lines": 8881,
+      "sha256": "5b945cf8423494d372e3bc172e04f0b6ee4cde66ca964a18631ae465f5f226db",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "mulberry32",
+          "line": 4
+        },
+        {
+          "name": "setMap",
+          "line": 21
+        },
+        {
+          "name": "normalizeBuildingFx",
+          "line": 58
+        },
+        {
+          "name": "ruleText",
+          "line": 75
+        },
+        {
+          "name": "legacyGeo",
+          "line": 87
+        },
+        {
+          "name": "restoreGeo",
+          "line": 88
+        },
+        {
+          "name": "josa",
+          "line": 99
+        },
+        {
+          "name": "createWorld",
+          "line": 101
+        },
+        {
+          "name": "foodDays",
+          "line": 159
+        },
+        {
+          "name": "grainScar",
+          "line": 161
+        },
+        {
+          "name": "addGrain",
+          "line": 162
+        },
+        {
+          "name": "plotsOf",
+          "line": 163
+        },
+        {
+          "name": "ownedHouses",
+          "line": 164
+        },
+        {
+          "name": "wAssets",
+          "line": 166
+        },
+        {
+          "name": "W",
+          "line": 175
+        },
+        {
+          "name": "chiefTitle",
+          "line": 177
+        },
+        {
+          "name": "titled",
+          "line": 180
+        },
+        {
+          "name": "log",
+          "line": 181
+        },
+        {
+          "name": "ph",
+          "line": 184
+        },
+        {
+          "name": "mile",
+          "line": 185
+        },
+        {
+          "name": "randGenome",
+          "line": 188
+        },
+        {
+          "name": "childGenome",
+          "line": 193
+        },
+        {
+          "name": "blendGenome",
+          "line": 197
+        },
+        {
+          "name": "mk",
+          "line": 200
+        },
+        {
+          "name": "initQ",
+          "line": 206
+        },
+        {
+          "name": "leaveHome",
+          "line": 231
+        },
+        {
+          "name": "moveIn",
+          "line": 234
+        },
+        {
+          "name": "occAdd",
+          "line": 239
+        },
+        {
+          "name": "occMonth",
+          "line": 240
+        },
+        {
+          "name": "pcap",
+          "line": 241
+        },
+        {
+          "name": "adultsC",
+          "line": 244
+        },
+        {
+          "name": "slotPos",
+          "line": 246
+        },
+        {
+          "name": "lotPos",
+          "line": 247
+        },
+        {
+          "name": "insurance",
+          "line": 250
+        },
+        {
+          "name": "claim",
+          "line": 261
+        },
+        {
+          "name": "ideoOf",
+          "line": 265
+        },
+        {
+          "name": "faithOf",
+          "line": 266
+        },
+        {
+          "name": "cheatOf",
+          "line": 267
+        },
+        {
+          "name": "rumorOf",
+          "line": 268
+        },
+        {
+          "name": "addRumor",
+          "line": 269
+        },
+        {
+          "name": "society",
+          "line": 271
+        },
+        {
+          "name": "faithHas",
+          "line": 336
+        },
+        {
+          "name": "goodsVal",
+          "line": 337
+        },
+        {
+          "name": "invV",
+          "line": 340
+        },
+        {
+          "name": "invAll",
+          "line": 341
+        },
+        {
+          "name": "gearVal",
+          "line": 342
+        },
+        {
+          "name": "dById",
+          "line": 343
+        },
+        {
+          "name": "knowMat",
+          "line": 344
+        },
+        {
+          "name": "bestGear",
+          "line": 345
+        },
+        {
+          "name": "learn",
+          "line": 346
+        },
+        {
+          "name": "invent",
+          "line": 350
+        },
+        {
+          "name": "facMul",
+          "line": 369
+        },
+        {
+          "name": "hq",
+          "line": 372
+        },
+        {
+          "name": "wcInit",
+          "line": 373
+        },
+        {
+          "name": "isSalaried",
+          "line": 374
+        },
+        {
+          "name": "payday",
+          "line": 375
+        },
+        {
+          "name": "makeGoods",
+          "line": 385
+        },
+        {
+          "name": "facOwner",
+          "line": 394
+        },
+        {
+          "name": "makeGear",
+          "line": 396
+        },
+        {
+          "name": "firmById",
+          "line": 404
+        },
+        {
+          "name": "buildingById",
+          "line": 405
+        },
+        {
+          "name": "shareKeys",
+          "line": 407
+        },
+        {
+          "name": "setShares",
+          "line": 408
+        },
+        {
+          "name": "allocateShares",
+          "line": 412
+        },
+        {
+          "name": "migrateShares",
+          "line": 416
+        },
+        {
+          "name": "holderPersonId",
+          "line": 419
+        },
+        {
+          "name": "foreignEquity",
+          "line": 420
+        },
+        {
+          "name": "holderAccount",
+          "line": 421
+        },
+        {
+          "name": "recordForeignCapital",
+          "line": 432
+        },
+        {
+          "name": "tradeStock",
+          "line": 435
+        },
+        {
+          "name": "stockOwnership",
+          "line": 442
+        },
+        {
+          "name": "stockValue",
+          "line": 443
+        },
+        {
+          "name": "institutions",
+          "line": 444
+        },
+        {
+          "name": "cleanupShares",
+          "line": 445
+        },
+        {
+          "name": "payStockDividend",
+          "line": 446
+        },
+        {
+          "name": "adjustSharePrice",
+          "line": 451
+        },
+        {
+          "name": "stockActionLog",
+          "line": 452
+        },
+        {
+          "name": "rightsIssue",
+          "line": 453
+        },
+        {
+          "name": "bonusIssue",
+          "line": 470
+        },
+        {
+          "name": "buybackShares",
+          "line": 477
+        },
+        {
+          "name": "cancelTreasury",
+          "line": 482
+        },
+        {
+          "name": "currencyState",
+          "line": 483
+        },
+        {
+          "name": "currencyUnit",
+          "line": 487
+        },
+        {
+          "name": "reformCurrency",
+          "line": 488
+        },
+        {
+          "name": "currencyTick",
+          "line": 493
+        },
+        {
+          "name": "stockActionsTick",
+          "line": 494
+        },
+        {
+          "name": "tradeCompanyShares",
+          "line": 503
+        },
+        {
+          "name": "firmName",
+          "line": 548
+        },
+        {
+          "name": "firmIndTick",
+          "line": 552
+        },
+        {
+          "name": "investors",
+          "line": 562
+        },
+        {
+          "name": "ipo",
+          "line": 563
+        },
+        {
+          "name": "relSite",
+          "line": 571
+        },
+        {
+          "name": "optLine",
+          "line": 577
+        },
+        {
+          "name": "firmLines",
+          "line": 578
+        },
+        {
+          "name": "buildingValue",
+          "line": 579
+        },
+        {
+          "name": "lineCap",
+          "line": 580
+        },
+        {
+          "name": "spinOff",
+          "line": 581
+        },
+        {
+          "name": "businessLine",
+          "line": 587
+        },
+        {
+          "name": "splitFirmLines",
+          "line": 588
+        },
+        {
+          "name": "buildingGroup",
+          "line": 596
+        },
+        {
+          "name": "buildingCap",
+          "line": 597
+        },
+        {
+          "name": "consolidateBuildings",
+          "line": 598
+        },
+        {
+          "name": "firmProject",
+          "line": 613
+        },
+        {
+          "name": "powMul",
+          "line": 653
+        },
+        {
+          "name": "techCheck",
+          "line": 657
+        },
+        {
+          "name": "research",
+          "line": 668
+        },
+        {
+          "name": "labInvent",
+          "line": 671
+        },
+        {
+          "name": "lotPay",
+          "line": 678
+        },
+        {
+          "name": "pickLot",
+          "line": 682
+        },
+        {
+          "name": "lotMarket",
+          "line": 684
+        },
+        {
+          "name": "tariffOf",
+          "line": 698
+        },
+        {
+          "name": "initTrade",
+          "line": 700
+        },
+        {
+          "name": "tradeTick",
+          "line": 703
+        },
+        {
+          "name": "tradeYear",
+          "line": 709
+        },
+        {
+          "name": "tariffPassed",
+          "line": 728
+        },
+        {
+          "name": "eduTick",
+          "line": 732
+        },
+        {
+          "name": "microTick",
+          "line": 752
+        },
+        {
+          "name": "cartelTick",
+          "line": 764
+        },
+        {
+          "name": "unionTick",
+          "line": 776
+        },
+        {
+          "name": "swTick",
+          "line": 791
+        },
+        {
+          "name": "drugTick",
+          "line": 813
+        },
+        {
+          "name": "isRuling",
+          "line": 837
+        },
+        {
+          "name": "realign",
+          "line": 839
+        },
+        {
+          "name": "rulingN",
+          "line": 842
+        },
+        {
+          "name": "approvalTick",
+          "line": 843
+        },
+        {
+          "name": "civicTick",
+          "line": 861
+        },
+        {
+          "name": "healthTick",
+          "line": 885
+        },
+        {
+          "name": "dynCanPolitical",
+          "line": 897
+        },
+        {
+          "name": "dynCanServeArmy",
+          "line": 898
+        },
+        {
+          "name": "dynCanHoldJustice",
+          "line": 900
+        },
+        {
+          "name": "newParty",
+          "line": 901
+        },
+        {
+          "name": "partyTick",
+          "line": 902
+        },
+        {
+          "name": "polMarriage",
+          "line": 930
+        },
+        {
+          "name": "publicFig",
+          "line": 934
+        },
+        {
+          "name": "scandal",
+          "line": 935
+        },
+        {
+          "name": "divorce",
+          "line": 938
+        },
+        {
+          "name": "famTick",
+          "line": 942
+        },
+        {
+          "name": "libOf",
+          "line": 989
+        },
+        {
+          "name": "X",
+          "line": 990
+        },
+        {
+          "name": "fileC",
+          "line": 991
+        },
+        {
+          "name": "adultTick",
+          "line": 992
+        },
+        {
+          "name": "fzN",
+          "line": 1110
+        },
+        {
+          "name": "dynAdultVisitFee",
+          "line": 1111
+        },
+        {
+          "name": "fzTick",
+          "line": 1112
+        },
+        {
+          "name": "gLegal",
+          "line": 1134
+        },
+        {
+          "name": "pachiTick",
+          "line": 1135
+        },
+        {
+          "name": "darkTick2",
+          "line": 1174
+        },
+        {
+          "name": "polReady",
+          "line": 1289
+        },
+        {
+          "name": "lookTick",
+          "line": 1293
+        },
+        {
+          "name": "pickMajor",
+          "line": 1297
+        },
+        {
+          "name": "gradMajor",
+          "line": 1307
+        },
+        {
+          "name": "pickDept",
+          "line": 1308
+        },
+        {
+          "name": "profTick",
+          "line": 1312
+        },
+        {
+          "name": "medTick",
+          "line": 1320
+        },
+        {
+          "name": "infraTick",
+          "line": 1379
+        },
+        {
+          "name": "disable",
+          "line": 1435
+        },
+        {
+          "name": "disTick",
+          "line": 1436
+        },
+        {
+          "name": "coupRun",
+          "line": 1462
+        },
+        {
+          "name": "deployTick",
+          "line": 1469
+        },
+        {
+          "name": "townMil",
+          "line": 1496
+        },
+        {
+          "name": "milTick",
+          "line": 1497
+        },
+        {
+          "name": "cheapness",
+          "line": 1577
+        },
+        {
+          "name": "tourTick",
+          "line": 1578
+        },
+        {
+          "name": "fdiTick",
+          "line": 1605
+        },
+        {
+          "name": "regime",
+          "line": 1624
+        },
+        {
+          "name": "elective",
+          "line": 1625
+        },
+        {
+          "name": "canVote",
+          "line": 1626
+        },
+        {
+          "name": "setRegime",
+          "line": 1627
+        },
+        {
+          "name": "posIndex",
+          "line": 1628
+        },
+        {
+          "name": "lordTry",
+          "line": 1631
+        },
+        {
+          "name": "dynCrownSupport",
+          "line": 1633
+        },
+        {
+          "name": "crownLord",
+          "line": 1644
+        },
+        {
+          "name": "familyIndex",
+          "line": 1650
+        },
+        {
+          "name": "childrenOf",
+          "line": 1655
+        },
+        {
+          "name": "familyOf",
+          "line": 1656
+        },
+        {
+          "name": "successionOrder",
+          "line": 1660
+        },
+        {
+          "name": "royalMerit",
+          "line": 1670
+        },
+        {
+          "name": "chooseRegent",
+          "line": 1671
+        },
+        {
+          "name": "installMonarch",
+          "line": 1676
+        },
+        {
+          "name": "nobleKing",
+          "line": 1682
+        },
+        {
+          "name": "royalTick",
+          "line": 1686
+        },
+        {
+          "name": "succeed",
+          "line": 1698
+        },
+        {
+          "name": "regTick",
+          "line": 1706
+        },
+        {
+          "name": "townInit",
+          "line": 1747
+        },
+        {
+          "name": "concTick",
+          "line": 1748
+        },
+        {
+          "name": "pairName",
+          "line": 1799
+        },
+        {
+          "name": "issSev",
+          "line": 1800
+        },
+        {
+          "name": "mNeed",
+          "line": 1801
+        },
+        {
+          "name": "mEv",
+          "line": 1803
+        },
+        {
+          "name": "mSfx",
+          "line": 1805
+        },
+        {
+          "name": "mRoot",
+          "line": 1807
+        },
+        {
+          "name": "mName",
+          "line": 1808
+        },
+        {
+          "name": "minTick",
+          "line": 1809
+        },
+        {
+          "name": "mTitle",
+          "line": 1850
+        },
+        {
+          "name": "civTick",
+          "line": 1852
+        },
+        {
+          "name": "mAppoint",
+          "line": 1894
+        },
+        {
+          "name": "budPool",
+          "line": 1921
+        },
+        {
+          "name": "budOK",
+          "line": 1922
+        },
+        {
+          "name": "budUse",
+          "line": 1923
+        },
+        {
+          "name": "budTick",
+          "line": 1924
+        },
+        {
+          "name": "resLand",
+          "line": 1977
+        },
+        {
+          "name": "lotFarm",
+          "line": 1996
+        },
+        {
+          "name": "landTick",
+          "line": 1997
+        },
+        {
+          "name": "paperBoss",
+          "line": 2038
+        },
+        {
+          "name": "paperList",
+          "line": 2041
+        },
+        {
+          "name": "paperName",
+          "line": 2042
+        },
+        {
+          "name": "gagPress",
+          "line": 2048
+        },
+        {
+          "name": "famineCope",
+          "line": 2089
+        },
+        {
+          "name": "gridIdx",
+          "line": 2098
+        },
+        {
+          "name": "findBlock",
+          "line": 2099
+        },
+        {
+          "name": "holdouts",
+          "line": 2104
+        },
+        {
+          "name": "clearBlock",
+          "line": 2105
+        },
+        {
+          "name": "civicBldTick",
+          "line": 2112
+        },
+        {
+          "name": "forestTiles",
+          "line": 2141
+        },
+        {
+          "name": "fCap",
+          "line": 2145
+        },
+        {
+          "name": "HX",
+          "line": 2147
+        },
+        {
+          "name": "HA",
+          "line": 2147
+        },
+        {
+          "name": "PL",
+          "line": 2148
+        },
+        {
+          "name": "funTick",
+          "line": 2151
+        },
+        {
+          "name": "divertTick",
+          "line": 2160
+        },
+        {
+          "name": "lotPts",
+          "line": 2175
+        },
+        {
+          "name": "kmeans",
+          "line": 2176
+        },
+        {
+          "name": "dName",
+          "line": 2178
+        },
+        {
+          "name": "assignTiles",
+          "line": 2179
+        },
+        {
+          "name": "distOf",
+          "line": 2180
+        },
+        {
+          "name": "distPop",
+          "line": 2181
+        },
+        {
+          "name": "distVote",
+          "line": 2182
+        },
+        {
+          "name": "dPow",
+          "line": 2184
+        },
+        {
+          "name": "blkDist",
+          "line": 2185
+        },
+        {
+          "name": "districtTick",
+          "line": 2186
+        },
+        {
+          "name": "DMAX",
+          "line": 2197
+        },
+        {
+          "name": "guName",
+          "line": 2199
+        },
+        {
+          "name": "guTick",
+          "line": 2201
+        },
+        {
+          "name": "guGovTick",
+          "line": 2207
+        },
+        {
+          "name": "gerry",
+          "line": 2216
+        },
+        {
+          "name": "distGovTick",
+          "line": 2220
+        },
+        {
+          "name": "lvOf",
+          "line": 2229
+        },
+        {
+          "name": "lvTick",
+          "line": 2230
+        },
+        {
+          "name": "agitTick",
+          "line": 2250
+        },
+        {
+          "name": "schoolTick",
+          "line": 2293
+        },
+        {
+          "name": "pioneerTick",
+          "line": 2313
+        },
+        {
+          "name": "endCt",
+          "line": 2321
+        },
+        {
+          "name": "empTick",
+          "line": 2322
+        },
+        {
+          "name": "bankTick",
+          "line": 2348
+        },
+        {
+          "name": "corpTick",
+          "line": 2367
+        },
+        {
+          "name": "stockTick",
+          "line": 2402
+        },
+        {
+          "name": "minScore",
+          "line": 2424
+        },
+        {
+          "name": "abroadTick",
+          "line": 2426
+        },
+        {
+          "name": "special",
+          "line": 2445
+        },
+        {
+          "name": "crisisTick",
+          "line": 2462
+        },
+        {
+          "name": "constitution",
+          "line": 2478
+        },
+        {
+          "name": "sessionTick",
+          "line": 2511
+        },
+        {
+          "name": "rec",
+          "line": 2514
+        },
+        {
+          "name": "persons",
+          "line": 2515
+        },
+        {
+          "name": "setCeo",
+          "line": 2516
+        },
+        {
+          "name": "settleClosedFirm",
+          "line": 2523
+        },
+        {
+          "name": "firms",
+          "line": 2529
+        },
+        {
+          "name": "b2",
+          "line": 2588
+        },
+        {
+          "name": "industrialName",
+          "line": 2590
+        },
+        {
+          "name": "bName",
+          "line": 2594
+        },
+        {
+          "name": "fxDemand",
+          "line": 2602
+        },
+        {
+          "name": "designFor",
+          "line": 2611
+        },
+        {
+          "name": "eduGain",
+          "line": 2618
+        },
+        {
+          "name": "teach",
+          "line": 2622
+        },
+        {
+          "name": "effects",
+          "line": 2645
+        },
+        {
+          "name": "mtnNear",
+          "line": 2697
+        },
+        {
+          "name": "cutMtn",
+          "line": 2698
+        },
+        {
+          "name": "slideTick",
+          "line": 2702
+        },
+        {
+          "name": "areaTick",
+          "line": 2707
+        },
+        {
+          "name": "copP",
+          "line": 2725
+        },
+        {
+          "name": "courtKind",
+          "line": 2726
+        },
+        {
+          "name": "courtName",
+          "line": 2727
+        },
+        {
+          "name": "policeName",
+          "line": 2728
+        },
+        {
+          "name": "instTick",
+          "line": 2730
+        },
+        {
+          "name": "fireName",
+          "line": 2758
+        },
+        {
+          "name": "fireTick",
+          "line": 2759
+        },
+        {
+          "name": "burn",
+          "line": 2780
+        },
+        {
+          "name": "step",
+          "line": 2801
+        },
+        {
+          "name": "steal",
+          "line": 3104
+        },
+        {
+          "name": "makeGang",
+          "line": 3141
+        },
+        {
+          "name": "grpById",
+          "line": 3145
+        },
+        {
+          "name": "protector",
+          "line": 3146
+        },
+        {
+          "name": "gStrength",
+          "line": 3147
+        },
+        {
+          "name": "gangName",
+          "line": 3149
+        },
+        {
+          "name": "partyName",
+          "line": 3150
+        },
+        {
+          "name": "stageOf",
+          "line": 3153
+        },
+        {
+          "name": "groupMode",
+          "line": 3157
+        },
+        {
+          "name": "joinGroup",
+          "line": 3171
+        },
+        {
+          "name": "leaveGroup",
+          "line": 3172
+        },
+        {
+          "name": "dissolve",
+          "line": 3173
+        },
+        {
+          "name": "patrol",
+          "line": 3176
+        },
+        {
+          "name": "politics",
+          "line": 3178
+        },
+        {
+          "name": "govTax",
+          "line": 3263
+        },
+        {
+          "name": "govFraud",
+          "line": 3264
+        },
+        {
+          "name": "activeLoans",
+          "line": 3267
+        },
+        {
+          "name": "bankLedger",
+          "line": 3268
+        },
+        {
+          "name": "lend",
+          "line": 3269
+        },
+        {
+          "name": "closeLoan",
+          "line": 3286
+        },
+        {
+          "name": "closeCorpLoan",
+          "line": 3287
+        },
+        {
+          "name": "defaultLoan",
+          "line": 3288
+        },
+        {
+          "name": "finance",
+          "line": 3297
+        },
+        {
+          "name": "finDeath",
+          "line": 3345
+        },
+        {
+          "name": "ensureGov",
+          "line": 3353
+        },
+        {
+          "name": "dayCache",
+          "line": 3354
+        },
+        {
+          "name": "inWho",
+          "line": 3357
+        },
+        {
+          "name": "ruleOn",
+          "line": 3362
+        },
+        {
+          "name": "randRule",
+          "line": 3364
+        },
+        {
+          "name": "mutRule",
+          "line": 3366
+        },
+        {
+          "name": "impact",
+          "line": 3367
+        },
+        {
+          "name": "groupSize",
+          "line": 3380
+        },
+        {
+          "name": "groupAvgW",
+          "line": 3381
+        },
+        {
+          "name": "voterSample",
+          "line": 3382
+        },
+        {
+          "name": "avgImpact",
+          "line": 3383
+        },
+        {
+          "name": "proposeRules",
+          "line": 3384
+        },
+        {
+          "name": "ruleYes",
+          "line": 3389
+        },
+        {
+          "name": "passRules",
+          "line": 3390
+        },
+        {
+          "name": "ruleTax",
+          "line": 3404
+        },
+        {
+          "name": "banned",
+          "line": 3405
+        },
+        {
+          "name": "applyRules",
+          "line": 3407
+        },
+        {
+          "name": "contractPub",
+          "line": 3412
+        },
+        {
+          "name": "govSpend",
+          "line": 3422
+        },
+        {
+          "name": "moneySupply",
+          "line": 3426
+        },
+        {
+          "name": "printMoney",
+          "line": 3429
+        },
+        {
+          "name": "inflate",
+          "line": 3432
+        },
+        {
+          "name": "borrowGov",
+          "line": 3437
+        },
+        {
+          "name": "govDebt",
+          "line": 3442
+        },
+        {
+          "name": "amend",
+          "line": 3451
+        },
+        {
+          "name": "jailCap",
+          "line": 3466
+        },
+        {
+          "name": "inJail",
+          "line": 3467
+        },
+        {
+          "name": "sentence",
+          "line": 3468
+        },
+        {
+          "name": "exile",
+          "line": 3473
+        },
+        {
+          "name": "prosInt",
+          "line": 3475
+        },
+        {
+          "name": "nPros",
+          "line": 3476
+        },
+        {
+          "name": "nJudges",
+          "line": 3477
+        },
+        {
+          "name": "prosAlive",
+          "line": 3478
+        },
+        {
+          "name": "appointPros",
+          "line": 3479
+        },
+        {
+          "name": "appointOne",
+          "line": 3483
+        },
+        {
+          "name": "appointJudges",
+          "line": 3491
+        },
+        {
+          "name": "hireLawyer",
+          "line": 3504
+        },
+        {
+          "name": "trial",
+          "line": 3510
+        },
+        {
+          "name": "justice",
+          "line": 3533
+        },
+        {
+          "name": "median",
+          "line": 3589
+        },
+        {
+          "name": "platform",
+          "line": 3590
+        },
+        {
+          "name": "voterScore",
+          "line": 3632
+        },
+        {
+          "name": "seats",
+          "line": 3656
+        },
+        {
+          "name": "councilElection",
+          "line": 3657
+        },
+        {
+          "name": "bigGroup",
+          "line": 3705
+        },
+        {
+          "name": "memberYes",
+          "line": 3706
+        },
+        {
+          "name": "passPolicies",
+          "line": 3711
+        },
+        {
+          "name": "oneShot",
+          "line": 3728
+        },
+        {
+          "name": "revolt",
+          "line": 3741
+        },
+        {
+          "name": "revoltRun",
+          "line": 3752
+        },
+        {
+          "name": "election",
+          "line": 3784
+        },
+        {
+          "name": "councilVotes",
+          "line": 3836
+        },
+        {
+          "name": "foundCouncil",
+          "line": 3837
+        },
+        {
+          "name": "govern",
+          "line": 3842
+        },
+        {
+          "name": "attract",
+          "line": 3880
+        },
+        {
+          "name": "nrmOf",
+          "line": 3882
+        },
+        {
+          "name": "setRel",
+          "line": 3883
+        },
+        {
+          "name": "mate",
+          "line": 3884
+        },
+        {
+          "name": "births",
+          "line": 3906
+        },
+        {
+          "name": "die",
+          "line": 3926
+        },
+        {
+          "name": "gearMarket",
+          "line": 3963
+        },
+        {
+          "name": "market",
+          "line": 3978
+        },
+        {
+          "name": "settleJeonse",
+          "line": 4101
+        },
+        {
+          "name": "pubHouse",
+          "line": 4122
+        },
+        {
+          "name": "housing",
+          "line": 4135
+        },
+        {
+          "name": "yearly",
+          "line": 4246
+        },
+        {
+          "name": "exportState",
+          "line": 4267
+        },
+        {
+          "name": "importState",
+          "line": 4280
+        },
+        {
+          "name": "dynScore",
+          "line": 4322
+        },
+        {
+          "name": "dynMe",
+          "line": 4323
+        },
+        {
+          "name": "dynReigningMonarch",
+          "line": 4324
+        },
+        {
+          "name": "dynExecutive",
+          "line": 4331
+        },
+        {
+          "name": "dynEmploymentBlocked",
+          "line": 4335
+        },
+        {
+          "name": "dynReliefCases",
+          "line": 4338
+        },
+        {
+          "name": "dynPublicRelief",
+          "line": 4341
+        },
+        {
+          "name": "dynRoyalTour",
+          "line": 4350
+        },
+        {
+          "name": "dynGovReport",
+          "line": 4359
+        },
+        {
+          "name": "dynLeavePrivateEmployment",
+          "line": 4365
+        },
+        {
+          "name": "dynChron",
+          "line": 4378
+        },
+        {
+          "name": "dynDiaryUpdate",
+          "line": 4379
+        },
+        {
+          "name": "dynCool",
+          "line": 4383
+        },
+        {
+          "name": "dynInboxTick",
+          "line": 4388
+        },
+        {
+          "name": "dynStoryLike",
+          "line": 4396
+        },
+        {
+          "name": "dynPush",
+          "line": 4398
+        },
+        {
+          "name": "dynStart",
+          "line": 4402
+        },
+        {
+          "name": "dynConfigureStart",
+          "line": 4412
+        },
+        {
+          "name": "dynRename",
+          "line": 4456
+        },
+        {
+          "name": "dynWed",
+          "line": 4462
+        },
+        {
+          "name": "dynCools",
+          "line": 4468
+        },
+        {
+          "name": "dynKin",
+          "line": 4471
+        },
+        {
+          "name": "dynTieOf",
+          "line": 4472
+        },
+        {
+          "name": "dynFamName",
+          "line": 4474
+        },
+        {
+          "name": "dynTie",
+          "line": 4475
+        },
+        {
+          "name": "dynScanTies",
+          "line": 4478
+        },
+        {
+          "name": "dynStatus",
+          "line": 4486
+        },
+        {
+          "name": "dynElder",
+          "line": 4490
+        },
+        {
+          "name": "dynGain",
+          "line": 4492
+        },
+        {
+          "name": "dynCandidates",
+          "line": 4502
+        },
+        {
+          "name": "dynAccept",
+          "line": 4508
+        },
+        {
+          "name": "dynArrangeOffer",
+          "line": 4509
+        },
+        {
+          "name": "dynArrangedWed",
+          "line": 4513
+        },
+        {
+          "name": "dynMate",
+          "line": 4515
+        },
+        {
+          "name": "dynFullOffice",
+          "line": 4528
+        },
+        {
+          "name": "dynCanManage",
+          "line": 4530
+        },
+        {
+          "name": "dynManageRatio",
+          "line": 4531
+        },
+        {
+          "name": "dynJobName",
+          "line": 4532
+        },
+        {
+          "name": "dynJobWhy",
+          "line": 4534
+        },
+        {
+          "name": "dynPrefs",
+          "line": 4546
+        },
+        {
+          "name": "dynPickJob",
+          "line": 4547
+        },
+        {
+          "name": "dynNoteDay",
+          "line": 4548
+        },
+        {
+          "name": "dynDayPass",
+          "line": 4563
+        },
+        {
+          "name": "dynDutyTick",
+          "line": 4569
+        },
+        {
+          "name": "dynStickBonus",
+          "line": 4578
+        },
+        {
+          "name": "dynGigOffers",
+          "line": 4583
+        },
+        {
+          "name": "dynGigFinish",
+          "line": 4589
+        },
+        {
+          "name": "dynGigTick",
+          "line": 4593
+        },
+        {
+          "name": "dynGigStart",
+          "line": 4597
+        },
+        {
+          "name": "dynMilitiaAct",
+          "line": 4603
+        },
+        {
+          "name": "dynMilitiaTick",
+          "line": 4621
+        },
+        {
+          "name": "dynSpyOrgAct",
+          "line": 4625
+        },
+        {
+          "name": "dynSpyOrgTick",
+          "line": 4634
+        },
+        {
+          "name": "dynUnderworldTick",
+          "line": 4640
+        },
+        {
+          "name": "dynSetBudget",
+          "line": 4649
+        },
+        {
+          "name": "dynPayee",
+          "line": 4653
+        },
+        {
+          "name": "dynPay",
+          "line": 4654
+        },
+        {
+          "name": "dynBudgetTick",
+          "line": 4656
+        },
+        {
+          "name": "dynVault",
+          "line": 4677
+        },
+        {
+          "name": "dynMinisterPost",
+          "line": 4681
+        },
+        {
+          "name": "dynPolTitle",
+          "line": 4683
+        },
+        {
+          "name": "dynWait",
+          "line": 4685
+        },
+        {
+          "name": "dynRevoltEst",
+          "line": 4686
+        },
+        {
+          "name": "dynLawSupport",
+          "line": 4695
+        },
+        {
+          "name": "dynCanDecree",
+          "line": 4696
+        },
+        {
+          "name": "dynLawSponsor",
+          "line": 4697
+        },
+        {
+          "name": "dynRoyalDecree",
+          "line": 4698
+        },
+        {
+          "name": "dynVoteLaw",
+          "line": 4712
+        },
+        {
+          "name": "dynBanks",
+          "line": 4719
+        },
+        {
+          "name": "dynOwnKey",
+          "line": 4721
+        },
+        {
+          "name": "dynEcoActions",
+          "line": 4722
+        },
+        {
+          "name": "dynEco",
+          "line": 4762
+        },
+        {
+          "name": "dynGoals",
+          "line": 4806
+        },
+        {
+          "name": "dynExtraActions",
+          "line": 4817
+        },
+        {
+          "name": "dynContractFirm",
+          "line": 4851
+        },
+        {
+          "name": "dynFirmCandidates",
+          "line": 4856
+        },
+        {
+          "name": "dynFirmStaff",
+          "line": 4860
+        },
+        {
+          "name": "dynCosCost",
+          "line": 4864
+        },
+        {
+          "name": "coOf",
+          "line": 4869
+        },
+        {
+          "name": "coMine",
+          "line": 4870
+        },
+        {
+          "name": "coStake",
+          "line": 4871
+        },
+        {
+          "name": "coStaff",
+          "line": 4872
+        },
+        {
+          "name": "coBase",
+          "line": 4873
+        },
+        {
+          "name": "coRivals",
+          "line": 4874
+        },
+        {
+          "name": "coPats",
+          "line": 4875
+        },
+        {
+          "name": "coMult",
+          "line": 4876
+        },
+        {
+          "name": "coDrain",
+          "line": 4878
+        },
+        {
+          "name": "coSpend",
+          "line": 4884
+        },
+        {
+          "name": "coDebt",
+          "line": 4885
+        },
+        {
+          "name": "coNote",
+          "line": 4886
+        },
+        {
+          "name": "coTick",
+          "line": 4887
+        },
+        {
+          "name": "dynCompanyName",
+          "line": 4907
+        },
+        {
+          "name": "coActions",
+          "line": 4911
+        },
+        {
+          "name": "coAct",
+          "line": 4945
+        },
+        {
+          "name": "coView",
+          "line": 4989
+        },
+        {
+          "name": "dynFamTie",
+          "line": 4994
+        },
+        {
+          "name": "dynDocFit",
+          "line": 4998
+        },
+        {
+          "name": "dynCrisis",
+          "line": 5000
+        },
+        {
+          "name": "dynTheoEst",
+          "line": 5001
+        },
+        {
+          "name": "dynFaithActions",
+          "line": 5005
+        },
+        {
+          "name": "dynFaithLog",
+          "line": 5020
+        },
+        {
+          "name": "dynFaithCare",
+          "line": 5021
+        },
+        {
+          "name": "dynConvert",
+          "line": 5022
+        },
+        {
+          "name": "dynPiety",
+          "line": 5023
+        },
+        {
+          "name": "dynFaithMembers",
+          "line": 5024
+        },
+        {
+          "name": "dynPreachTargets",
+          "line": 5025
+        },
+        {
+          "name": "dynOfficials",
+          "line": 5026
+        },
+        {
+          "name": "dynPreachActions",
+          "line": 5027
+        },
+        {
+          "name": "dynPreachAct",
+          "line": 5047
+        },
+        {
+          "name": "dynPietyTick",
+          "line": 5083
+        },
+        {
+          "name": "dynFaithAct",
+          "line": 5091
+        },
+        {
+          "name": "dynFRepAdd",
+          "line": 5131
+        },
+        {
+          "name": "dynFRisk",
+          "line": 5132
+        },
+        {
+          "name": "dynFPay",
+          "line": 5133
+        },
+        {
+          "name": "dynFLeave",
+          "line": 5134
+        },
+        {
+          "name": "dynFaithOrphans",
+          "line": 5142
+        },
+        {
+          "name": "dynCorrupt",
+          "line": 5143
+        },
+        {
+          "name": "dynFaithDeedActions",
+          "line": 5145
+        },
+        {
+          "name": "dynFaithDeed",
+          "line": 5155
+        },
+        {
+          "name": "dynDocTick",
+          "line": 5192
+        },
+        {
+          "name": "dynDocTick2",
+          "line": 5227
+        },
+        {
+          "name": "dynFaithTick",
+          "line": 5254
+        },
+        {
+          "name": "dynRoyalFam",
+          "line": 5271
+        },
+        {
+          "name": "dynRoyalCands",
+          "line": 5272
+        },
+        {
+          "name": "dynRoyalActions",
+          "line": 5274
+        },
+        {
+          "name": "dynRoyalAct",
+          "line": 5276
+        },
+        {
+          "name": "dynExtraAct",
+          "line": 5280
+        },
+        {
+          "name": "dynMarriagePair",
+          "line": 5337
+        },
+        {
+          "name": "dynRemarryCandidate",
+          "line": 5342
+        },
+        {
+          "name": "dynActions",
+          "line": 5346
+        },
+        {
+          "name": "dynAct0",
+          "line": 5406
+        },
+        {
+          "name": "dynEligible",
+          "line": 5461
+        },
+        {
+          "name": "dynCandidacy",
+          "line": 5464
+        },
+        {
+          "name": "dynRuler",
+          "line": 5558
+        },
+        {
+          "name": "dynHome",
+          "line": 5560
+        },
+        {
+          "name": "dynSnap",
+          "line": 5561
+        },
+        {
+          "name": "dynResnap",
+          "line": 5566
+        },
+        {
+          "name": "dynNote",
+          "line": 5567
+        },
+        {
+          "name": "dynDocs",
+          "line": 5569
+        },
+        {
+          "name": "dynEvents",
+          "line": 5570
+        },
+        {
+          "name": "dynSick",
+          "line": 5640
+        },
+        {
+          "name": "dynPeriodic",
+          "line": 5645
+        },
+        {
+          "name": "dynHeirWarn",
+          "line": 5671
+        },
+        {
+          "name": "dynCase",
+          "line": 5681
+        },
+        {
+          "name": "dynFindCase",
+          "line": 5692
+        },
+        {
+          "name": "dynRentLate",
+          "line": 5694
+        },
+        {
+          "name": "dynDepLost",
+          "line": 5699
+        },
+        {
+          "name": "dynProtest",
+          "line": 5811
+        },
+        {
+          "name": "dynHeirList",
+          "line": 5818
+        },
+        {
+          "name": "dynHeir",
+          "line": 5828
+        },
+        {
+          "name": "dynPickRegent",
+          "line": 5831
+        },
+        {
+          "name": "dynRegencyTick",
+          "line": 5833
+        },
+        {
+          "name": "dynNewCands",
+          "line": 5837
+        },
+        {
+          "name": "dynArchive",
+          "line": 5838
+        },
+        {
+          "name": "dynNewHouse",
+          "line": 5840
+        },
+        {
+          "name": "dynDeath",
+          "line": 5846
+        },
+        {
+          "name": "dynOrphans",
+          "line": 5855
+        },
+        {
+          "name": "dynAdopt",
+          "line": 5856
+        },
+        {
+          "name": "dynMoreActions",
+          "line": 5858
+        },
+        {
+          "name": "dynMore",
+          "line": 5896
+        },
+        {
+          "name": "dynStressCost",
+          "line": 5939
+        },
+        {
+          "name": "dynChoiceStats",
+          "line": 5962
+        },
+        {
+          "name": "dynChoiceChanges",
+          "line": 5966
+        },
+        {
+          "name": "dynStressTick",
+          "line": 5972
+        },
+        {
+          "name": "dynEpithetChoice",
+          "line": 5984
+        },
+        {
+          "name": "dynChoose0",
+          "line": 5985
+        },
+        {
+          "name": "mapSeedRoll",
+          "line": 6004
+        },
+        {
+          "name": "realmMapPosition",
+          "line": 6005
+        },
+        {
+          "name": "wr",
+          "line": 6009
+        },
+        {
+          "name": "realmPerson",
+          "line": 6011
+        },
+        {
+          "name": "realmLog",
+          "line": 6015
+        },
+        {
+          "name": "realmHeir",
+          "line": 6016
+        },
+        {
+          "name": "realmInit",
+          "line": 6017
+        },
+        {
+          "name": "realmNewRuler",
+          "line": 6022
+        },
+        {
+          "name": "realmTick",
+          "line": 6026
+        },
+        {
+          "name": "dynTowns",
+          "line": 6044
+        },
+        {
+          "name": "dynMilAdj",
+          "line": 6045
+        },
+        {
+          "name": "dynWedCands",
+          "line": 6046
+        },
+        {
+          "name": "dynDipActions",
+          "line": 6047
+        },
+        {
+          "name": "dynWedP",
+          "line": 6059
+        },
+        {
+          "name": "dynAllyP",
+          "line": 6060
+        },
+        {
+          "name": "dynForeignSpouse",
+          "line": 6061
+        },
+        {
+          "name": "dynDip",
+          "line": 6063
+        },
+        {
+          "name": "dynAnnex",
+          "line": 6081
+        },
+        {
+          "name": "dynProvTick",
+          "line": 6088
+        },
+        {
+          "name": "dynWarWatch",
+          "line": 6094
+        },
+        {
+          "name": "dynClaim",
+          "line": 6101
+        },
+        {
+          "name": "dynEffPop",
+          "line": 6105
+        },
+        {
+          "name": "dynTierOf",
+          "line": 6106
+        },
+        {
+          "name": "dynTierName",
+          "line": 6107
+        },
+        {
+          "name": "dynTierTick",
+          "line": 6108
+        },
+        {
+          "name": "dynSpyCatch",
+          "line": 6114
+        },
+        {
+          "name": "dynCaught",
+          "line": 6115
+        },
+        {
+          "name": "dynRival",
+          "line": 6119
+        },
+        {
+          "name": "dynDirt",
+          "line": 6120
+        },
+        {
+          "name": "dynSpyActions",
+          "line": 6121
+        },
+        {
+          "name": "dynSpy",
+          "line": 6126
+        },
+        {
+          "name": "dynCoupBlock",
+          "line": 6137
+        },
+        {
+          "name": "dynIntel",
+          "line": 6139
+        },
+        {
+          "name": "dynSpyOffer",
+          "line": 6148
+        },
+        {
+          "name": "dynForeignEvents",
+          "line": 6152
+        },
+        {
+          "name": "dynMajorFirms",
+          "line": 6157
+        },
+        {
+          "name": "dynMore2Actions",
+          "line": 6158
+        },
+        {
+          "name": "dynMore2",
+          "line": 6165
+        },
+        {
+          "name": "dynPrince",
+          "line": 6181
+        },
+        {
+          "name": "dynFreeLots",
+          "line": 6187
+        },
+        {
+          "name": "dynEmptyLots",
+          "line": 6188
+        },
+        {
+          "name": "dynBldCost",
+          "line": 6189
+        },
+        {
+          "name": "dynBldLock",
+          "line": 6190
+        },
+        {
+          "name": "dynBizActions",
+          "line": 6199
+        },
+        {
+          "name": "dynBuilder",
+          "line": 6203
+        },
+        {
+          "name": "dynSiteTick",
+          "line": 6205
+        },
+        {
+          "name": "dynBiz",
+          "line": 6211
+        },
+        {
+          "name": "dynTargetActions",
+          "line": 6217
+        },
+        {
+          "name": "dynHireWage",
+          "line": 6237
+        },
+        {
+          "name": "dynHireP",
+          "line": 6238
+        },
+        {
+          "name": "dynTarget",
+          "line": 6239
+        },
+        {
+          "name": "dynLawBounds",
+          "line": 6272
+        },
+        {
+          "name": "dynLawStep",
+          "line": 6275
+        },
+        {
+          "name": "dynLawSup2",
+          "line": 6279
+        },
+        {
+          "name": "dynLaw2Actions",
+          "line": 6280
+        },
+        {
+          "name": "dynLaw2",
+          "line": 6285
+        },
+        {
+          "name": "E",
+          "line": 6311
+        },
+        {
+          "name": "sKids",
+          "line": 6316
+        },
+        {
+          "name": "sNonKin",
+          "line": 6317
+        },
+        {
+          "name": "sRealm",
+          "line": 6318
+        },
+        {
+          "name": "sCtx",
+          "line": 6319
+        },
+        {
+          "name": "mcEF",
+          "line": 6792
+        },
+        {
+          "name": "mcEventPay",
+          "line": 6795
+        },
+        {
+          "name": "rrEventPerson",
+          "line": 6845
+        },
+        {
+          "name": "rrEC",
+          "line": 6846
+        },
+        {
+          "name": "F",
+          "line": 6859
+        },
+        {
+          "name": "sClose",
+          "line": 6960
+        },
+        {
+          "name": "dynStoryEligible",
+          "line": 7682
+        },
+        {
+          "name": "dynStoryContext",
+          "line": 7752
+        },
+        {
+          "name": "dynStoryRel",
+          "line": 7772
+        },
+        {
+          "name": "dynStoryPick",
+          "line": 7778
+        },
+        {
+          "name": "dynStoryOptions",
+          "line": 7789
+        },
+        {
+          "name": "dynStoryRecheck",
+          "line": 7791
+        },
+        {
+          "name": "dynStoryPush",
+          "line": 7794
+        },
+        {
+          "name": "dynStoryTrig",
+          "line": 7803
+        },
+        {
+          "name": "dynStoryTick",
+          "line": 7819
+        },
+        {
+          "name": "dynSetStory",
+          "line": 7845
+        },
+        {
+          "name": "dynWorldTick",
+          "line": 7846
+        },
+        {
+          "name": "farRuler",
+          "line": 7856
+        },
+        {
+          "name": "farLog",
+          "line": 7857
+        },
+        {
+          "name": "farInit",
+          "line": 7858
+        },
+        {
+          "name": "farTick",
+          "line": 7866
+        },
+        {
+          "name": "farActions",
+          "line": 7893
+        },
+        {
+          "name": "farAct",
+          "line": 7895
+        },
+        {
+          "name": "farView",
+          "line": 7897
+        },
+        {
+          "name": "farMarks",
+          "line": 7900
+        },
+        {
+          "name": "p2Critics",
+          "line": 7906
+        },
+        {
+          "name": "p2Insiders",
+          "line": 7909
+        },
+        {
+          "name": "p2Actions",
+          "line": 7911
+        },
+        {
+          "name": "p2Act",
+          "line": 7952
+        },
+        {
+          "name": "p2ElecRig",
+          "line": 7992
+        },
+        {
+          "name": "bdMine",
+          "line": 7995
+        },
+        {
+          "name": "bdTake",
+          "line": 7997
+        },
+        {
+          "name": "bdOpts",
+          "line": 7998
+        },
+        {
+          "name": "bdActions",
+          "line": 8013
+        },
+        {
+          "name": "bdAct",
+          "line": 8014
+        },
+        {
+          "name": "goPay",
+          "line": 8046
+        },
+        {
+          "name": "goEra",
+          "line": 8047
+        },
+        {
+          "name": "goMerged",
+          "line": 8048
+        },
+        {
+          "name": "goDraft",
+          "line": 8049
+        },
+        {
+          "name": "goCands",
+          "line": 8050
+        },
+        {
+          "name": "goActions",
+          "line": 8053
+        },
+        {
+          "name": "goAct",
+          "line": 8061
+        },
+        {
+          "name": "rcRuler",
+          "line": 8081
+        },
+        {
+          "name": "rcAlly",
+          "line": 8082
+        },
+        {
+          "name": "rcTargets",
+          "line": 8083
+        },
+        {
+          "name": "rcReady",
+          "line": 8091
+        },
+        {
+          "name": "rcMethods",
+          "line": 8098
+        },
+        {
+          "name": "rcProb",
+          "line": 8099
+        },
+        {
+          "name": "rcActions",
+          "line": 8100
+        },
+        {
+          "name": "rcApply",
+          "line": 8104
+        },
+        {
+          "name": "rcAct",
+          "line": 8122
+        },
+        {
+          "name": "dynRegimePressure",
+          "line": 8123
+        },
+        {
+          "name": "dynRebuildPoliticsTick",
+          "line": 8124
+        },
+        {
+          "name": "rcActResolved",
+          "line": 8130
+        },
+        {
+          "name": "rcFall",
+          "line": 8149
+        },
+        {
+          "name": "rcTick",
+          "line": 8150
+        },
+        {
+          "name": "dynOrgs",
+          "line": 8188
+        },
+        {
+          "name": "crCase",
+          "line": 8218
+        },
+        {
+          "name": "crHeat",
+          "line": 8219
+        },
+        {
+          "name": "crRich",
+          "line": 8220
+        },
+        {
+          "name": "crBigTitle",
+          "line": 8222
+        },
+        {
+          "name": "crBigLoot",
+          "line": 8223
+        },
+        {
+          "name": "crBig",
+          "line": 8224
+        },
+        {
+          "name": "crBigFirms",
+          "line": 8226
+        },
+        {
+          "name": "crPoor",
+          "line": 8227
+        },
+        {
+          "name": "crActions",
+          "line": 8228
+        },
+        {
+          "name": "crAct",
+          "line": 8248
+        },
+        {
+          "name": "crTick",
+          "line": 8273
+        },
+        {
+          "name": "duRole",
+          "line": 8280
+        },
+        {
+          "name": "duTargets",
+          "line": 8282
+        },
+        {
+          "name": "duBig",
+          "line": 8283
+        },
+        {
+          "name": "duNeutralWhy",
+          "line": 8285
+        },
+        {
+          "name": "duPoliticsWhy",
+          "line": 8286
+        },
+        {
+          "name": "dynCouncilCompatTick",
+          "line": 8289
+        },
+        {
+          "name": "duLeave",
+          "line": 8290
+        },
+        {
+          "name": "duDrop",
+          "line": 8291
+        },
+        {
+          "name": "duNeutralTick",
+          "line": 8293
+        },
+        {
+          "name": "duNpcNeutralTick",
+          "line": 8305
+        },
+        {
+          "name": "duActions",
+          "line": 8309
+        },
+        {
+          "name": "duAct",
+          "line": 8318
+        },
+        {
+          "name": "duCase",
+          "line": 8330
+        },
+        {
+          "name": "duFind",
+          "line": 8334
+        },
+        {
+          "name": "duTick",
+          "line": 8336
+        },
+        {
+          "name": "hpOpts",
+          "line": 8338
+        },
+        {
+          "name": "hpAct",
+          "line": 8339
+        },
+        {
+          "name": "adCands",
+          "line": 8348
+        },
+        {
+          "name": "adBaby",
+          "line": 8349
+        },
+        {
+          "name": "adBizBld",
+          "line": 8350
+        },
+        {
+          "name": "adActions",
+          "line": 8351
+        },
+        {
+          "name": "adAct",
+          "line": 8371
+        },
+        {
+          "name": "adTick",
+          "line": 8397
+        },
+        {
+          "name": "jrOn",
+          "line": 8404
+        },
+        {
+          "name": "jrJ",
+          "line": 8405
+        },
+        {
+          "name": "jrCap",
+          "line": 8406
+        },
+        {
+          "name": "jrRuler",
+          "line": 8407
+        },
+        {
+          "name": "jrSide",
+          "line": 8409
+        },
+        {
+          "name": "jrLog",
+          "line": 8410
+        },
+        {
+          "name": "jrCandidates",
+          "line": 8411
+        },
+        {
+          "name": "jrConsent",
+          "line": 8412
+        },
+        {
+          "name": "jrTick",
+          "line": 8414
+        },
+        {
+          "name": "jrRule",
+          "line": 8433
+        },
+        {
+          "name": "jrActions",
+          "line": 8438
+        },
+        {
+          "name": "jrAct",
+          "line": 8447
+        },
+        {
+          "name": "wfState",
+          "line": 8460
+        },
+        {
+          "name": "wfHostageBlocks",
+          "line": 8461
+        },
+        {
+          "name": "wfPay",
+          "line": 8462
+        },
+        {
+          "name": "wfAdult",
+          "line": 8463
+        },
+        {
+          "name": "wfKinTargets",
+          "line": 8464
+        },
+        {
+          "name": "wfActions",
+          "line": 8465
+        },
+        {
+          "name": "wfMark",
+          "line": 8478
+        },
+        {
+          "name": "wfAct",
+          "line": 8479
+        },
+        {
+          "name": "wfTick",
+          "line": 8491
+        },
+        {
+          "name": "mcLog",
+          "line": 8501
+        },
+        {
+          "name": "mcBudget",
+          "line": 8502
+        },
+        {
+          "name": "mcTransfer",
+          "line": 8503
+        },
+        {
+          "name": "mcContractTransfer",
+          "line": 8504
+        },
+        {
+          "name": "mcPower",
+          "line": 8505
+        },
+        {
+          "name": "mcWarPower",
+          "line": 8506
+        },
+        {
+          "name": "mcCandidates",
+          "line": 8507
+        },
+        {
+          "name": "mcActions",
+          "line": 8508
+        },
+        {
+          "name": "mcFinish",
+          "line": 8532
+        },
+        {
+          "name": "mcRelease",
+          "line": 8533
+        },
+        {
+          "name": "mcAct",
+          "line": 8534
+        },
+        {
+          "name": "mcIntervene",
+          "line": 8551
+        },
+        {
+          "name": "mcEndWar",
+          "line": 8556
+        },
+        {
+          "name": "mcBattle",
+          "line": 8557
+        },
+        {
+          "name": "mcTick",
+          "line": 8558
+        },
+        {
+          "name": "mcView",
+          "line": 8570
+        },
+        {
+          "name": "ecState",
+          "line": 8574
+        },
+        {
+          "name": "ecActions",
+          "line": 8575
+        },
+        {
+          "name": "ecMarket",
+          "line": 8597
+        },
+        {
+          "name": "ecAct",
+          "line": 8598
+        },
+        {
+          "name": "ecTick",
+          "line": 8622
+        },
+        {
+          "name": "scState",
+          "line": 8625
+        },
+        {
+          "name": "scUnion",
+          "line": 8626
+        },
+        {
+          "name": "scActions",
+          "line": 8627
+        },
+        {
+          "name": "scAct",
+          "line": 8642
+        },
+        {
+          "name": "scTick",
+          "line": 8656
+        },
+        {
+          "name": "rrEligible",
+          "line": 8660
+        },
+        {
+          "name": "rrAll",
+          "line": 8661
+        },
+        {
+          "name": "rrGet",
+          "line": 8662
+        },
+        {
+          "name": "rrRemember",
+          "line": 8663
+        },
+        {
+          "name": "rrCourt",
+          "line": 8664
+        },
+        {
+          "name": "rrActions",
+          "line": 8665
+        },
+        {
+          "name": "rrAct",
+          "line": 8677
+        },
+        {
+          "name": "rrTick",
+          "line": 8686
+        },
+        {
+          "name": "rrView",
+          "line": 8687
+        },
+        {
+          "name": "dynWorldView",
+          "line": 8689
+        },
+        {
+          "name": "dynTick",
+          "line": 8701
+        },
+        {
+          "name": "dynRank",
+          "line": 8709
+        },
+        {
+          "name": "dynTabs",
+          "line": 8718
+        },
+        {
+          "name": "dynRole",
+          "line": 8719
+        },
+        {
+          "name": "dynWithRole",
+          "line": 8739
+        },
+        {
+          "name": "dynFamily",
+          "line": 8744
+        },
+        {
+          "name": "dynCircle",
+          "line": 8748
+        },
+        {
+          "name": "dynCanSee",
+          "line": 8754
+        },
+        {
+          "name": "dynCanTab",
+          "line": 8755
+        },
+        {
+          "name": "dynHeirs",
+          "line": 8756
+        },
+        {
+          "name": "dynAssets",
+          "line": 8758
+        },
+        {
+          "name": "dynView",
+          "line": 8766
+        },
+        {
+          "name": "dynScheduleBusy",
+          "line": 8793
+        },
+        {
+          "name": "dynTransaction",
+          "line": 8794
+        },
+        {
+          "name": "dynIllicitTreasury",
+          "line": 8800
+        },
+        {
+          "name": "dynAct",
+          "line": 8801
+        },
+        {
+          "name": "dynChoose",
+          "line": 8802
+        },
+        {
+          "name": "dynLocalOffice",
+          "line": 8803
+        },
+        {
+          "name": "dynPublicAccount",
+          "line": 8804
+        },
+        {
+          "name": "dynPublicPeople",
+          "line": 8812
+        },
+        {
+          "name": "dynFinanceLog",
+          "line": 8813
+        },
+        {
+          "name": "dynPublicSpend",
+          "line": 8814
+        },
+        {
+          "name": "dynFeedPublic",
+          "line": 8817
+        },
+        {
+          "name": "dynPublicActions",
+          "line": 8818
+        },
+        {
+          "name": "dynPublicLots",
+          "line": 8825
+        },
+        {
+          "name": "dynPublicAct",
+          "line": 8826
+        },
+        {
+          "name": "dynStoryCategory",
+          "line": 8834
+        },
+        {
+          "name": "dynStoryCost",
+          "line": 8835
+        },
+        {
+          "name": "dynStoryFinance",
+          "line": 8836
+        },
+        {
+          "name": "dynLiquidateAssets",
+          "line": 8837
+        },
+        {
+          "name": "dynLoanRepayFor",
+          "line": 8841
+        },
+        {
+          "name": "dynStoryOverrides",
+          "line": 8842
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "god-client.js",
+      "bytes": 131389,
+      "lines": 718,
+      "sha256": "35c218ec0109662015f66ebc310e18358393c77730634733a06f021f006bd2df",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "initDyn",
+          "line": 10
+        },
+        {
+          "name": "dynFilterTabs",
+          "line": 65
+        },
+        {
+          "name": "dynHook",
+          "line": 70
+        },
+        {
+          "name": "dynRender",
+          "line": 79
+        },
+        {
+          "name": "dynKV",
+          "line": 104
+        },
+        {
+          "name": "dynPanelHTML",
+          "line": 105
+        },
+        {
+          "name": "dynBudgetHTML",
+          "line": 148
+        },
+        {
+          "name": "dynBindBudget",
+          "line": 154
+        },
+        {
+          "name": "dynInboxHTML",
+          "line": 159
+        },
+        {
+          "name": "dynOrgKey",
+          "line": 162
+        },
+        {
+          "name": "dynOrgMatch",
+          "line": 163
+        },
+        {
+          "name": "dynOrgActs",
+          "line": 164
+        },
+        {
+          "name": "dynOrgChips",
+          "line": 165
+        },
+        {
+          "name": "dynOrgHTML",
+          "line": 166
+        },
+        {
+          "name": "dynTodayText",
+          "line": 172
+        },
+        {
+          "name": "dynWorkHTML",
+          "line": 173
+        },
+        {
+          "name": "dynRelationshipsHTML",
+          "line": 181
+        },
+        {
+          "name": "dynSocialHTML",
+          "line": 182
+        },
+        {
+          "name": "dynEconomyHTML",
+          "line": 183
+        },
+        {
+          "name": "dynMercHTML",
+          "line": 184
+        },
+        {
+          "name": "dynCoHTML",
+          "line": 185
+        },
+        {
+          "name": "dynCompanyNameHTML",
+          "line": 193
+        },
+        {
+          "name": "dynActHTML0",
+          "line": 194
+        },
+        {
+          "name": "dynActHTML",
+          "line": 196
+        },
+        {
+          "name": "dynSearchHits",
+          "line": 200
+        },
+        {
+          "name": "dynSearchHTML",
+          "line": 201
+        },
+        {
+          "name": "dynStatusHTML",
+          "line": 203
+        },
+        {
+          "name": "dynHomeHTML",
+          "line": 214
+        },
+        {
+          "name": "dynGoTo",
+          "line": 240
+        },
+        {
+          "name": "dynFindActions",
+          "line": 254
+        },
+        {
+          "name": "dynPublicSummary",
+          "line": 255
+        },
+        {
+          "name": "dynSheetHeader",
+          "line": 256
+        },
+        {
+          "name": "dynActionsHTML",
+          "line": 257
+        },
+        {
+          "name": "dynBindActions",
+          "line": 267
+        },
+        {
+          "name": "dynChangeLabel",
+          "line": 295
+        },
+        {
+          "name": "dynPixelPerson",
+          "line": 308
+        },
+        {
+          "name": "dynSceneCharacter",
+          "line": 326
+        },
+        {
+          "name": "dynSceneCharacters",
+          "line": 334
+        },
+        {
+          "name": "dynAdultSceneArt",
+          "line": 339
+        },
+        {
+          "name": "dynVenueSceneArt",
+          "line": 347
+        },
+        {
+          "name": "dynSceneArt",
+          "line": 356
+        },
+        {
+          "name": "dynPreloadScene",
+          "line": 358
+        },
+        {
+          "name": "dynSceneSpeaker",
+          "line": 359
+        },
+        {
+          "name": "dynTypeSceneText",
+          "line": 360
+        },
+        {
+          "name": "dynOpen",
+          "line": 361
+        },
+        {
+          "name": "dynShade",
+          "line": 406
+        },
+        {
+          "name": "dynInitWorld",
+          "line": 407
+        },
+        {
+          "name": "dynSetMap",
+          "line": 424
+        },
+        {
+          "name": "dynWSeeds",
+          "line": 428
+        },
+        {
+          "name": "dynWHash",
+          "line": 430
+        },
+        {
+          "name": "dynWLand",
+          "line": 431
+        },
+        {
+          "name": "dynWOwnerXY",
+          "line": 432
+        },
+        {
+          "name": "dynLayoutWorldLabels",
+          "line": 441
+        },
+        {
+          "name": "dynWOwner",
+          "line": 444
+        },
+        {
+          "name": "dynDrawWorld",
+          "line": 446
+        },
+        {
+          "name": "dynWRel",
+          "line": 486
+        },
+        {
+          "name": "dynWInfo",
+          "line": 487
+        },
+        {
+          "name": "dynJo",
+          "line": 488
+        },
+        {
+          "name": "dynFarHTML",
+          "line": 489
+        },
+        {
+          "name": "dynWInfoHTML",
+          "line": 491
+        },
+        {
+          "name": "dynWActs",
+          "line": 503
+        },
+        {
+          "name": "dynNetHTML",
+          "line": 509
+        },
+        {
+          "name": "dynProvHTML",
+          "line": 511
+        },
+        {
+          "name": "dynDipHTML",
+          "line": 512
+        },
+        {
+          "name": "dynAppLayout",
+          "line": 516
+        },
+        {
+          "name": "dynSettings",
+          "line": 658
+        },
+        {
+          "name": "dynAppRender",
+          "line": 671
+        },
+        {
+          "name": "dynFitMap",
+          "line": 688
+        },
+        {
+          "name": "dynNewLoad",
+          "line": 701
+        },
+        {
+          "name": "dynNewSave",
+          "line": 703
+        },
+        {
+          "name": "dynTrackNew",
+          "line": 704
+        },
+        {
+          "name": "dynNewActsHTML",
+          "line": 708
+        },
+        {
+          "name": "dynCardActions",
+          "line": 712
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "index.html",
+      "bytes": 2118679,
+      "lines": 10415,
+      "sha256": "46c94c30d4d3624eb0c9e90da35c5ad236a6a8ff80d1c9bbf6b900b3ca039056",
+      "generated": true,
+      "requires": [],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "infra/start-gate.js",
+      "bytes": 4139,
+      "lines": 40,
+      "sha256": "f0c2171620dd81d4033da6f21c230986576a32938ced9b18ac4f028af66ad11a",
+      "generated": false,
+      "requires": [
+        {
+          "name": "@aws-sdk/client-ec2",
+          "line": 3
+        },
+        {
+          "name": "node:crypto",
+          "line": 4
+        }
+      ],
+      "functions": [
+        {
+          "name": "api",
+          "line": 8
+        },
+        {
+          "name": "response",
+          "line": 11
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "rebuild/client.js",
+      "bytes": 45874,
+      "lines": 917,
+      "sha256": "2a6241fce1b6901acaed4de60ce4cec7c665be0965b0d5d6e87667ffe3424b6e",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "loadPeople",
+          "line": 32
+        },
+        {
+          "name": "button",
+          "line": 91
+        },
+        {
+          "name": "toast",
+          "line": 111
+        },
+        {
+          "name": "poll",
+          "line": 117
+        },
+        {
+          "name": "send",
+          "line": 136
+        },
+        {
+          "name": "map",
+          "line": 168
+        },
+        {
+          "name": "panel",
+          "line": 221
+        },
+        {
+          "name": "activity",
+          "line": 258
+        },
+        {
+          "name": "people",
+          "line": 285
+        },
+        {
+          "name": "show",
+          "line": 307
+        },
+        {
+          "name": "render",
+          "line": 664
+        },
+        {
+          "name": "heartbeat",
+          "line": 893
+        }
+      ],
+      "switchCases": [
+        {
+          "name": "district",
+          "line": 320
+        },
+        {
+          "name": "firm",
+          "line": 336
+        },
+        {
+          "name": "competitor",
+          "line": 375
+        },
+        {
+          "name": "logistics",
+          "line": 381
+        },
+        {
+          "name": "land",
+          "line": 422
+        },
+        {
+          "name": "person",
+          "line": 438
+        },
+        {
+          "name": "politics",
+          "line": 456
+        },
+        {
+          "name": "government",
+          "line": 498
+        },
+        {
+          "name": "family",
+          "line": 547
+        },
+        {
+          "name": "life",
+          "line": 571
+        },
+        {
+          "name": "plan",
+          "line": 593
+        },
+        {
+          "name": "notes",
+          "line": 609
+        },
+        {
+          "name": "storage",
+          "line": 618
+        },
+        {
+          "name": "editor",
+          "line": 626
+        }
+      ]
+    },
+    {
+      "file": "rebuild/economy.js",
+      "bytes": 13369,
+      "lines": 381,
+      "sha256": "1b7680503b8e4ce3415c2624367c8001b5dcc00e4ba05c84741a984ccfe263e5",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "economy",
+          "line": 2
+        },
+        {
+          "name": "owned",
+          "line": 11
+        },
+        {
+          "name": "command",
+          "line": 21
+        },
+        {
+          "name": "tick",
+          "line": 91
+        }
+      ],
+      "switchCases": [
+        {
+          "name": "policy",
+          "line": 25
+        },
+        {
+          "name": "destination",
+          "line": 32
+        },
+        {
+          "name": "source",
+          "line": 39
+        },
+        {
+          "name": "acquire",
+          "line": 47
+        },
+        {
+          "name": "partner",
+          "line": 59
+        },
+        {
+          "name": "fire",
+          "line": 75
+        }
+      ]
+    },
+    {
+      "file": "rebuild/editor.js",
+      "bytes": 2030,
+      "lines": 62,
+      "sha256": "4c267516ef58ae3c0fd586d7b5b8402ea39853ae2027dd0f91f221f104dfcd48",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "editor",
+          "line": 2
+        }
+      ],
+      "switchCases": [
+        {
+          "name": "edit:district",
+          "line": 9
+        },
+        {
+          "name": "edit:person",
+          "line": 21
+        },
+        {
+          "name": "edit:transfer",
+          "line": 33
+        },
+        {
+          "name": "edit:government",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "file": "rebuild/family.js",
+      "bytes": 10164,
+      "lines": 304,
+      "sha256": "c8f19c8e0dd704e1a51305673ed2a6e4ff9cc3145aa9c59ee5d460968cafb823",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "family",
+          "line": 2
+        },
+        {
+          "name": "eligible",
+          "line": 4
+        },
+        {
+          "name": "command",
+          "line": 12
+        },
+        {
+          "name": "succeed",
+          "line": 119
+        },
+        {
+          "name": "choose",
+          "line": 178
+        },
+        {
+          "name": "tick",
+          "line": 235
+        },
+        {
+          "name": "complete",
+          "line": 266
+        }
+      ],
+      "switchCases": [
+        {
+          "name": "marry",
+          "line": 17
+        },
+        {
+          "name": "child",
+          "line": 45
+        },
+        {
+          "name": "adopt",
+          "line": 52
+        },
+        {
+          "name": "heir",
+          "line": 72
+        },
+        {
+          "name": "will",
+          "line": 89
+        },
+        {
+          "name": "educate",
+          "line": 96
+        },
+        {
+          "name": "succession",
+          "line": 104
+        }
+      ]
+    },
+    {
+      "file": "rebuild/game.js",
+      "bytes": 27013,
+      "lines": 831,
+      "sha256": "c6579387d156ff68c0e52e7303faa84a52b399104608bf5960c1424e13be7ea1",
+      "generated": false,
+      "requires": [
+        {
+          "name": "./schema",
+          "line": 3
+        },
+        {
+          "name": "./systems",
+          "line": 264
+        }
+      ],
+      "functions": [
+        {
+          "name": "createGame",
+          "line": 11
+        },
+        {
+          "name": "random",
+          "line": 13
+        },
+        {
+          "name": "note",
+          "line": 137
+        },
+        {
+          "name": "person",
+          "line": 141
+        },
+        {
+          "name": "site",
+          "line": 146
+        },
+        {
+          "name": "firm",
+          "line": 151
+        },
+        {
+          "name": "district",
+          "line": 160
+        },
+        {
+          "name": "pay",
+          "line": 165
+        },
+        {
+          "name": "energy",
+          "line": 188
+        },
+        {
+          "name": "funds",
+          "line": 193
+        },
+        {
+          "name": "ownPlan",
+          "line": 196
+        },
+        {
+          "name": "plan",
+          "line": 202
+        },
+        {
+          "name": "eligibility",
+          "line": 265
+        },
+        {
+          "name": "command",
+          "line": 271
+        },
+        {
+          "name": "tick",
+          "line": 575
+        },
+        {
+          "name": "queryPeople",
+          "line": 769
+        },
+        {
+          "name": "view",
+          "line": 793
+        }
+      ],
+      "switchCases": [
+        {
+          "name": "advance",
+          "line": 280
+        },
+        {
+          "name": "goal",
+          "line": 289
+        },
+        {
+          "name": "open",
+          "line": 298
+        },
+        {
+          "name": "fund",
+          "line": 326
+        },
+        {
+          "name": "policy",
+          "line": 332
+        },
+        {
+          "name": "supplier",
+          "line": 340
+        },
+        {
+          "name": "hire",
+          "line": 348
+        },
+        {
+          "name": "wage",
+          "line": 367
+        },
+        {
+          "name": "delegate",
+          "line": 375
+        },
+        {
+          "name": "expand",
+          "line": 388
+        },
+        {
+          "name": "close",
+          "line": 394
+        },
+        {
+          "name": "work",
+          "line": 418
+        },
+        {
+          "name": "visit",
+          "line": 430
+        },
+        {
+          "name": "organize",
+          "line": 441
+        },
+        {
+          "name": "campaign",
+          "line": 445
+        },
+        {
+          "name": "road",
+          "line": 458
+        },
+        {
+          "name": "school",
+          "line": 459
+        },
+        {
+          "name": "tax",
+          "line": 472
+        },
+        {
+          "name": "educate",
+          "line": 484
+        },
+        {
+          "name": "succession",
+          "line": 487
+        },
+        {
+          "name": "plan",
+          "line": 507
+        },
+        {
+          "name": "choose",
+          "line": 526
+        },
+        {
+          "name": "save",
+          "line": 558
+        },
+        {
+          "name": "suspend",
+          "line": 559
+        }
+      ]
+    },
+    {
+      "file": "rebuild/index.html",
+      "bytes": 17207,
+      "lines": 792,
+      "sha256": "a4935ef7ad8f7487250de9c4e7e22858c379f265971e7885e4d03f7687533abe",
+      "generated": false,
+      "requires": [],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "rebuild/migration.js",
+      "bytes": 2445,
+      "lines": 69,
+      "sha256": "b586a30b9446cff17a0b6722ebb891fffdcb56cbaa8571dbcc26f2612831a833",
+      "generated": false,
+      "requires": [
+        {
+          "name": "./game",
+          "line": 2
+        },
+        {
+          "name": "./schema",
+          "line": 3
+        }
+      ],
+      "functions": [
+        {
+          "name": "migrateLegacy",
+          "line": 4
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "rebuild/politics.js",
+      "bytes": 16977,
+      "lines": 473,
+      "sha256": "951001f86b8935e867cfd0bf159bca48d8f9b19b5f203cbf0fa451e7c3655aed",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "politics",
+          "line": 13
+        },
+        {
+          "name": "councilSupport",
+          "line": 17
+        },
+        {
+          "name": "readiness",
+          "line": 25
+        },
+        {
+          "name": "propose",
+          "line": 36
+        },
+        {
+          "name": "command",
+          "line": 71
+        },
+        {
+          "name": "elect",
+          "line": 231
+        },
+        {
+          "name": "tick",
+          "line": 336
+        },
+        {
+          "name": "complete",
+          "line": 399
+        }
+      ],
+      "switchCases": [
+        {
+          "name": "party",
+          "line": 76
+        },
+        {
+          "name": "recruit",
+          "line": 87
+        },
+        {
+          "name": "debate",
+          "line": 99
+        },
+        {
+          "name": "rally",
+          "line": 113
+        },
+        {
+          "name": "coalition",
+          "line": 128
+        },
+        {
+          "name": "appoint",
+          "line": 158
+        },
+        {
+          "name": "bill",
+          "line": 181
+        },
+        {
+          "name": "reform",
+          "line": 206
+        },
+        {
+          "name": "oversight",
+          "line": 209
+        }
+      ]
+    },
+    {
+      "file": "rebuild/schema.js",
+      "bytes": 6580,
+      "lines": 247,
+      "sha256": "8a8991c988808d4d46e441630ecdd2ff71d9731bedcbbe226be6a1b51d2c5fb0",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "line": 9
+        },
+        {
+          "name": "validate",
+          "line": 180
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "rebuild/society.js",
+      "bytes": 8766,
+      "lines": 245,
+      "sha256": "aa624d8c98c32b6b3565e021aab3d2fe351a4302c83fd571dc68dd1823e09b22",
+      "generated": false,
+      "requires": [
+        {
+          "name": "./schema",
+          "line": 2
+        }
+      ],
+      "functions": [
+        {
+          "name": "society",
+          "line": 4
+        },
+        {
+          "name": "path",
+          "line": 6
+        },
+        {
+          "name": "beforeTick",
+          "line": 32
+        },
+        {
+          "name": "support",
+          "line": 89
+        },
+        {
+          "name": "command",
+          "line": 163
+        },
+        {
+          "name": "complete",
+          "line": 229
+        },
+        {
+          "name": "Sroute",
+          "line": 240
+        }
+      ],
+      "switchCases": [
+        {
+          "name": "home",
+          "line": 167
+        },
+        {
+          "name": "housing",
+          "line": 184
+        },
+        {
+          "name": "transport",
+          "line": 189
+        },
+        {
+          "name": "loan",
+          "line": 196
+        },
+        {
+          "name": "repay",
+          "line": 214
+        }
+      ]
+    },
+    {
+      "file": "rebuild/story.js",
+      "bytes": 14915,
+      "lines": 447,
+      "sha256": "2f28ff84d0e77d7b99389201e1ed3f9044b75cad2b52d426224fd905d2835578",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "story",
+          "line": 2
+        },
+        {
+          "name": "eligible",
+          "line": 8
+        },
+        {
+          "name": "command",
+          "line": 50
+        },
+        {
+          "name": "choose",
+          "line": 88
+        },
+        {
+          "name": "tick",
+          "line": 201
+        },
+        {
+          "name": "complete",
+          "line": 295
+        },
+        {
+          "name": "options",
+          "line": 317
+        }
+      ],
+      "switchCases": [
+        {
+          "name": "talk",
+          "line": 54
+        }
+      ]
+    },
+    {
+      "file": "rebuild/systems.js",
+      "bytes": 2987,
+      "lines": 95,
+      "sha256": "f41ae9e02322fedb1dad1c724e9b14531c51ae639c6207f49d90a774a9ca4b40",
+      "generated": false,
+      "requires": [
+        {
+          "name": "./schema",
+          "line": 2
+        },
+        {
+          "name": "./society",
+          "line": 8
+        },
+        {
+          "name": "./politics",
+          "line": 9
+        },
+        {
+          "name": "./economy",
+          "line": 10
+        },
+        {
+          "name": "./family",
+          "line": 11
+        },
+        {
+          "name": "./story",
+          "line": 12
+        },
+        {
+          "name": "./editor",
+          "line": 13
+        }
+      ],
+      "functions": [
+        {
+          "name": "systems",
+          "line": 3
+        },
+        {
+          "name": "beforeTick",
+          "line": 15
+        },
+        {
+          "name": "afterTick",
+          "line": 19
+        },
+        {
+          "name": "complete",
+          "line": 45
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "rebuild/worker.js",
+      "bytes": 6117,
+      "lines": 190,
+      "sha256": "ad3ff0e19a5ef2fc0f0306fccb7b89932b5d254d308d4505f61824aaeb7da425",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:worker_threads",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:path",
+          "line": 4
+        },
+        {
+          "name": "node:zlib",
+          "line": 5
+        },
+        {
+          "name": "./game",
+          "line": 6
+        },
+        {
+          "name": "./migration",
+          "line": 7
+        },
+        {
+          "name": "../server-storage",
+          "line": 8
+        }
+      ],
+      "functions": [
+        {
+          "name": "view",
+          "line": 31
+        },
+        {
+          "name": "save",
+          "line": 40
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "remote-client.js",
+      "bytes": 7825,
+      "lines": 89,
+      "sha256": "6735aedab9eaf7afdc8f63c67a9804e81457c97b9e224566298a628b7b0fcb31",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "initRemote",
+          "line": 2
+        },
+        {
+          "name": "session",
+          "line": 8
+        },
+        {
+          "name": "migrateLocal",
+          "line": 29
+        },
+        {
+          "name": "poll",
+          "line": 66
+        },
+        {
+          "name": "paint",
+          "line": 85
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/audit-rebuild.js",
+      "bytes": 9478,
+      "lines": 262,
+      "sha256": "f2144767d5f3113794ff26d15905246ba6c7360450718b327ee8f71f35c05854",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:path",
+          "line": 4
+        },
+        {
+          "name": "node:crypto",
+          "line": 5
+        },
+        {
+          "name": "../rebuild/game",
+          "line": 62
+        },
+        {
+          "name": "../engine",
+          "line": 63
+        },
+        {
+          "name": "../rebuild/migration",
+          "line": 64
+        }
+      ],
+      "functions": [
+        {
+          "name": "head",
+          "line": 9
+        },
+        {
+          "name": "files",
+          "line": 19
+        },
+        {
+          "name": "entries",
+          "line": 36
+        },
+        {
+          "name": "renderRequirements",
+          "line": 186
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/build.js",
+      "bytes": 462,
+      "lines": 8,
+      "sha256": "d48259c676c2315bdac1ad74c0065dd84c8680ddc9e8390e90594273a513486e",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-adult.js",
+      "bytes": 3080,
+      "lines": 23,
+      "sha256": "023c115d149c1d03fd49f9ee336c42994f52d5e5573ac678d21ced355f1b043d",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "fs",
+          "line": 4
+        },
+        {
+          "name": "../engine.js",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-bank-inheritance.js",
+      "bytes": 1544,
+      "lines": 7,
+      "sha256": "0eaa11382b055225e3b5f0b419fc3d1378ea9cdfc5020e645be898e6a7b74a84",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        },
+        {
+          "name": "node:module",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-bank-operations.js",
+      "bytes": 1632,
+      "lines": 18,
+      "sha256": "57503658e8e0158f9314c5afcce28321ba1e463c8088fb9ac2beb1663903472c",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-building-acts.js",
+      "bytes": 2450,
+      "lines": 20,
+      "sha256": "5df67d4d67b82e48e7626ea5e4a24459f259ae9cc4b02d309abc969a8e12ea93",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "fs",
+          "line": 4
+        },
+        {
+          "name": "../engine.js",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-client.js",
+      "bytes": 4334,
+      "lines": 36,
+      "sha256": "592598c00c400f0e6c8ea2ac9c73606b678f630f9d8dc43589311d0c6735f1c5",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        },
+        {
+          "name": "node:vm",
+          "line": 2
+        },
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:zlib",
+          "line": 2
+        },
+        {
+          "name": "node:worker_threads",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 4
+        }
+      ],
+      "functions": [
+        {
+          "name": "main",
+          "line": 5
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-company-names.js",
+      "bytes": 4229,
+      "lines": 41,
+      "sha256": "cb28efb00c78e171b576582a7221a85349570d15490573d2fb85d5604290ff5d",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:vm",
+          "line": 2
+        },
+        {
+          "name": "../engine.js",
+          "line": 3
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-company.js",
+      "bytes": 4844,
+      "lines": 57,
+      "sha256": "a4ded4748c910d281985d60a0e233a45b43eacedefa016326634a8b094676f22",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "../engine.js",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-contextual-consistency.js",
+      "bytes": 1946,
+      "lines": 29,
+      "sha256": "a279eab47d58c6a6165e20e36b1f827557346851183232fcc9ca3c9e04e2f641",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        },
+        {
+          "name": "node:module",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-corporate-actions.js",
+      "bytes": 3248,
+      "lines": 26,
+      "sha256": "74a0b18ca01821c309a8eec6e3f5ea4497c024f6c4d390868d4931c2c2fe1977",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 3
+        },
+        {
+          "name": "node:module",
+          "line": 19
+        },
+        {
+          "name": "node:fs",
+          "line": 19
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-corporate-loan.js",
+      "bytes": 2030,
+      "lines": 13,
+      "sha256": "14ebf1fe458453a6e42150e49765b4bc5ba64f0b375e0bd2e39e0925e33cba7a",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-crime.js",
+      "bytes": 2997,
+      "lines": 28,
+      "sha256": "5ad37c54cba3ce44a90838447fdaa79d99cdfa81241678e06889b729f1c1c224",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "fs",
+          "line": 4
+        },
+        {
+          "name": "../engine.js",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-currency.js",
+      "bytes": 1850,
+      "lines": 18,
+      "sha256": "63104087b1b929af1fc94d725a3caa332bf68363c2660d0eae41ad7ce83aa8d6",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 3
+        },
+        {
+          "name": "../server-presenter",
+          "line": 15
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-daily-work.js",
+      "bytes": 3600,
+      "lines": 35,
+      "sha256": "514afcfd1e304d8b9b00afd69357104882817caa12c9e7c89324b72943ae941a",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "../engine",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-diary.js",
+      "bytes": 1182,
+      "lines": 19,
+      "sha256": "5de656cc37c2c4d2830e00bf700210da1e81f6a9e475479e77fcb46a22c1c0a1",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 3
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-draft-policy.js",
+      "bytes": 2386,
+      "lines": 30,
+      "sha256": "df9537d882a068d90b8eb5d6d9f91f16f7c1ca3221e548a4b57481d880f06fac",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-duty.js",
+      "bytes": 4115,
+      "lines": 31,
+      "sha256": "57f0c84d559fbc7c25f77df80706eb340956fdade6c809b10f07ee51aa6c1b65",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "fs",
+          "line": 4
+        },
+        {
+          "name": "../engine.js",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-dyn-buildings.js",
+      "bytes": 2734,
+      "lines": 28,
+      "sha256": "8e93472e457fdcf7f40499f132b30baea820e87a7bf2a680aeeb4e675c297281",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "../engine.js",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-dynasty-finance-integrity.js",
+      "bytes": 1197,
+      "lines": 12,
+      "sha256": "d6f54f374b7a4ce02b878a1d6604657c6b2db96c0feac89ebe43f7952cedd92a",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine.js",
+          "line": 3
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-dynasty-government.js",
+      "bytes": 5286,
+      "lines": 126,
+      "sha256": "17e837c7c49dc27000a954b1f253c8ef09fdc6118e8b6a9fb3dfa256c3b97edc",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 3
+        }
+      ],
+      "functions": [
+        {
+          "name": "fixture",
+          "line": 5
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-dynasty.js",
+      "bytes": 34794,
+      "lines": 259,
+      "sha256": "0d041b6151e07c21a220e6d5d0fce5bbfb807bdcbcd0755dd8c1c2df1b99ecc4",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 4
+        },
+        {
+          "name": "node:path",
+          "line": 4
+        },
+        {
+          "name": "node:fs",
+          "line": 4
+        },
+        {
+          "name": "node:os",
+          "line": 4
+        },
+        {
+          "name": "node:child_process",
+          "line": 4
+        },
+        {
+          "name": "../engine.js",
+          "line": 6
+        }
+      ],
+      "functions": [
+        {
+          "name": "drive",
+          "line": 12
+        },
+        {
+          "name": "crownForCheck",
+          "line": 20
+        },
+        {
+          "name": "budgetForCheck",
+          "line": 21
+        },
+        {
+          "name": "main",
+          "line": 22
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-economy-expansion.js",
+      "bytes": 3975,
+      "lines": 21,
+      "sha256": "6db59b52f839c42b94bf468418132b16410d9c7d8096044f50194a59d6f8ffe9",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:vm",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-epithets.js",
+      "bytes": 1351,
+      "lines": 21,
+      "sha256": "651ae7a42aa51a84076bcb9d9166d1406809791f9686d87e8cf345a57aa6f698",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 3
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-event-scenes.js",
+      "bytes": 10085,
+      "lines": 97,
+      "sha256": "dd6e3ec596c4b4f03c63ff974cb8085ba7c9dc0b9c6e4df8401ae3f381d4961c",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 3
+        },
+        {
+          "name": "node:fs",
+          "line": 10
+        },
+        {
+          "name": "node:path",
+          "line": 10
+        },
+        {
+          "name": "node:fs",
+          "line": 53
+        },
+        {
+          "name": "node:path",
+          "line": 53
+        }
+      ],
+      "functions": [
+        {
+          "name": "sceneMap",
+          "line": 11
+        },
+        {
+          "name": "dynPixelPerson",
+          "line": 57
+        },
+        {
+          "name": "dynVenueSceneArt",
+          "line": 58
+        },
+        {
+          "name": "dynSceneSpeaker",
+          "line": 66
+        },
+        {
+          "name": "dynIntimateSceneArt",
+          "line": 69
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-faith-deeds.js",
+      "bytes": 4208,
+      "lines": 44,
+      "sha256": "e4b2c9d0ce0c0f04960a33b69c839dac261c642532e1fdf77c015243be9395f2",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-faith-found.js",
+      "bytes": 3658,
+      "lines": 41,
+      "sha256": "73b4fd0a3f44cd1fb63d339717b3d38807c23dc3e4e41b67b8d924404146083d",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [
+        {
+          "name": "faithOf2",
+          "line": 40
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-far-world.js",
+      "bytes": 2914,
+      "lines": 26,
+      "sha256": "1980841cd260579e90a6537539d77992b9adc287e9965bb5cca65e08e05a8909",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "../engine.js",
+          "line": 4
+        },
+        {
+          "name": "node:fs",
+          "line": 6
+        },
+        {
+          "name": "node:module",
+          "line": 6
+        }
+      ],
+      "functions": [
+        {
+          "name": "boot",
+          "line": 8
+        },
+        {
+          "name": "YEARS",
+          "line": 18
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-founder-ownership.js",
+      "bytes": 2140,
+      "lines": 16,
+      "sha256": "f0ccfefb02f755b1081f71da872081a22aa712883b50c448e597dbf595aa8886",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:module",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-gigs.js",
+      "bytes": 1279,
+      "lines": 22,
+      "sha256": "cd02c8786f202c28cc00d941250536adf4895e6cb67f32446934ed47b5b7dea9",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-gov-org.js",
+      "bytes": 2636,
+      "lines": 26,
+      "sha256": "5227e191c5265b84cc7b7d4a7dff91438f8f3f5a1a47ad9de64593f7df317169",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "../engine",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-heist.js",
+      "bytes": 2248,
+      "lines": 21,
+      "sha256": "e640b7583df656e0658c93ce10463ecdb1e7ccc1d36ec6021d410c186b594163",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "../engine",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-heresy.js",
+      "bytes": 5967,
+      "lines": 38,
+      "sha256": "f5c769680fdffac49129bea6f9abcde26dd1d838f626196f8bda7cbbb81c411a",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 35
+        },
+        {
+          "name": "node:module",
+          "line": 35
+        }
+      ],
+      "functions": [
+        {
+          "name": "cult",
+          "line": 4
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-http.js",
+      "bytes": 2111,
+      "lines": 19,
+      "sha256": "4744ef46087e4b7d6c7ec928fca42d546112a8148aa14b506ea4c1a56c85cc95",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        },
+        {
+          "name": "node:child_process",
+          "line": 2
+        }
+      ],
+      "functions": [
+        {
+          "name": "main",
+          "line": 6
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-inbox.js",
+      "bytes": 1572,
+      "lines": 15,
+      "sha256": "54270660119294a899c9678fd6dd4a006c487d10bca966801b436f425f24f953",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "../engine",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-judiciary.js",
+      "bytes": 4633,
+      "lines": 32,
+      "sha256": "0147a3ccf204468246263249ed018b7e47a7ecd1b63b5a865d160202e2fdf061",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "fs",
+          "line": 4
+        },
+        {
+          "name": "../engine.js",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-lifecycle.js",
+      "bytes": 3718,
+      "lines": 39,
+      "sha256": "76f49c2c881c44b712d14933286f9b5154b70d022320583627c2dc8699daf011",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:vm",
+          "line": 2
+        },
+        {
+          "name": "../server-lifecycle",
+          "line": 3
+        }
+      ],
+      "functions": [
+        {
+          "name": "main",
+          "line": 4
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-liquidation-fairness.js",
+      "bytes": 1396,
+      "lines": 13,
+      "sha256": "aa13bb3ec5aa8a02622999d96be380613b464b0c4a66122f6fc0d38d7d9ac717",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 2
+        }
+      ],
+      "functions": [
+        {
+          "name": "setup",
+          "line": 3
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-marriage-policy.js",
+      "bytes": 1537,
+      "lines": 15,
+      "sha256": "33cbbf63540732e0c5f42356bbffb3199ade1486217e88d98fc7435ec2e8937c",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-mercenary.js",
+      "bytes": 5105,
+      "lines": 26,
+      "sha256": "af200345a764ba8beab0c2683c8553bddc07f9b0b18f6ef08420f57c177f8116",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:vm",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-migration.js",
+      "bytes": 1557,
+      "lines": 16,
+      "sha256": "c5c115878e2fa7ca122935373e5db0d281b0ee90f044b2a1b9c22bc5c2f2416c",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        },
+        {
+          "name": "node:zlib",
+          "line": 2
+        },
+        {
+          "name": "node:worker_threads",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 4
+        }
+      ],
+      "functions": [
+        {
+          "name": "main",
+          "line": 3
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-minister-path.js",
+      "bytes": 2785,
+      "lines": 37,
+      "sha256": "2ffbff8f3abb00ff40bd10d35a106e258a7d524e982bd2d9d5c8b6660a42ac1d",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-mobile-ui.js",
+      "bytes": 8978,
+      "lines": 48,
+      "sha256": "51773687c156dc8fff9ed53033fa154400742988c9665f4849405404be281f06",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:os",
+          "line": 3
+        },
+        {
+          "name": "node:path",
+          "line": 3
+        },
+        {
+          "name": "node:zlib",
+          "line": 3
+        },
+        {
+          "name": "node:vm",
+          "line": 3
+        },
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "node:child_process",
+          "line": 3
+        },
+        {
+          "name": "playwright",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-money.js",
+      "bytes": 1510,
+      "lines": 13,
+      "sha256": "e07a6ec80251b93a5463dec25375950ca191edfb7ff0772bb612870e9ac68056",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:module",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-new-acts.js",
+      "bytes": 2951,
+      "lines": 25,
+      "sha256": "0418c456b9655b597d705b3bc8d1a6e568e2dd642bc6c3f3ad8f2f6ff5f9afbd",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:path",
+          "line": 3
+        },
+        {
+          "name": "node:vm",
+          "line": 3
+        },
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-nobility-path.js",
+      "bytes": 1435,
+      "lines": 14,
+      "sha256": "342205bef8b305d8b3b0e143c88a6b5e0188bf9fb63ff17faf9279cdb7e11a93",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-nobility-politics.js",
+      "bytes": 1125,
+      "lines": 10,
+      "sha256": "859f4eae5c0667809ab1d3f7d8766ed00d1c2d68328d82bb74e825bdebfe0f02",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-orgs.js",
+      "bytes": 5965,
+      "lines": 39,
+      "sha256": "c07a14bf684523faafca5ff1b1278f8d93f058e96dd93ee7d44d7591a64f7929",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:path",
+          "line": 3
+        },
+        {
+          "name": "node:vm",
+          "line": 3
+        },
+        {
+          "name": "../engine.js",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-policy-labels.js",
+      "bytes": 2075,
+      "lines": 20,
+      "sha256": "2f74a29a55ddb3563e91c168d46d13112d794f42bef311fce3b3cd7e606d6093",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "../engine",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-policy-values.js",
+      "bytes": 838,
+      "lines": 16,
+      "sha256": "f01aa38e82f1dc43a1f74e201fc016e5bd81fa95c329e8300647c72713dc6b76",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-political-eligibility.js",
+      "bytes": 1401,
+      "lines": 13,
+      "sha256": "03d8723b15ccdd942dc9c47df04a1c759c8a585c8fd43cc44200d31bfbe4a4a6",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-politics.js",
+      "bytes": 4040,
+      "lines": 34,
+      "sha256": "92ef407292697751c3978327949edc308765b7bd5e924b399eecb1c665311d2b",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "fs",
+          "line": 4
+        },
+        {
+          "name": "../engine.js",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-preach.js",
+      "bytes": 4496,
+      "lines": 39,
+      "sha256": "822e75b9429d4fb93ab6f21867089c9cc9604f86ee5958c3fd1f804c000f329a",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "../engine",
+          "line": 4
+        }
+      ],
+      "functions": [
+        {
+          "name": "keep",
+          "line": 33
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-rebuild-legacy.js",
+      "bytes": 2349,
+      "lines": 78,
+      "sha256": "ad6498c25284b8b7e6f98ffed6112f7e92b54c7659a6595b488ff85a963aa838",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:path",
+          "line": 4
+        },
+        {
+          "name": "node:module",
+          "line": 5
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-rebuild-longplay.js",
+      "bytes": 2425,
+      "lines": 67,
+      "sha256": "3f1c6f2e91a1025ba777db63b3512402cd6677c890ca203379e671f31c8a5691",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../rebuild/game",
+          "line": 3
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-rebuild-performance.js",
+      "bytes": 3243,
+      "lines": 94,
+      "sha256": "83180f36bc034e82090350361fb2431cf68c05228a0f4ede4f9fc9e0f7a7d432",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:os",
+          "line": 4
+        },
+        {
+          "name": "node:path",
+          "line": 5
+        },
+        {
+          "name": "node:zlib",
+          "line": 6
+        },
+        {
+          "name": "node:crypto",
+          "line": 7
+        },
+        {
+          "name": "node:perf_hooks",
+          "line": 8
+        },
+        {
+          "name": "../rebuild/game",
+          "line": 9
+        },
+        {
+          "name": "../engine",
+          "line": 10
+        },
+        {
+          "name": "../rebuild/migration",
+          "line": 11
+        },
+        {
+          "name": "../server-storage",
+          "line": 12
+        }
+      ],
+      "functions": [
+        {
+          "name": "prepare",
+          "line": 17
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-rebuild-systems.js",
+      "bytes": 12692,
+      "lines": 390,
+      "sha256": "1ca77e1abbd5972a17e32a634b3349fdc925094699e24eecf16a9c155c5d52e2",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../rebuild/game",
+          "line": 3
+        },
+        {
+          "name": "../rebuild/migration",
+          "line": 4
+        },
+        {
+          "name": "../engine",
+          "line": 5
+        }
+      ],
+      "functions": [
+        {
+          "name": "test",
+          "line": 7
+        },
+        {
+          "name": "days",
+          "line": 11
+        },
+        {
+          "name": "fixture",
+          "line": 25
+        },
+        {
+          "name": "open",
+          "line": 30
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-rebuild-ui.js",
+      "bytes": 10246,
+      "lines": 302,
+      "sha256": "302bdd9cd20a9333494815966c3535717ce3481f916ddaed365c5e4136c0eb34",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:os",
+          "line": 4
+        },
+        {
+          "name": "node:path",
+          "line": 5
+        },
+        {
+          "name": "node:zlib",
+          "line": 6
+        },
+        {
+          "name": "node:child_process",
+          "line": 7
+        },
+        {
+          "name": "playwright",
+          "line": 8
+        },
+        {
+          "name": "../rebuild/game",
+          "line": 9
+        },
+        {
+          "name": "../engine",
+          "line": 257
+        }
+      ],
+      "functions": [
+        {
+          "name": "start",
+          "line": 18
+        },
+        {
+          "name": "ready",
+          "line": 35
+        },
+        {
+          "name": "stop",
+          "line": 45
+        },
+        {
+          "name": "view",
+          "line": 50
+        },
+        {
+          "name": "cmd",
+          "line": 58
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-rebuild.js",
+      "bytes": 3809,
+      "lines": 114,
+      "sha256": "7df53e5ba0085be4a42f61134708e144fe3d5abbece2a66738a2e641c874316d",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../rebuild/game",
+          "line": 3
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-regime-change.js",
+      "bytes": 6362,
+      "lines": 36,
+      "sha256": "b277c214d38ad6f3d4b7509cf8d1a4ef83c2f362623c4ba090f9af4e66abea33",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "node:fs",
+          "line": 4
+        },
+        {
+          "name": "node:path",
+          "line": 4
+        },
+        {
+          "name": "node:module",
+          "line": 4
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-relationships.js",
+      "bytes": 2782,
+      "lines": 16,
+      "sha256": "33378d01366b0e26e059cdf7f2f0ece76ca5fb0e7144391809d3c14963218523",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:vm",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-review-fixes.js",
+      "bytes": 6889,
+      "lines": 61,
+      "sha256": "ca411a149410854423e3c24ec6e35d17d45d59aea7117ac9db6f43df90e481fd",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 3
+        }
+      ],
+      "functions": [
+        {
+          "name": "boot",
+          "line": 4
+        },
+        {
+          "name": "choose",
+          "line": 5
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-royals.js",
+      "bytes": 3963,
+      "lines": 32,
+      "sha256": "4d5ca8110ec2c458aeae16aad6cfcd4cfbbc93fddf306850a5e91185d5f1117e",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        },
+        {
+          "name": "node:module",
+          "line": 2
+        },
+        {
+          "name": "../server-presenter",
+          "line": 29
+        }
+      ],
+      "functions": [
+        {
+          "name": "fixture",
+          "line": 5
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-server.js",
+      "bytes": 3704,
+      "lines": 45,
+      "sha256": "ac7b800b100112c04c0c1feb629008c75c84e9462364b3bae088302423a7c8c4",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs/promises",
+          "line": 3
+        },
+        {
+          "name": "node:path",
+          "line": 4
+        },
+        {
+          "name": "node:zlib",
+          "line": 5
+        },
+        {
+          "name": "node:worker_threads",
+          "line": 6
+        },
+        {
+          "name": "../server-storage",
+          "line": 8
+        },
+        {
+          "name": "../engine",
+          "line": 12
+        },
+        {
+          "name": "../server-presenter",
+          "line": 22
+        }
+      ],
+      "functions": [
+        {
+          "name": "main",
+          "line": 10
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-social-life.js",
+      "bytes": 3575,
+      "lines": 17,
+      "sha256": "741f56e10ff0e4169a756a5fa7d06dd73676095b8d82c5cc5794d607fb54dc55",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:vm",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-spy-career.js",
+      "bytes": 1847,
+      "lines": 15,
+      "sha256": "ac7a80819e0970a24fc3ce651845e5f61d53ff883366d9a00c4b5c3c764ccd62",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-start-custom.js",
+      "bytes": 3716,
+      "lines": 26,
+      "sha256": "0ee542a6ee3848dfcf1b198ca3a59b5f5c2fd44afe1f03e3321e2cc604fedc26",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-stocks.js",
+      "bytes": 4435,
+      "lines": 25,
+      "sha256": "b44b83660896d0cc0f62efd9c4adb870d8e878e55398548061e761bd57d106d2",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        },
+        {
+          "name": "node:module",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-story-engine.js",
+      "bytes": 2784,
+      "lines": 25,
+      "sha256": "65c2f732ffc8a30f8428b606ff4dbfbdde43bf8d1fd69cb5b7d4b356a931570e",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-story-fuzz.js",
+      "bytes": 3693,
+      "lines": 38,
+      "sha256": "bdf792bb3517dd18c228efca3cdd010c0ef4d9059890f20e54da37e9db59a8f2",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine.js",
+          "line": 3
+        }
+      ],
+      "functions": [
+        {
+          "name": "rich",
+          "line": 4
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-underworld-business.js",
+      "bytes": 1883,
+      "lines": 16,
+      "sha256": "2fd3239bb7d55e60196cc3b1be5f0c0b75d4e039d6841a80af955b34c1cfbf52",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-v74-features.js",
+      "bytes": 1447,
+      "lines": 14,
+      "sha256": "87f2ceb6cfe1827ba26bc8d2bc3c51c60e7a419c127316c46994c4095850fa78",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-v74-stage.js",
+      "bytes": 1848,
+      "lines": 19,
+      "sha256": "d06bf420d0f5a2559bae7e3418d89fe032461447a926d2ad848a602e7d75ac2d",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 3
+        },
+        {
+          "name": "../server-presenter",
+          "line": 5
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-village-invariance.js",
+      "bytes": 2303,
+      "lines": 23,
+      "sha256": "27a66f6b3b7d1c75ec93e93e545d43fbcc2f761e0ea3c4d3607fef3eeaac4544",
+      "generated": false,
+      "requires": [
+        {
+          "name": "crypto",
+          "line": 11
+        },
+        {
+          "name": "path",
+          "line": 11
+        },
+        {
+          "name": "fs",
+          "line": 11
+        },
+        {
+          "name": "os",
+          "line": 11
+        },
+        {
+          "name": "child_process",
+          "line": 11
+        }
+      ],
+      "functions": [
+        {
+          "name": "run",
+          "line": 13
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-war-family.js",
+      "bytes": 3315,
+      "lines": 25,
+      "sha256": "0cfd80f99b21f400659723965b1e5b300777e5004a5ae73f92ef2a30dba4032f",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:vm",
+          "line": 2
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-worker-review-fixes.js",
+      "bytes": 3116,
+      "lines": 11,
+      "sha256": "ecbd278f80887f1bf2dda625f37a471f74ae195254a90c3983fd1cf965f924e1",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:os",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 2
+        },
+        {
+          "name": "node:zlib",
+          "line": 2
+        },
+        {
+          "name": "node:worker_threads",
+          "line": 2
+        },
+        {
+          "name": "../engine",
+          "line": 8
+        }
+      ],
+      "functions": [
+        {
+          "name": "start",
+          "line": 4
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-world-map-seed.js",
+      "bytes": 1124,
+      "lines": 14,
+      "sha256": "567429f8da04bc4196c8524dedc6ee9bc0d05a081ba90c10f02f5db9f120db44",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 1
+        },
+        {
+          "name": "../engine.js",
+          "line": 2
+        }
+      ],
+      "functions": [
+        {
+          "name": "map",
+          "line": 3
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/check-worlds.js",
+      "bytes": 7945,
+      "lines": 89,
+      "sha256": "9bb8946d82768789a167901d09f7fdf7c96d9b204b6411ef11864c04eb35593c",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:assert/strict",
+          "line": 3
+        },
+        {
+          "name": "node:path",
+          "line": 3
+        },
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:crypto",
+          "line": 3
+        },
+        {
+          "name": "node:zlib",
+          "line": 3
+        },
+        {
+          "name": "node:child_process",
+          "line": 3
+        }
+      ],
+      "functions": [
+        {
+          "name": "start",
+          "line": 6
+        },
+        {
+          "name": "waitHealth",
+          "line": 12
+        },
+        {
+          "name": "main",
+          "line": 14
+        },
+        {
+          "name": "view",
+          "line": 24
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/deploy-on-demand.js",
+      "bytes": 3646,
+      "lines": 28,
+      "sha256": "bea6d6064b85deeb7caf0e7b98032388a0e5b61d99bc27182a7b6d8860db711a",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:path",
+          "line": 3
+        },
+        {
+          "name": "node:crypto",
+          "line": 3
+        },
+        {
+          "name": "node:child_process",
+          "line": 3
+        }
+      ],
+      "functions": [
+        {
+          "name": "aws",
+          "line": 18
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "scripts/report-flat-stories.js",
+      "bytes": 4167,
+      "lines": 31,
+      "sha256": "60b1ee82caf1af5d843caa1e0e23c807d57da3e7635d175f14bbe9698278bff5",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:fs",
+          "line": 4
+        },
+        {
+          "name": "node:path",
+          "line": 4
+        },
+        {
+          "name": "../engine.js",
+          "line": 5
+        }
+      ],
+      "functions": [],
+      "switchCases": []
+    },
+    {
+      "file": "server-lifecycle.js",
+      "bytes": 3624,
+      "lines": 60,
+      "sha256": "a7a730574316834aaaa5c9574940e8f479777a148f381bdd2af5bd3f63e69d36",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "verifyEc2",
+          "line": 24
+        },
+        {
+          "name": "stopViaGate",
+          "line": 34
+        },
+        {
+          "name": "createLifecycle",
+          "line": 40
+        },
+        {
+          "name": "tick",
+          "line": 42
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "server-presenter.js",
+      "bytes": 2940,
+      "lines": 40,
+      "sha256": "cdc145b65f1c939516a88f45f0eab1ffee56b9a3586a3ae389be58b3e83adff0",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:vm",
+          "line": 4
+        },
+        {
+          "name": "node:path",
+          "line": 5
+        },
+        {
+          "name": "./engine.js",
+          "line": 31
+        }
+      ],
+      "functions": [
+        {
+          "name": "fragments",
+          "line": 6
+        },
+        {
+          "name": "element",
+          "line": 15
+        },
+        {
+          "name": "createPresenter",
+          "line": 21
+        },
+        {
+          "name": "tag",
+          "line": 27
+        },
+        {
+          "name": "drawApt",
+          "line": 29
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "server-storage.js",
+      "bytes": 1320,
+      "lines": 23,
+      "sha256": "52ddebfd11e97b9543cc7ced214dd47bd6532b6dcba7f84be25faf8b7ea0fffa",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:fs",
+          "line": 2
+        },
+        {
+          "name": "node:stream",
+          "line": 3
+        },
+        {
+          "name": "node:stream/promises",
+          "line": 4
+        },
+        {
+          "name": "node:zlib",
+          "line": 5
+        }
+      ],
+      "functions": [
+        {
+          "name": "writeSnapshot",
+          "line": 15
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "server.js",
+      "bytes": 13951,
+      "lines": 197,
+      "sha256": "bf6904b3132e581b3e7021f92e26806dfd8cafd14324f1103cfbe67c49bb21d0",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:http",
+          "line": 2
+        },
+        {
+          "name": "node:path",
+          "line": 3
+        },
+        {
+          "name": "node:fs",
+          "line": 4
+        },
+        {
+          "name": "node:zlib",
+          "line": 5
+        },
+        {
+          "name": "node:crypto",
+          "line": 6
+        },
+        {
+          "name": "node:worker_threads",
+          "line": 7
+        },
+        {
+          "name": "./server-lifecycle",
+          "line": 8
+        }
+      ],
+      "functions": [
+        {
+          "name": "makePage",
+          "line": 26
+        },
+        {
+          "name": "spawnWorld",
+          "line": 38
+        },
+        {
+          "name": "request",
+          "line": 66
+        },
+        {
+          "name": "stopWorld",
+          "line": 75
+        },
+        {
+          "name": "use",
+          "line": 81
+        },
+        {
+          "name": "canSwitchTo",
+          "line": 97
+        },
+        {
+          "name": "sendJson",
+          "line": 102
+        },
+        {
+          "name": "sendGzip",
+          "line": 106
+        },
+        {
+          "name": "readBody",
+          "line": 108
+        },
+        {
+          "name": "ready",
+          "line": 115
+        },
+        {
+          "name": "readyWait",
+          "line": 120
+        },
+        {
+          "name": "handleWorld",
+          "line": 127
+        },
+        {
+          "name": "sendPage",
+          "line": 160
+        },
+        {
+          "name": "shutdown",
+          "line": 194
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "sim-worker.js",
+      "bytes": 14714,
+      "lines": 216,
+      "sha256": "ac48cd141cc975c4c6d7e1cf1507fab7e1138ee2e18db01ece96de2bd08cf127",
+      "generated": false,
+      "requires": [
+        {
+          "name": "node:worker_threads",
+          "line": 2
+        },
+        {
+          "name": "node:fs",
+          "line": 3
+        },
+        {
+          "name": "node:path",
+          "line": 4
+        },
+        {
+          "name": "node:zlib",
+          "line": 5
+        },
+        {
+          "name": "node:crypto",
+          "line": 6
+        },
+        {
+          "name": "./engine.js",
+          "line": 7
+        },
+        {
+          "name": "./engine.js",
+          "line": 8
+        },
+        {
+          "name": "./server-storage",
+          "line": 9
+        },
+        {
+          "name": "./server-presenter",
+          "line": 10
+        }
+      ],
+      "functions": [
+        {
+          "name": "shouldStop",
+          "line": 34
+        },
+        {
+          "name": "restore",
+          "line": 39
+        },
+        {
+          "name": "newWorld",
+          "line": 57
+        },
+        {
+          "name": "makeView",
+          "line": 67
+        },
+        {
+          "name": "sendView",
+          "line": 93
+        },
+        {
+          "name": "save",
+          "line": 104
+        },
+        {
+          "name": "advance",
+          "line": 120
+        },
+        {
+          "name": "answer",
+          "line": 145
+        },
+        {
+          "name": "resident",
+          "line": 146
+        },
+        {
+          "name": "handleMessage",
+          "line": 159
+        }
+      ],
+      "switchCases": []
+    },
+    {
+      "file": "ui2.html",
+      "bytes": 273720,
+      "lines": 1447,
+      "sha256": "8cbde74603f1ba7568d0b41967aaffe95b04a3e70edb5a233629cd13e2fb51a1",
+      "generated": false,
+      "requires": [],
+      "functions": [
+        {
+          "name": "showStop",
+          "line": 206
+        },
+        {
+          "name": "resumeRun",
+          "line": 209
+        },
+        {
+          "name": "markStop",
+          "line": 210
+        },
+        {
+          "name": "hitStop",
+          "line": 211
+        },
+        {
+          "name": "clampZ",
+          "line": 219
+        },
+        {
+          "name": "fitMap",
+          "line": 222
+        },
+        {
+          "name": "px",
+          "line": 227
+        },
+        {
+          "name": "drawBG",
+          "line": 228
+        },
+        {
+          "name": "drawTerrain",
+          "line": 286
+        },
+        {
+          "name": "drawHuts",
+          "line": 302
+        },
+        {
+          "name": "drawHouse",
+          "line": 303
+        },
+        {
+          "name": "drawShop",
+          "line": 320
+        },
+        {
+          "name": "drawSite",
+          "line": 327
+        },
+        {
+          "name": "drawApt",
+          "line": 331
+        },
+        {
+          "name": "drawBldg",
+          "line": 334
+        },
+        {
+          "name": "targetOf",
+          "line": 348
+        },
+        {
+          "name": "visAgents",
+          "line": 364
+        },
+        {
+          "name": "retarget",
+          "line": 365
+        },
+        {
+          "name": "snap",
+          "line": 366
+        },
+        {
+          "name": "inside",
+          "line": 367
+        },
+        {
+          "name": "drawAgents",
+          "line": 368
+        },
+        {
+          "name": "drawHall",
+          "line": 388
+        },
+        {
+          "name": "drawCamp",
+          "line": 389
+        },
+        {
+          "name": "drawPlotFlags",
+          "line": 390
+        },
+        {
+          "name": "render",
+          "line": 391
+        },
+        {
+          "name": "resize",
+          "line": 416
+        },
+        {
+          "name": "tag",
+          "line": 421
+        },
+        {
+          "name": "keyLabels",
+          "line": 426
+        },
+        {
+          "name": "drawFX",
+          "line": 430
+        },
+        {
+          "name": "zoomAt",
+          "line": 448
+        },
+        {
+          "name": "select",
+          "line": 456
+        },
+        {
+          "name": "showErr",
+          "line": 459
+        },
+        {
+          "name": "frame",
+          "line": 460
+        },
+        {
+          "name": "jump",
+          "line": 469
+        },
+        {
+          "name": "runJump",
+          "line": 470
+        },
+        {
+          "name": "start",
+          "line": 473
+        },
+        {
+          "name": "srcBar",
+          "line": 478
+        },
+        {
+          "name": "mainSrc",
+          "line": 479
+        },
+        {
+          "name": "tags",
+          "line": 480
+        },
+        {
+          "name": "renderUI",
+          "line": 494
+        },
+        {
+          "name": "bar",
+          "line": 508
+        },
+        {
+          "name": "familyLink",
+          "line": 509
+        },
+        {
+          "name": "familyPeople",
+          "line": 510
+        },
+        {
+          "name": "familyHTML",
+          "line": 511
+        },
+        {
+          "name": "royalSuccessionHTML",
+          "line": 517
+        },
+        {
+          "name": "renderCard",
+          "line": 520
+        },
+        {
+          "name": "renderCard0",
+          "line": 521
+        },
+        {
+          "name": "retitle",
+          "line": 587
+        },
+        {
+          "name": "routeHTML",
+          "line": 612
+        },
+        {
+          "name": "secKey",
+          "line": 620
+        },
+        {
+          "name": "postPanel",
+          "line": 621
+        },
+        {
+          "name": "buildNav",
+          "line": 628
+        },
+        {
+          "name": "saveTab",
+          "line": 633
+        },
+        {
+          "name": "renderPanel",
+          "line": 634
+        },
+        {
+          "name": "renderPanel0",
+          "line": 635
+        },
+        {
+          "name": "axes",
+          "line": 652
+        },
+        {
+          "name": "evoHTML",
+          "line": 655
+        },
+        {
+          "name": "spark",
+          "line": 678
+        },
+        {
+          "name": "wealthParts",
+          "line": 681
+        },
+        {
+          "name": "wealthBar",
+          "line": 689
+        },
+        {
+          "name": "polVal",
+          "line": 691
+        },
+        {
+          "name": "polSec",
+          "line": 693
+        },
+        {
+          "name": "corpHTML",
+          "line": 704
+        },
+        {
+          "name": "stockHTML",
+          "line": 710
+        },
+        {
+          "name": "xT",
+          "line": 714
+        },
+        {
+          "name": "fireHTML",
+          "line": 715
+        },
+        {
+          "name": "instHTML",
+          "line": 718
+        },
+        {
+          "name": "cpiAt",
+          "line": 723
+        },
+        {
+          "name": "macroHTML",
+          "line": 724
+        },
+        {
+          "name": "ineqHTML",
+          "line": 725
+        },
+        {
+          "name": "landHTML",
+          "line": 726
+        },
+        {
+          "name": "schHTML",
+          "line": 732
+        },
+        {
+          "name": "finHTML",
+          "line": 734
+        },
+        {
+          "name": "admHTML",
+          "line": 763
+        },
+        {
+          "name": "govHTML",
+          "line": 772
+        },
+        {
+          "name": "bldHTML",
+          "line": 828
+        },
+        {
+          "name": "lineChart",
+          "line": 861
+        },
+        {
+          "name": "stackChart",
+          "line": 864
+        },
+        {
+          "name": "jobHTML",
+          "line": 868
+        },
+        {
+          "name": "famHTML",
+          "line": 886
+        },
+        {
+          "name": "adultHTML",
+          "line": 913
+        },
+        {
+          "name": "darkHTML",
+          "line": 949
+        },
+        {
+          "name": "dark2HTML",
+          "line": 987
+        },
+        {
+          "name": "gambHTML",
+          "line": 1000
+        },
+        {
+          "name": "sumHTML",
+          "line": 1012
+        },
+        {
+          "name": "abrHTML",
+          "line": 1034
+        },
+        {
+          "name": "majHTML",
+          "line": 1037
+        },
+        {
+          "name": "eduHTML",
+          "line": 1041
+        },
+        {
+          "name": "medHTML",
+          "line": 1060
+        },
+        {
+          "name": "infraHTML",
+          "line": 1075
+        },
+        {
+          "name": "disHTML",
+          "line": 1088
+        },
+        {
+          "name": "milHTML",
+          "line": 1095
+        },
+        {
+          "name": "tourHTML",
+          "line": 1114
+        },
+        {
+          "name": "tradeHTML",
+          "line": 1127
+        },
+        {
+          "name": "techHTML",
+          "line": 1149
+        },
+        {
+          "name": "socHTML",
+          "line": 1216
+        },
+        {
+          "name": "opnHTML",
+          "line": 1243
+        },
+        {
+          "name": "funHTML",
+          "line": 1265
+        },
+        {
+          "name": "distHTML",
+          "line": 1275
+        },
+        {
+          "name": "polHTML",
+          "line": 1286
+        },
+        {
+          "name": "mktHTML",
+          "line": 1318
+        },
+        {
+          "name": "b64",
+          "line": 1374
+        },
+        {
+          "name": "unb64",
+          "line": 1375
+        },
+        {
+          "name": "gPack",
+          "line": 1376
+        },
+        {
+          "name": "gUnpack",
+          "line": 1377
+        },
+        {
+          "name": "stringifyCooperatively",
+          "line": 1379
+        },
+        {
+          "name": "pack",
+          "line": 1391
+        },
+        {
+          "name": "unpack",
+          "line": 1393
+        },
+        {
+          "name": "setSave",
+          "line": 1396
+        },
+        {
+          "name": "where",
+          "line": 1397
+        },
+        {
+          "name": "saveGame",
+          "line": 1426
+        },
+        {
+          "name": "openBlob",
+          "line": 1431
+        },
+        {
+          "name": "initStore",
+          "line": 1433
+        }
+      ],
+      "switchCases": []
+    }
+  ],
+  "probes": {
+    "scope": "고정 시드의 메모리 내 관찰. 모든 조합·모바일·실서버 검증을 뜻하지 않는다.",
+    "newGame": {
+      "people": 60,
+      "districts": 3,
+      "sites": 9,
+      "routes": 3,
+      "firms": 3,
+      "parties": 3,
+      "regimes": [
+        "republic",
+        "council",
+        "monarchy"
+      ],
+      "goods": [
+        "food",
+        "tools",
+        "cloth"
+      ],
+      "policies": [
+        "volume",
+        "quality",
+        "training",
+        "contract",
+        "reserve"
+      ]
+    },
+    "goalChange": {
+      "compared": "목표 변경 후 하루 진행 vs 기본 목표로 하루 진행",
+      "peopleEqual": true,
+      "firmsEqual": true,
+      "plansEqual": true
+    },
+    "learning": {
+      "compared": "동일 상태에 서로 다른 g/q를 넣어 하루 진행한 뒤 뷰 비교",
+      "viewsEqual": true,
+      "interpretation": "이 표본에서는 g/q 변경이 새 게임 결과에 반영되지 않는다. 소스의 읽기 경로도 별도로 확인해야 한다."
+    },
+    "migration": {
+      "oldPopulation": 40,
+      "newPeople": 39,
+      "playerSeparate": true,
+      "oldDay": 0,
+      "newDay": 0,
+      "oldUnder18": 0,
+      "newUnder18": 0,
+      "oldFirms": 0,
+      "newFirms": 0,
+      "oldHouses": 18,
+      "newHouseObjects": false,
+      "newFamilyMembers": [
+        {
+          "id": "founder",
+          "age": 30,
+          "kind": "head"
+        },
+        {
+          "id": "heir",
+          "age": 16,
+          "kind": "child"
+        },
+        {
+          "id": "sibling",
+          "age": 14,
+          "kind": "child"
+        }
+      ],
+      "archivedSourceEqual": true,
+      "limitation": "원본 보관 일치와 원래 권리·계약을 이어가는 마이그레이션은 서로 다르다."
+    },
+    "migrationControlledFixture": {
+      "description": "기존 저장에 미성년 주민과 진행 날짜가 있는 경우의 변환 관찰",
+      "sourceAge": 6,
+      "targetAge": 18,
+      "sourceDay": 123,
+      "targetDay": 0
+    },
+    "legacySurface": {
+      "seed": 19,
+      "population": 120,
+      "rank": 1,
+      "listedActionCount": 105,
+      "executableActionCount": 61,
+      "actionPrefixes": {
+        "council": 1,
+        "lord": 1,
+        "revolt": 1,
+        "gang": 1,
+        "fam": 3,
+        "kin": 1,
+        "net": 2,
+        "med": 1,
+        "dark": 5,
+        "ext": 2,
+        "biz": 18,
+        "goal": 4,
+        "extra": 1,
+        "crime": 8,
+        "adult": 5,
+        "wf": 1,
+        "merc": 1,
+        "econ": 21,
+        "social": 13,
+        "rel": 2,
+        "house": 1,
+        "stock": 1,
+        "firm": 1,
+        "loan": 8,
+        "dep": 1,
+        "bank": 1
+      },
+      "storyDefinitions": 638,
+      "limitation": "이 시작 인물의 목록이며 모든 직위·상황에서의 전체 행동 수가 아니다."
+    }
+  },
+  "limitations": [
+    "정규식 목록은 명시적 함수·문자열 require·case만 추출한다.",
+    "HTML 삽입·VM 실행·콜백·동적 행동 키는 수동 추적이 필요하다.",
+    "함수/테스트/파일의 존재를 기능 완료로 판정하지 않는다."
+  ]
+}

@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict'),{createWorld}=require('../engine'),{createSession}=require('../rebuild/core/session');
+const w=createWorld(42,100);w.dynStart();const a=w.S.byId.get(w.S.dyn.pid);a.alive=false;
+const original=structuredClone(w.exportState());
+assert(original.S.agents.some(x=>x.id===a.id&&!x.alive));assert(original.dead.some(x=>x.id===a.id));
+let s=createSession({mode:'strategy',legacy:original,playerId:a.id});
+assert.equal(s.summary().population,99);assert.equal(s.people().total,99);assert.equal(s.map().residents.some(x=>x.ref.id===a.id),false);
+assert.equal(s.read({kind:'person',id:a.id}).alive,false);assert.deepEqual(s.read({kind:'person',id:a.id}).q,a.q);
+const saved=JSON.parse(JSON.stringify(s.checkpoint()));s.close();s=createSession({checkpoint:saved});
+assert.equal(s.read({kind:'person',id:a.id}).alive,false);assert.deepEqual(s.read({kind:'person',id:a.id}).g,a.g);s.close();
+const bad=structuredClone(original);bad.S.agents.find(x=>x.id===a.id).alive=true;
+assert.throws(()=>createSession({legacy:bad}),/INVALID_PERSON_ID/);
+const duplicate=structuredClone(original);duplicate.dead.push(structuredClone(duplicate.dead[0]));
+assert.throws(()=>createSession({legacy:duplicate}),/INVALID_PERSON_ID/);
+console.log('엔진의 정리 전 사망자 중복 표현·전체 g/q·JSON 복원·생존 인구/지도·충돌 신원 거부 통과');

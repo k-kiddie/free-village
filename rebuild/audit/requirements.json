@@ -1,0 +1,1447 @@
+{
+  "schemaVersion": 1,
+  "auditedCodeCommit": "c48651f3cb4f47dd43bf9eb0879c8bbb7693d012",
+  "statusMeaning": "부분 구현은 코드 경로가 있다는 뜻이며 요구 충족·단계 완료가 아니다.",
+  "requirements": [
+    {
+      "id": "W01",
+      "area": "세계·지도",
+      "requirement": "장소·건물·지역·인물에서 상태와 행동으로 이어지는 지도",
+      "current": "9개 점포와 지역 정보·대상 패널이 있다.",
+      "gap": "인물·도로·주거·생산지가 같은 실제 공간 모델에 연결되지 않는다.",
+      "nextPhase": 4,
+      "disposition": "교체",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "function map()",
+          "line": 168
+        }
+      ],
+      "acceptance": "지도에서 건물·지역·인물을 선택해 필요한 행동을 직접 끝낸다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "W02",
+      "area": "세계·지도",
+      "requirement": "식량·일자리·주거·가격·운송·여론 레이어",
+      "current": "지역 집계값을 선택해 표시한다.",
+      "gap": "고정 3개 지역의 수치이며 원인과 공간 분포를 함께 탐색하는 기능이 부족하다.",
+      "nextPhase": 4,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "function map()",
+          "line": 168
+        }
+      ],
+      "acceptance": "지도상의 부족·과잉과 원인을 확인해 대상에 개입한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "W03",
+      "area": "세계·지도",
+      "requirement": "입지별 임대·매입·수요·접근성·경쟁 비교",
+      "current": "고정 부지·매입가·임대료와 지역 수요를 표시한다.",
+      "gap": "상권·통행·토지 용도·매물 주체가 없고 가격은 초기 상수 중심이다.",
+      "nextPhase": 6,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "for (let i = 0; i < 9; i++)",
+          "line": 96
+        }
+      ],
+      "acceptance": "두 입지를 실제 비용·접근·수요·경쟁으로 비교해 사업 성과 차이를 설명한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "W04",
+      "area": "세계·지도",
+      "requirement": "지도 현상이 실제 세계 상태와 연결",
+      "current": "집계값과 일부 경로는 계산한다.",
+      "gap": "부지 x/y와 화면 좌표가 별개이며 지도는 ID로 배치하는 도식이다.",
+      "nextPhase": 4,
+      "disposition": "교체",
+      "evidence": [
+        {
+          "file": "rebuild/schema.js",
+          "anchor": "s.x ??=",
+          "line": 121
+        }
+      ],
+      "acceptance": "좌표·연결·건물 상태 변경이 지도와 계산에 일치한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "W05",
+      "area": "세계·지도",
+      "requirement": "원래 공간·주민 시뮬레이션의 재사용 점검",
+      "current": "기존 지형·부지·주민 엔진은 classic/god에서 실행된다.",
+      "gap": "새 게임은 기존 지형·주민 학습을 사용하지 않는다. 재사용 여부를 성능·동작으로 비교해야 한다.",
+      "nextPhase": 2,
+      "disposition": "유지 후보",
+      "evidence": [
+        {
+          "file": "engine.js",
+          "anchor": "function createWorld(seed,N)",
+          "line": 101
+        }
+      ],
+      "acceptance": "재사용 경계를 데이터와 호출 경로로 확정한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "P01",
+      "area": "목표·계획",
+      "requirement": "하나의 주된 목표와 여러 진행 계획",
+      "current": "목표 문자열과 계획 배열이 있다.",
+      "gap": "목표 변경이 다음 행동·계획·장기 평가를 구성하지 않는다.",
+      "nextPhase": 8,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "case \"goal\":",
+          "line": 289
+        }
+      ],
+      "acceptance": "목표에 필요한 단계·막힌 조건·다음 개입점을 안내한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "P02",
+      "area": "목표·계획",
+      "requirement": "예산·사람·권한·기간·위험·진행률 표시",
+      "current": "예산 예약·진행률·일부 중단 이유와 담당자가 있다.",
+      "gap": "인력·행정 업무량을 공동 자원으로 다루지 않으며 위험 표시도 일부 계획에 한정된다.",
+      "nextPhase": 8,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "function plan(",
+          "line": 202
+        }
+      ],
+      "acceptance": "모든 계획의 자원·담당·권한·기간·위험과 실패 이유가 설명된다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "P03",
+      "area": "목표·계획",
+      "requirement": "규모·담당자·우선순위 변경",
+      "current": "일시정지·취소·우선 처리·담당자 변경이 있다.",
+      "gap": "진행 중 규모 조정·자원 재배치와 다른 업무와의 경쟁이 단순하다.",
+      "nextPhase": 8,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "case \"plan\":",
+          "line": 507
+        }
+      ],
+      "acceptance": "계획을 조정했을 때 일정·비용·담당자의 다른 업무가 함께 바뀐다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "P04",
+      "area": "목표·계획",
+      "requirement": "시간·돈·사람·신뢰의 기회비용",
+      "current": "하루 3칸과 예산·관계 조건을 쓴다.",
+      "gap": "직원·조직·행정 담당자의 사용 시간이 통합돼 있지 않다.",
+      "nextPhase": 8,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "function energy(",
+          "line": 188
+        }
+      ],
+      "acceptance": "같은 인력·자금을 두 계획에 중복 배정할 수 없고 포기한 대안을 설명한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "T01",
+      "area": "시간·경쟁",
+      "requirement": "경쟁 상인·후보·직원·관료가 스스로 움직임",
+      "current": "경쟁 상회의 조건부 확장·고용·방침 변경과 일부 이직이 있다.",
+      "gap": "후보와 세력의 자체 계획·협상·인재 경쟁은 없다.",
+      "nextPhase": 7,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/economy.js",
+          "anchor": "f.owner === \"rival\"",
+          "line": 344
+        }
+      ],
+      "acceptance": "다른 주체의 목표가 기회·입지·계약·선거 구도를 바꾼다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "T02",
+      "area": "시간·경쟁",
+      "requirement": "변화 원인·징후를 관찰하고 대응",
+      "current": "결과 소식과 일부 상태값이 있다.",
+      "gap": "행동 전 의도·진행 중인 경쟁 계획·예상 영향이 드러나지 않는다.",
+      "nextPhase": 7,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "function note(",
+          "line": 137
+        }
+      ],
+      "acceptance": "변화 징후를 보고 개입할 기회와 지나간 원인을 제공한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "T03",
+      "area": "시간·경쟁",
+      "requirement": "대기 중에도 판단할 거리 제공",
+      "current": "가격·재고·소비·고용·계획이 진행된다.",
+      "gap": "정해진 날짜 조건 외에 목표 충돌·기회 탐색을 통해 개입이 생성되는 구조가 부족하다.",
+      "nextPhase": 14,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "function tick()",
+          "line": 575
+        }
+      ],
+      "acceptance": "알림을 기다리지 않고 관찰·계획·운영을 이어가는 연속 플레이를 확인한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "R01",
+      "area": "역할·성장",
+      "requirement": "주민의 생계·주거·기술·관계·가족",
+      "current": "품팔이·주거 비용·지역 주거 용량·가문 교육이 있다.",
+      "gap": "개별 주택·일과·생활 욕구·가족 부양의 연결이 단순하다.",
+      "nextPhase": 5,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/society.js",
+          "anchor": "function beforeTick()",
+          "line": 32
+        }
+      ],
+      "acceptance": "생활 선택의 비용과 이후 일자리·건강·관계 영향을 검증한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "R02",
+      "area": "역할·성장",
+      "requirement": "장인·상인의 생산·고용·계약·경쟁 판단",
+      "current": "상품 3종과 고용·공급·판매처·방침을 조합한다.",
+      "gap": "업종·공정·고객층·계약 관계와 경쟁 구조가 제한적이다.",
+      "nextPhase": 6,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/economy.js",
+          "anchor": "function tick()",
+          "line": 91
+        }
+      ],
+      "acceptance": "같은 사업 목표에 서로 다른 지속 가능한 전략이 성립한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "R03",
+      "area": "역할·성장",
+      "requirement": "지역 유력자의 문제 해결·인맥·조직",
+      "current": "조직 수치·면담·후원·영입이 있다.",
+      "gap": "조직 자체의 구성원·재정·업무·지역 문제 해결 계획이 부족하다.",
+      "nextPhase": 7,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "case \"organize\":",
+          "line": 441
+        }
+      ],
+      "acceptance": "조직이 실제 구성원·자원·이해관계를 가지고 문제 해결에 참여한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "R04",
+      "area": "역할·성장",
+      "requirement": "정치인의 기반·공약·정당·연대·선거",
+      "current": "공약·연대·투표·재출마가 있다.",
+      "gap": "상대 후보의 개인 기반과 선거 준비 활동이 없다.",
+      "nextPhase": 9,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/politics.js",
+          "anchor": "function elect()",
+          "line": 231
+        }
+      ],
+      "acceptance": "경쟁 후보의 실제 활동과 서로 다른 공약이 당락·정책에 연결된다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "R05",
+      "area": "역할·성장",
+      "requirement": "통치자의 인사·예산·행정·세력 균형",
+      "current": "책임자·일부 법안·공공사업을 집행한다.",
+      "gap": "예산 편성·기관 업무·관료 집단·세력 균형이 통합되지 않았다.",
+      "nextPhase": 9,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/politics.js",
+          "anchor": "case \"appoint\":",
+          "line": 158
+        }
+      ],
+      "acceptance": "위임·예산·방향 설정으로 운영하고 병목과 반발에 개입한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "R06",
+      "area": "역할·성장",
+      "requirement": "가문 독립 목표·성장에 따른 조작 변화",
+      "current": "사업망·생활 안정·계승 횟수의 성취가 있다.",
+      "gap": "장기 목표의 준비·실패·다양한 달성 경로와 역할별 판단 규모 변화가 검증되지 않았다.",
+      "nextPhase": 12,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/systems.js",
+          "anchor": "function afterTick()",
+          "line": 19
+        }
+      ],
+      "acceptance": "권력 획득 없이 사업·가문 경로를 독립적으로 지속하고 성장 방식을 비교한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "E01",
+      "area": "사업·경제",
+      "requirement": "임대·매입·동업·초기 자금 조합",
+      "current": "매입·동업·고정 대출·운영자금 투입이 있다.",
+      "gap": "실제 권리자·조건 협상·투자자·담보·대안 자금 조달이 단순하다.",
+      "nextPhase": 6,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/economy.js",
+          "anchor": "case \"partner\":",
+          "line": 59
+        }
+      ],
+      "acceptance": "상대와 조건에 따른 계약·권리·위험이 발생한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "E02",
+      "area": "사업·경제",
+      "requirement": "업종별 생산품·원료·설비·직원",
+      "current": "상품·직원·원료량으로 생산한다.",
+      "gap": "원료가 공통 raw 수치라 grain/timber/fiber 종류별 제조 공정이 없다.",
+      "nextPhase": 6,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/economy.js",
+          "anchor": "const source = district(",
+          "line": 138
+        }
+      ],
+      "acceptance": "원료 종류와 설비·노동 조건을 충족해야 해당 상품을 생산한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "E03",
+      "area": "사업·경제",
+      "requirement": "반복 지시 대신 서로 다른 운영 방침",
+      "current": "가격·출력·숙련·현금 보유 방침이 있다.",
+      "gap": "안정 납품 방침은 별도 계약 선택 전략보다 가격·출력 차이에 가깝다. 모든 방침의 전략적 생존성은 미검증이다.",
+      "nextPhase": 6,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/economy.js",
+          "anchor": "const RULES =",
+          "line": 4
+        }
+      ],
+      "acceptance": "각 방침의 장단점·적합 상황을 실제 연속 운영으로 확인한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "E04",
+      "area": "사업·경제",
+      "requirement": "특별 주문·확장·공급·임금·가격 대응",
+      "current": "일부 주문·확장·임금·공급 변경을 제공한다.",
+      "gap": "시장 상황을 읽어 경쟁 계약·고객·제품을 바꾸는 범용 대응은 부족하다.",
+      "nextPhase": 6,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/story.js",
+          "anchor": "if (!P.office && !P.candidate && S.day % 29 === 0)",
+          "line": 275
+        }
+      ],
+      "acceptance": "경쟁 변화가 다른 대응 전략과 비용을 만들고 결과에 남는다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "E05",
+      "area": "사업·경제",
+      "requirement": "재고·품질·고객·직원·지역 생활에 결과",
+      "current": "재고·품질·고객 누계·충성·소비가 갱신된다.",
+      "gap": "고객별 선호·충성·재구매와 지역별 품질 수요가 없다.",
+      "nextPhase": 6,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/economy.js",
+          "anchor": "f.customers =",
+          "line": 309
+        }
+      ],
+      "acceptance": "고객층과 품질·임금 선택이 수요·유지·손익을 다르게 바꾼다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "E06",
+      "area": "사업·경제",
+      "requirement": "고용·임금·독점·공급 의존·경제 위기",
+      "current": "임금·체불·소비·품귀가 발생한다.",
+      "gap": "독점 권리·공급망 충격·기업 연쇄 위험과 회복 모델은 없다.",
+      "nextPhase": 6,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/economy.js",
+          "anchor": "if (f.cash - reserve < wage)",
+          "line": 183
+        }
+      ],
+      "acceptance": "공급 중단·독점·체불이 다른 경제 주체에 전파되고 대응·회복 경로가 있다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "E07",
+      "area": "사업·경제",
+      "requirement": "실제 경로·비용·용량·납기의 물류",
+      "current": "고정 3개 경로의 거리·용량·도착 시간을 계산한다.",
+      "gap": "지형·실제 도로·시설 위치에 따른 공간 물류는 아니다.",
+      "nextPhase": 6,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/society.js",
+          "anchor": "function path(from, to)",
+          "line": 6
+        }
+      ],
+      "acceptance": "지도 연결의 변경과 비용·도착·공급 부족이 일치한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "G01",
+      "area": "정치",
+      "requirement": "생활·가치·신뢰에 따른 집단별 지지와 원인",
+      "current": "네 집단의 다른 산식과 설명을 표시한다.",
+      "gap": "집단은 ID 나머지로 지정되고 직업·재산·가치에 따라 재구성되지 않는다.",
+      "nextPhase": 9,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/society.js",
+          "anchor": "function support()",
+          "line": 89
+        }
+      ],
+      "acceptance": "실제 생계·이익·가치의 차이가 집단과 지지 변화의 원인이 된다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "G02",
+      "area": "정치",
+      "requirement": "면담·방문·공약·연설·조직·영입·연대",
+      "current": "관련 행동이 있다.",
+      "gap": "행동의 상대·내용·자원·약속 조건이 대부분 고정이다.",
+      "nextPhase": 9,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/politics.js",
+          "anchor": "function command(c)",
+          "line": 71
+        }
+      ],
+      "acceptance": "각 수단의 영향 대상·시간·돈·신뢰와 대안을 비교한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "G03",
+      "area": "정치",
+      "requirement": "후보 신뢰·공약·조직·기반·참여·경쟁 후보",
+      "current": "주민별 투표·참여와 고정 경쟁 점수를 비교한다.",
+      "gap": "경쟁 후보 인물·자산·약속·조직·활동이 없다.",
+      "nextPhase": 9,
+      "disposition": "교체",
+      "evidence": [
+        {
+          "file": "rebuild/politics.js",
+          "anchor": "const rival =",
+          "line": 248
+        }
+      ],
+      "acceptance": "자율 후보가 같은 자원과 제도를 사용해 선거를 준비한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "G04",
+      "area": "정치",
+      "requirement": "낙선 후 야당·감시·조직·재출마",
+      "current": "감시·조직·토론·재출마가 가능하다.",
+      "gap": "실제 감사 결과·야당 의정·지역 의제가 연속적으로 이어지지 않는다.",
+      "nextPhase": 9,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/politics.js",
+          "anchor": "case \"oversight\":",
+          "line": 209
+        }
+      ],
+      "acceptance": "낙선 후 한 선거 주기 동안 할 일과 평가가 이어진다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "G05",
+      "area": "정치",
+      "requirement": "정부 수립·의회·정책·인사·예산 집행",
+      "current": "9석 고정 의회·일부 법안·임명을 제공한다.",
+      "gap": "실제 의원·정당 간 표결 협상, 예산 편성·기관 운영이 단순하다.",
+      "nextPhase": 9,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/politics.js",
+          "anchor": "case \"bill\":",
+          "line": 181
+        }
+      ],
+      "acceptance": "자원 제약과 의석·협상이 정책의 가결·집행·성과에 영향을 준다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "G06",
+      "area": "정치",
+      "requirement": "제도에 따른 개헌·선거·협상·운동·혁명 경로",
+      "current": "합법/사회운동 준비 계획과 임계값이 있다.",
+      "gap": "다양한 현행 제도·세력에 따른 경로·합의·충돌이 없다.",
+      "nextPhase": 10,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/politics.js",
+          "anchor": "function propose(kind, target",
+          "line": 36
+        }
+      ],
+      "acceptance": "현행 제도와 실제 세력 지지에 따라 경로·권한·실패 결과가 달라진다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "G07",
+      "area": "정치",
+      "requirement": "경제 체제와 권력 구조를 구분",
+      "current": "권력 3종·경제 3종의 선택과 배당 귀속을 구분한다.",
+      "gap": "군주정과 내각제의 권리·기관·왕실 관계와 소유권 전환의 보상·동의가 부족하다.",
+      "nextPhase": 10,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/politics.js",
+          "anchor": "function complete(p)",
+          "line": 399
+        }
+      ],
+      "acceptance": "제도별 권리·인사·예산·소유·선거의 차이가 실제로 작동한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "G08",
+      "area": "정치",
+      "requirement": "전환 후 반대 세력·정당성·권력 분배",
+      "current": "반대·정당성 수치를 바꾼다.",
+      "gap": "반대 수치가 조직의 목표·행동·갈등으로 이어지는 소비 경로가 없다.",
+      "nextPhase": 10,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/politics.js",
+          "anchor": "G.opposition = clamp",
+          "line": 416
+        }
+      ],
+      "acceptance": "권리를 잃거나 얻은 세력이 협상·저항·연대하고 후속 플레이를 만든다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "G09",
+      "area": "정치",
+      "requirement": "단일 행동·확률만으로 집권하지 않음",
+      "current": "일부 기존 경로를 준비 계획과 조건 재검사로 바꿨다.",
+      "gap": "모든 정치 변동 경로를 공통 제도 과정으로 통합하거나 전수 검증하지 않았다.",
+      "nextPhase": 10,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "engine.js",
+          "anchor": "function dynRebuildPoliticsTick(me)",
+          "line": 8124
+        }
+      ],
+      "acceptance": "모든 권력 변동의 주체·절차·정당성과 플레이어 개입을 추적한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "N01",
+      "area": "인물·세력",
+      "requirement": "인물의 목표·성격·능력·소속·관계·권력 기반",
+      "current": "능력·야심·충성·목표 문구와 관계가 있다.",
+      "gap": "목표는 설명용이며 목표 선택·계획·수정·권력 기반 관리가 없다.",
+      "nextPhase": 7,
+      "disposition": "교체",
+      "evidence": [
+        {
+          "file": "rebuild/schema.js",
+          "anchor": "p.goal ||=",
+          "line": 139
+        }
+      ],
+      "acceptance": "목표를 정하고 자원을 써 실행·실패·수정하는 인물을 관찰한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "N02",
+      "area": "인물·세력",
+      "requirement": "주민·관료·상인·세력의 자율성",
+      "current": "일부 이직·고용·경쟁자 확장은 조건문으로 작동한다.",
+      "gap": "같은 행동·협상 체계를 사용하는 주체별 계획자가 없다.",
+      "nextPhase": 7,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "p.ambition > 0.65",
+          "line": 587
+        }
+      ],
+      "acceptance": "플레이어의 개입이 없어도 각 주체가 자기 이해에 따라 움직인다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "N03",
+      "area": "인물·세력",
+      "requirement": "능력과 이해관계에 따른 위임 결과",
+      "current": "능력에 따른 생산·추가 진행과 관계 이탈이 있다.",
+      "gap": "담당자의 여러 업무·자원·충돌·보고·권한을 함께 다루지 않는다.",
+      "nextPhase": 8,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "const progressStep",
+          "line": 662
+        }
+      ],
+      "acceptance": "위임 대상의 능력·동기·업무량 차이가 일정·성과·위험으로 나타난다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "N04",
+      "area": "인물·세력",
+      "requirement": "돈·권한·기간·약속을 조건으로 협상",
+      "current": "정해진 몇 가지 수락·역제안이 있다.",
+      "gap": "제안 조건을 구성하고 상대의 효용·권리로 수락을 결정하는 일반 협상 체계가 없다.",
+      "nextPhase": 8,
+      "disposition": "교체",
+      "evidence": [
+        {
+          "file": "rebuild/story.js",
+          "anchor": "function choose(e, value)",
+          "line": 88
+        }
+      ],
+      "acceptance": "여러 상황에서 임의 조건의 제안·역제안·거절이 실제 계약으로 이어진다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "N05",
+      "area": "인물·세력",
+      "requirement": "이전 약속·행동을 기억",
+      "current": "일부 행동 기록과 관계·신뢰 보정이 있다.",
+      "gap": "기억이 목표·일반 협상·협력 결정 전반에 적용되지 않는다.",
+      "nextPhase": 11,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/story.js",
+          "anchor": "const remember =",
+          "line": 4
+        }
+      ],
+      "acceptance": "과거 약속을 가진 상대와 그렇지 않은 상대의 판단이 다르다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "D01",
+      "area": "대화·이야기",
+      "requirement": "세계 상태·인물 행동에서 사건 생성",
+      "current": "몇 가지 날짜·역할 조건으로 사건을 만든다.",
+      "gap": "일반적인 목표 충돌·조사·인물 행동 결과로 이야기를 구성하지 않는다.",
+      "nextPhase": 11,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/story.js",
+          "anchor": "function tick()",
+          "line": 201
+        }
+      ],
+      "acceptance": "임의 플레이에서 발생한 원인이 대화·갈등과 후속 결과로 이어진다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "D02",
+      "area": "대화·이야기",
+      "requirement": "상황→조사·대화→협상·선택→실제 변화→반응",
+      "current": "면담·교육·후원과 정해진 거래 분기가 있다.",
+      "gap": "조사를 통한 정보 획득과 발견에 따라 협상 조건이 바뀌는 체계가 부족하다.",
+      "nextPhase": 11,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/story.js",
+          "anchor": "case \"talk\":",
+          "line": 54
+        }
+      ],
+      "acceptance": "상황 조사 결과가 실제 선택·조건·판단 근거를 바꾼다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "D03",
+      "area": "대화·이야기",
+      "requirement": "사업→출마 후원→약속→당선 후 이해충돌",
+      "current": "해당 예시의 고정 사건 연결을 구현했다.",
+      "gap": "한 예시 외에 다양한 인물·사업·정책에서 관계를 이어가는 생성 구조는 없다.",
+      "nextPhase": 11,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/story.js",
+          "anchor": "kind: \"procurement\"",
+          "line": 231
+        }
+      ],
+      "acceptance": "다른 원인·인물·약속으로 같은 공통 체계의 후속 상황을 확인한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "D04",
+      "area": "대화·이야기",
+      "requirement": "선택 전 확정 비용·기간·조건·위험 표시",
+      "current": "새 선택지에 비용과 일부 영향·기한을 표시한다.",
+      "gap": "기존 사건 전체와 일반 거래에 일관된 미리보기를 적용하지 않았다.",
+      "nextPhase": 3,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/story.js",
+          "anchor": "function options(e)",
+          "line": 317
+        }
+      ],
+      "acceptance": "표시된 계정·금액·기간·조건이 실행 값과 맞고 불확실성의 근거가 보인다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "D05",
+      "area": "대화·이야기",
+      "requirement": "현재 역할·장소·소속·상대·약속의 사건 자격",
+      "current": "일부 역할·사업·인물·약속을 검사한다.",
+      "gap": "장소·여행·경합 약속 등을 포함한 공통 자격 규칙과 전수 목록이 없다.",
+      "nextPhase": 3,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/story.js",
+          "anchor": "function eligible(e)",
+          "line": 8
+        }
+      ],
+      "acceptance": "발생·표시·실행·저장 복원에서 같은 자격 규칙을 사용한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "U01",
+      "area": "새 UI",
+      "requirement": "지도·하단 대상 패널에서 상태와 행동 완료",
+      "current": "점포 선택과 개업·운영 연결이 있다.",
+      "gap": "건물·인물·계약·도로·주거를 일관되게 선택·비교하는 대상 체계가 아니다.",
+      "nextPhase": 4,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "function panel()",
+          "line": 221
+        }
+      ],
+      "acceptance": "주요 대상에서 필요한 작업을 메뉴 왕복 없이 완료한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "U02",
+      "area": "새 UI",
+      "requirement": "내 활동에서 계획·막힌 조건·개입 사항·위치 연결",
+      "current": "계획·정치·가문·약속 카드를 표시한다.",
+      "gap": "모든 개입점과 대상·위치의 직접 연결, 다음 판단의 우선순위가 부족하다.",
+      "nextPhase": 4,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "function activity()",
+          "line": 258
+        }
+      ],
+      "acceptance": "필요한 개입을 찾고 해당 대상에 바로 이동해 처리한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "U03",
+      "area": "새 UI",
+      "requirement": "사람·가족·직원·경쟁자·세력 탐색과 행동",
+      "current": "주민 페이지·관계·면담·일부 역할 행동이 있다.",
+      "gap": "가족·조직·세력의 요청·목표·관계망을 통합 탐색하지 못한다.",
+      "nextPhase": 7,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "function people()",
+          "line": 285
+        }
+      ],
+      "acceptance": "인물과 조직의 목표·요청·관계를 보고 관련 행동을 실행한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "U04",
+      "area": "새 UI",
+      "requirement": "사업 생산·재고·공급·계약·손익·경쟁 비교",
+      "current": "사업 운영과 물류를 별도 창에서 조작한다.",
+      "gap": "비교·손익 원인·계약 위험·공급망 상황을 한 판단 흐름으로 제공하지 않는다.",
+      "nextPhase": 6,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "case \"firm\":",
+          "line": 336
+        }
+      ],
+      "acceptance": "공급·고용·가격 대안을 비교하고 실행·결과까지 확인한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "U05",
+      "area": "새 UI",
+      "requirement": "정치·의회·예산·인사와 가문 관계 UI",
+      "current": "정치·정부·가문 기능을 창으로 나열한다.",
+      "gap": "기반·표결·예산·인사 비교와 가계도·상속 권리를 이해하는 전용 화면은 부족하다.",
+      "nextPhase": 9,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "case \"government\":",
+          "line": 498
+        }
+      ],
+      "acceptance": "정치·가문 판단의 근거와 대상·대안을 화면에서 비교한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "U06",
+      "area": "새 UI",
+      "requirement": "선택·스크롤 유지, 큰 버튼, 가로 넘침 방지",
+      "current": "탭별 위치·선택 장소를 기억하고 일부 뷰포트를 검사했다.",
+      "gap": "모든 작업의 복귀·터치·접근성·키보드·짧은 화면을 검증하지 않았다.",
+      "nextPhase": 14,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "const positions =",
+          "line": 44
+        }
+      ],
+      "acceptance": "대표 작업 전체에서 복귀 위치·포커스·터치 영역·넘침을 확인한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "U07",
+      "area": "새 UI",
+      "requirement": "검색·필터가 복잡한 메뉴를 감추지 않음",
+      "current": "카드와 대화창으로 작업을 묶었다.",
+      "gap": "중요 기능이 긴 창 안에 남아 있고 실제 조작 수·발견성 비교가 없다.",
+      "nextPhase": 4,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "function show(kind, data",
+          "line": 307
+        }
+      ],
+      "acceptance": "처음 쓰는 역할에서도 주요 행동을 발견하고 짧은 조작으로 완료한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "A01",
+      "area": "삽화·알림",
+      "requirement": "이미지 지연·화질 원인 분리 조사",
+      "current": "원본 크기와 요청·표시 높이를 일부 점검했다.",
+      "gap": "기기별 원본·압축·확대·요청 시간을 측정한 비교 자료는 없다.",
+      "nextPhase": 13,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "god-client.js",
+          "anchor": "function dynPreloadScene",
+          "line": 358
+        }
+      ],
+      "acceptance": "로딩 지연과 화질 문제를 각각 재현·측정·수정한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "A02",
+      "area": "삽화·알림",
+      "requirement": "장면별 선명한 삽화·사전 로딩·캐시",
+      "current": "범용 SVG 삽화와 기존 장면 파일 캐시가 있다.",
+      "gap": "새 게임 상황별 삽화와 충분한 이미지 자산·품질 검증은 없다.",
+      "nextPhase": 13,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "scene-illustration",
+          "line": 689
+        }
+      ],
+      "acceptance": "해당 장면과 맞는 삽화가 선명하게 표시되고 반복 요청을 줄인다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "A03",
+      "area": "삽화·알림",
+      "requirement": "그림을 기다리지 않고 본문·선택지 제공",
+      "current": "타자 지연 제거와 제한된 삽화 높이를 적용했다.",
+      "gap": "느린 네트워크·이미지 실패·긴 선택지를 포함한 전체 장면 검사는 없다.",
+      "nextPhase": 13,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "god-client.js",
+          "anchor": "function dynTypeSceneText",
+          "line": 360
+        }
+      ],
+      "acceptance": "그림이 늦거나 실패해도 읽고 판단·선택할 수 있다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "A04",
+      "area": "삽화·알림",
+      "requirement": "일상 보고 묶음·중요 판단만 주목",
+      "current": "소식 50건과 중요 선택의 시간 정지가 있다.",
+      "gap": "중요도·역할별 묶음·경보·반복 빈도 조정의 검증이 부족하다.",
+      "nextPhase": 11,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "function note(",
+          "line": 137
+        }
+      ],
+      "acceptance": "반복 보고 때문에 판단이 가려지지 않고 중요한 개입을 놓치지 않는다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "X01",
+      "area": "갓모드",
+      "requirement": "세계 상태를 편집하고 실험하는 도구",
+      "current": "지역·인물·정부 일부 숫자와 현금 이전을 편집한다.",
+      "gap": "자산·조직·제도·계약·관계·사건·실험 조건을 포괄하는 세계 편집기는 아니다.",
+      "nextPhase": 13,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/editor.js",
+          "anchor": "command(c)",
+          "line": 4
+        }
+      ],
+      "acceptance": "대표 세계 상태를 편집·실행·비교·되돌리며 검증한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "X02",
+      "area": "갓모드",
+      "requirement": "일반 플레이 권한·진행과 분리",
+      "current": "editor Worker와 별도 파일을 쓴다.",
+      "gap": "넓은 편집 범위에서 일반 규칙·저장과 충돌하지 않는지는 추가 검증이 필요하다.",
+      "nextPhase": 13,
+      "disposition": "유지",
+      "evidence": [
+        {
+          "file": "server.js",
+          "anchor": "editor:{ seed:",
+          "line": 15
+        }
+      ],
+      "acceptance": "편집 권한이 일반 명령에서 차단되고 세계 간 상태가 섞이지 않는다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "X03",
+      "area": "갓모드",
+      "requirement": "기존 god의 의미와 새 편집실 구분",
+      "current": "god는 기존 가문 게임, editor가 제한적 새 편집실이다.",
+      "gap": "용어·메뉴·문서 전반에서 게임 모드와 세계 편집기를 정리해야 한다.",
+      "nextPhase": 4,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "server.js",
+          "anchor": "p==='/god'",
+          "line": 183
+        }
+      ],
+      "acceptance": "사용자가 일반 게임·기존 가문·세계 편집실을 구분할 수 있다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "I01",
+      "area": "기존 문제",
+      "requirement": "최고 직위에 명품 의뢰가 표시되는 모순",
+      "current": "직업 사건의 최고 직위 차단이 있다.",
+      "gap": "다른 직업·공직·겸직·복원 사건의 전체 조합은 미검증이다.",
+      "nextPhase": 3,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "engine.js",
+          "anchor": "function dynStoryEligible",
+          "line": 7682
+        }
+      ],
+      "acceptance": "같은 공통 자격을 유사 사건 전체에 적용한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "I02",
+      "area": "기존 문제",
+      "requirement": "혁명 한 번으로 공산 정부 지도자가 되는 경로",
+      "current": "가문 경로를 준비로 바꿨다.",
+      "gap": "원래 사건·정치 전환 전체 경로의 권리·절차 통합은 남았다.",
+      "nextPhase": 10,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "engine.js",
+          "anchor": "function revoltRun",
+          "line": 3752
+        }
+      ],
+      "acceptance": "어느 진입점에서도 조직·정당성·절차 없이 즉시 집권하지 않는다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "I03",
+      "area": "기존 문제",
+      "requirement": "불평등·승인도·확률만으로 자동 체제 전환",
+      "current": "가문 자동 경로 일부를 차단했다.",
+      "gap": "체제별 불만·저항·타협이 만드는 실제 정치 과정으로 대체하지 않았다.",
+      "nextPhase": 10,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "engine.js",
+          "anchor": "function regTick()",
+          "line": 1706
+        }
+      ],
+      "acceptance": "자동 상태 변경 대신 관찰·개입 가능한 정치 과정을 제공한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "I04",
+      "area": "기존 문제",
+      "requirement": "공공 정책에 개인 비용이 표시되거나 잘못된 계정 지출",
+      "current": "공공 계정 추론과 일부 실제 예산 검사를 수정했다.",
+      "gap": "기존 모든 정책·선택지의 비용 추론과 계정이 명시적으로 검토되지 않았다.",
+      "nextPhase": 3,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "engine.js",
+          "anchor": "function dynStoryFinance",
+          "line": 8836
+        }
+      ],
+      "acceptance": "비용 표시와 실제 회계가 모든 경로에서 일치한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "I05",
+      "area": "기존 문제",
+      "requirement": "정책·거래 권한 검사 누락",
+      "current": "새 명령은 권한과 원자적 실패를 사용한다.",
+      "gap": "기존·새 행동 전체의 공통 권한 명세와 누락 검사가 없다.",
+      "nextPhase": 3,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "function command(c)",
+          "line": 271
+        }
+      ],
+      "acceptance": "행동 목록·표시·실행에서 같은 권한 규칙을 따른다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "I06",
+      "area": "기존 문제",
+      "requirement": "선택 전 비용·기간·위험 누락",
+      "current": "수동 시간표와 선택지 비용을 표시한다.",
+      "gap": "표시용 시간표와 서버 비용 규칙이 별도이며 전수 일치 검증은 없다.",
+      "nextPhase": 3,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/client.js",
+          "anchor": "const ACTION_TIME",
+          "line": 46
+        }
+      ],
+      "acceptance": "공통 미리보기와 실행 규칙의 일치를 확인한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "I07",
+      "area": "기존 문제",
+      "requirement": "직위·대상 변경 뒤 무효 대기 사건",
+      "current": "역할·조건·비용 재검사를 보강했다.",
+      "gap": "모든 사건 종류에 공통 재검사가 적용되는 것은 아니다.",
+      "nextPhase": 3,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "engine.js",
+          "anchor": "function dynStoryRecheck",
+          "line": 7791
+        }
+      ],
+      "acceptance": "대상·역할·예산·선행 약속 변경을 모두 검사한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "I08",
+      "area": "기존 문제",
+      "requirement": "복원 이후 사건 분기·약속·계획 불일치",
+      "current": "기본 스키마 검사와 일부 동일 진행 검사가 있다.",
+      "gap": "옛 저장의 해당 상태는 새 게임에서 실행되지 않고 전체 분기의 복원 검사는 없다.",
+      "nextPhase": 13,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/schema.js",
+          "anchor": "function validate(S)",
+          "line": 180
+        }
+      ],
+      "acceptance": "실제 진행 중인 사건·계약·계획·권리가 복원 후 동일하게 작동한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "I09",
+      "area": "기존 문제",
+      "requirement": "알림 삽화 지연·낮은 해상도",
+      "current": "캐시 요청·높이·본문 표시를 수정했다.",
+      "gap": "상황별 자산과 기기·네트워크 화질 검증은 남았다.",
+      "nextPhase": 13,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "god-client.js",
+          "anchor": "function dynPreloadScene",
+          "line": 358
+        }
+      ],
+      "acceptance": "느린 이미지와 긴 본문·선택지의 동시 사용을 확인한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "I10",
+      "area": "기존 문제",
+      "requirement": "긴 스크롤·메뉴 왕복·선택지 가림",
+      "current": "새 배치와 일부 모바일 화면 검사가 있다.",
+      "gap": "모든 역할·대상·장면의 실제 작업 흐름은 검증하지 않았다.",
+      "nextPhase": 14,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/index.html",
+          "anchor": ".target-panel",
+          "line": 522
+        }
+      ],
+      "acceptance": "대표 작업을 실제 조작하며 발견성·왕복·가림을 확인한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "S01",
+      "area": "저장·성능",
+      "requirement": "기존 전체 상태와 g/q 보존·재사용",
+      "current": "원본은 별도 보관한다.",
+      "gap": "새 실행 상태에서 g/q를 제거하며 기존 학습을 이어가지 않는다.",
+      "nextPhase": 2,
+      "disposition": "이전",
+      "evidence": [
+        {
+          "file": "rebuild/worker.js",
+          "anchor": "delete p.g;",
+          "line": 150
+        }
+      ],
+      "acceptance": "보관·실행·변환의 요구를 구분하고 학습 연속성을 명시적으로 보장한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "S02",
+      "area": "저장·성능",
+      "requirement": "기존 자산·권리·계약·직위·가족의 이전",
+      "current": "원본 보관과 주민·개인 현금의 새 게임 생성이 있다.",
+      "gap": "회사·자산·직위·가족·약속을 이어가는 이전은 아니다. 날짜·나이도 바뀐다.",
+      "nextPhase": 13,
+      "disposition": "이전",
+      "evidence": [
+        {
+          "file": "rebuild/migration.js",
+          "anchor": "S.firms = [];",
+          "line": 43
+        }
+      ],
+      "acceptance": "모든 권리·의무의 변환 결과와 미지원 항목을 검증한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "S03",
+      "area": "저장·성능",
+      "requirement": "안전한 저장·실패 복구·버전 관리",
+      "current": "스트리밍 저장·fsync·원자 교체와 새 명령 실패 복구가 있다.",
+      "gap": "전체 스키마·동시 요청·손상·디스크 부족·중단 상황의 범위 검증은 남았다.",
+      "nextPhase": 13,
+      "disposition": "유지",
+      "evidence": [
+        {
+          "file": "server-storage.js",
+          "anchor": "async function writeSnapshot",
+          "line": 15
+        }
+      ],
+      "acceptance": "기존 파일 보존과 원자적 복구를 모든 중요 장애 조건에서 확인한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "S04",
+      "area": "저장·성능",
+      "requirement": "서버 계산·경량 화면·Worker·ETag",
+      "current": "단일 활성 Worker와 압축 뷰·선택 조회를 사용한다.",
+      "gap": "새 UI와 구 UI의 서로 다른 데이터 모델을 공통 요구에 맞춰야 한다.",
+      "nextPhase": 2,
+      "disposition": "유지",
+      "evidence": [
+        {
+          "file": "server.js",
+          "anchor": "function spawnWorld(name)",
+          "line": 38
+        }
+      ],
+      "acceptance": "전체 상태 반복 전송 없이 필요한 화면과 선택 상세를 제공한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "S05",
+      "area": "저장·성능",
+      "requirement": "실제 규모의 장기 서버·브라우저 성능",
+      "current": "5000명 원본 변환·10일·저장 크기를 검사한다.",
+      "gap": "변환은 회사를 비우고 학습을 사용하지 않는다. 전체 경제·정치·장기 운영이나 AWS 성능 검사가 아니다.",
+      "nextPhase": 14,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "scripts/check-rebuild-performance.js",
+          "anchor": "const old = createWorld(400, 5000)",
+          "line": 18
+        }
+      ],
+      "acceptance": "전체 기능을 켠 목표 규모·장기간의 시간·메모리·응답을 측정한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "S06",
+      "area": "저장·성능",
+      "requirement": "장기 플레이·전략 다양성·실패 후 복귀",
+      "current": "세 시드의 정해진 행동을 1800일 진행한다.",
+      "gap": "사건을 주로 거절하며 다양한 경로·계약·고급 역할과 재미를 검증하지 않는다.",
+      "nextPhase": 14,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "scripts/check-rebuild-longplay.js",
+          "anchor": "for (const seed of [7, 19, 91])",
+          "line": 4
+        }
+      ],
+      "acceptance": "역할별 독립 경로와 다양한 전략·실패·복귀를 연속 플레이로 비교한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "F01",
+      "area": "가문·재기",
+      "requirement": "재산·후계·교육·혼인·세대 간 의무",
+      "current": "혼인·교육·후계 지정·유언·계승 기능이 있다.",
+      "gap": "가문 구성원과 일반 주민의 관계·권리·의무가 통합되지 않았다.",
+      "nextPhase": 12,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/family.js",
+          "anchor": "function command(c)",
+          "line": 12
+        }
+      ],
+      "acceptance": "가족·주민·자산·계약이 같은 신원과 권리로 연결된다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "F02",
+      "area": "가문·재기",
+      "requirement": "세대 간 기술·관계·자산·약속의 연속",
+      "current": "일부 현금·사업·숙련·관계를 이어간다.",
+      "gap": "지분·채무·작위·권리·복잡한 친족 상속을 공통 권리 체계로 다루지 않는다.",
+      "nextPhase": 12,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/family.js",
+          "anchor": "function succeed(id, death",
+          "line": 119
+        }
+      ],
+      "acceptance": "세대 교체 전후 권리·의무·관계·기술의 변화를 설명하고 복원한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "F03",
+      "area": "가문·재기",
+      "requirement": "혼인·상속의 가문 간 기회와 갈등",
+      "current": "한 가문 내부의 단순 분배·중재·거절 분기가 있다.",
+      "gap": "다른 가문의 목표·권리·혼인 동맹·상속 청구를 이어가는 구조는 없다.",
+      "nextPhase": 12,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/family.js",
+          "anchor": "if (e.kind === \"inheritance\")",
+          "line": 182
+        }
+      ],
+      "acceptance": "다른 가문의 실제 권리와 이해관계로 동맹·분쟁·합의가 발생한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "F04",
+      "area": "가문·재기",
+      "requirement": "성장 후 위임과 결정 규모의 변화",
+      "current": "관리자 생산 보정·공직 제한·책임자 임명이 있다.",
+      "gap": "역할이 커질수록 관리 범위와 의사결정 단위가 체계적으로 바뀌지 않는다.",
+      "nextPhase": 12,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/economy.js",
+          "anchor": "if (f.manager)",
+          "line": 208
+        }
+      ],
+      "acceptance": "사업가·지역 지도자·통치자의 실제 판단과 위임 흐름을 구분한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "F05",
+      "area": "가문·재기",
+      "requirement": "파산·낙선·실각 후 다른 경로로 재기",
+      "current": "사업 정리·품팔이·차입·상환·재출마가 가능하다.",
+      "gap": "실패의 원인과 남은 자산·인맥으로 다른 경로를 구성하는 장기 검증이 부족하다.",
+      "nextPhase": 12,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/society.js",
+          "anchor": "case \"loan\":",
+          "line": 196
+        }
+      ],
+      "acceptance": "여러 실패에서 잔존 자원과 다른 전략으로 복귀하는 연속 플레이를 확인한다.",
+      "status": "부분 구현"
+    },
+    {
+      "id": "U08",
+      "area": "새 UI",
+      "requirement": "결과 화면에서 무엇이 왜 변했는지 설명",
+      "current": "일부 결과 소식과 손익 합계를 표시한다.",
+      "gap": "모든 행동의 전후 변화·계정·원인·후속 영향을 일관되게 비교하지 않는다.",
+      "nextPhase": 4,
+      "disposition": "수정",
+      "evidence": [
+        {
+          "file": "rebuild/game.js",
+          "anchor": "function note(",
+          "line": 137
+        }
+      ],
+      "acceptance": "실행 전 예상과 실행 후 실제 차이를 대상 화면에서 확인한다.",
+      "status": "부분 구현"
+    }
+  ]
+}
