@@ -1,11 +1,12 @@
 'use strict';
 
-// 2·3단계 canonical 실행 경계. 기존 서버 주소에는 아직 연결하지 않는다. engine.js의 모듈 전역 지형 때문에
+// canonical 실행 경계. /rebuild의 HTTP는 play-worker.js를 통해 호출한다. engine.js의 모듈 전역 지형 때문에
 // 이 모듈을 사용하는 Worker에서는 다른 createWorld 호출을 금지한다.
 const { createWorld, YEAR } = require('../../engine');
 const { randomUUID } = require('node:crypto');
 const { createCommands } = require('./commands');
 const { reconcile } = require('./contracts');
+const { createPresenter } = require('./presenter');
 const FORMAT = 'free-village.canonical';
 const VERSION = 2;
 let occupied = false;
@@ -81,6 +82,7 @@ function createSession(options = {}) {
     occupied = false;
     throw error;
   }
+  let presenter = createPresenter(world, strategy);
   let commands = strategy.enabled ? createCommands(world, strategy) : null;
   let closed = false;
   const active = () => { if (closed) throw new Error('SESSION_CLOSED'); };
@@ -108,19 +110,23 @@ function createSession(options = {}) {
   }
   return Object.freeze({
     summary,
+    view() { active(); return presenter.view(); },
+    map(options) { active(); return presenter.map(options); },
+    people(options) { active(); return presenter.people(options); },
+    detail(ref) { active(); return presenter.detail(ref); },
     read,
     catalog(targetId) { active(); if (!commands) throw new Error('STRATEGY_DISABLED'); return commands.catalog(targetId); },
     preview(request) { active(); if (!commands) throw new Error('STRATEGY_DISABLED'); return commands.preview(request); },
     execute(request) { active(); if (!commands) throw new Error('STRATEGY_DISABLED'); return commands.execute(request); },
     contracts() { active(); return copy(strategy.contracts?.entries || []); },
-    // 하루 전진도 명령과 동일한 Worker 큐에서만 호출한다. 서버 연결은 4단계 이후.
+    // 내부 검증용 하루 전진. HTTP는 중복 방지 계약이 있는 공통 advance 명령을 사용한다.
     advance() {
       active();
       if (world.S.dyn?.pending?.length > 0) throw new Error('DECISION_PENDING');
       if (strategy.revision === Number.MAX_SAFE_INTEGER) throw new Error('REVISION_OVERFLOW');
       if (strategy.enabled) {
         const saved = copy(strategy);
-        try { world.commandTransaction(() => { world.step(); strategy.revision++; reconcile(world, strategy); }); }
+        try { world.commandTransaction(() => { world.step(); strategy.playerId = world.S.dyn.pid; strategy.revision++; reconcile(world, strategy); }); }
         catch (error) { for (const k of Object.keys(strategy)) delete strategy[k]; Object.assign(strategy, saved); throw error; }
       } else { world.step(); strategy.revision++; }
       return summary();
@@ -140,7 +146,7 @@ function createSession(options = {}) {
       }
       return { format: FORMAT, version: VERSION, engine, strategy: copy(strategy) };
     },
-    close() { if (!closed) { closed = true; occupied = false; commands = null; world = null; } },
+    close() { if (!closed) { closed = true; occupied = false; commands = null; presenter = null; world = null; } },
   });
 }
 

@@ -27,11 +27,11 @@ function accounts(world) {
   return rows;
 }
 
-function changes(before, after) {
+function changes(before, after, allowUnderflow = false) {
   const out = [];
   for (const id of new Set([...before.keys(), ...after.keys()])) {
     const a = before.get(id), b = after.get(id), from = a?.balance ?? 0, to = b?.balance ?? 0;
-    if (to < Math.min(0, from) - 1e-8) throw Object.assign(new Error('잔액이나 보유 물량이 모자랍니다.'), { code: 'INSUFFICIENT_FUNDS', accountId: id });
+    if (!allowUnderflow && to < Math.min(0, from) - 1e-8) throw Object.assign(new Error('잔액이나 보유 물량이 모자랍니다.'), { code: 'INSUFFICIENT_FUNDS', accountId: id });
     if (from !== to) out.push({ ...(b || a), before: from, after: to, amount: to - from });
   }
   return out;

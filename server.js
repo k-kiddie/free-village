@@ -9,8 +9,9 @@ const {createLifecycle}=require('./server-lifecycle');
 
 const BOOT_ID=crypto.randomBytes(8).toString('hex');
 const PORT = Math.max(1, Number(process.env.PORT) || 80);
-// 세 마을: 자유방임('/'), 가문('/god'), 새 전략 게임('/play'). 1GB 서버를 위해 한 번에 한 Worker만 메모리에 둔다.
+// 기존 마을·가문·시제품/편집실·새 기본 플레이. 한 번에 한 Worker만 메모리에 둔다.
 const WORLDS = {
+  canonical:{ seed:Number(process.env.CANONICAL_SEED)||20261120, population:Number(process.env.CANONICAL_POPULATION)||5000 },
   village:{ seed:Number(process.env.SEED)||20261116, population:Number(process.env.POPULATION)||5000 },
   editor:{ seed:Number(process.env.REBUILD_SEED)||20261120, population:60 },
   rebuild:{ seed:Number(process.env.REBUILD_SEED)||20261120, population:60 },
@@ -33,12 +34,13 @@ function makePage(apiBase,dynasty){
 }
 // /god는 원래 화면(지도·기존 탭)에 가문 모드 화면(god-client.js)을 얹는다.
 const rebuildHtml=fs.readFileSync(path.join(__dirname,'rebuild/index.html'),'utf8').replace('/*REBUILD_CLIENT*/',()=>fs.readFileSync(path.join(__dirname,'rebuild/client.js'),'utf8'));
-const pages={village:makePage(''),dynasty:makePage('/god',true),rebuild:{html:rebuildHtml,gzip:zlib.gzipSync(rebuildHtml),tag:'\"'+crypto.createHash('sha256').update(rebuildHtml).digest('hex')+'\"'}};
+const canonicalHtml=fs.readFileSync(path.join(__dirname,'rebuild/play.html'),'utf8').replace('/*PLAY_CLIENT*/',()=>fs.readFileSync(path.join(__dirname,'rebuild/play-client.js'),'utf8'));
+const pages={canonical:{html:canonicalHtml,gzip:zlib.gzipSync(canonicalHtml),tag:'"'+crypto.createHash('sha256').update(canonicalHtml).digest('hex')+'"'},village:makePage(''),dynasty:makePage('/god',true),rebuild:{html:rebuildHtml,gzip:zlib.gzipSync(rebuildHtml),tag:'\"'+crypto.createHash('sha256').update(rebuildHtml).digest('hex')+'\"'}};
 
 function spawnWorld(name){
   const w={name,gen:++gen,latestView:null,ready:false,waiting:new Map(),intended:false};
   let resolveReady,rejectReady;w.readyPromise=new Promise((res,rej)=>{resolveReady=res;rejectReady=rej});
-  w.worker=new Worker(path.join(__dirname,['rebuild','editor'].includes(name)?'rebuild/worker.js':'sim-worker.js'),{
+  w.worker=new Worker(path.join(__dirname,name==='canonical'?'rebuild/play-worker.js':['rebuild','editor'].includes(name)?'rebuild/worker.js':'sim-worker.js'),{
     workerData:{name,...WORLDS[name]},
     resourceLimits:{maxOldGenerationSizeMb:Number(process.env.VILLAGE_HEAP_MB)||512,maxYoungGenerationSizeMb:32}
   });
@@ -132,6 +134,7 @@ async function handleWorld(name,sub,req,res,url){
     return sendJson(res,lifecycle.stopping?503:200,{ok:!lifecycle.stopping});
   }
   if(lifecycle.stopping)return sendJson(res,503,{error:'저장 후 서버를 중지하고 있습니다. 진입 주소에서 다시 접속해주세요.'});
+  if(name==='canonical'&&sub!=='/api/view')return handleCanonical(sub,req,res,url);
   if(req.method==='GET'&&sub==='/api/view'){
     // 전환 중에는 기다리지 않고 503으로 바로 답한다(클라이언트가 2초 뒤 다시 요청).
     const w=ready(name);if(!w||!w.latestView)return preparing(res,name);
@@ -157,6 +160,29 @@ async function handleWorld(name,sub,req,res,url){
   if(sub==='/api/cmd')return sendJson(res,200,await request(w,'command',{command:input}));
   return sendJson(res,200,await request(w,'import',{raw:input}));
 }
+async function handleCanonical(sub,req,res,url){
+  const get=req.method==='GET', post=req.method==='POST';
+  const method=get?({'/api/map':'map','/api/people':'people','/api/detail':'detail','/api/catalog':'catalog'})[sub]:post?({'/api/preview':'preview','/api/execute':'execute','/api/cmd':'save'})[sub]:null;
+  if(!method)return sendJson(res,404,{error:'요청 경로를 찾을 수 없습니다'});
+  if(post&&req.headers.origin){let allowed=false;try{const origin=new URL(req.headers.origin);allowed=['http:','https:'].includes(origin.protocol)&&origin.host===req.headers.host}catch{}if(!allowed)return sendJson(res,403,{error:'다른 사이트에서 보낸 요청입니다'});}
+  const input=post?await readBody(req,16384):null;
+  const w=await readyWait('canonical');if(!w)return preparing(res,'canonical');
+  if(method==='save'){
+    if(input.action!=='save')return sendJson(res,400,{error:'저장 요청만 허용됩니다'});
+    return sendJson(res,200,await request(w,'command',{command:input}));
+  }
+  let args;
+  if(method==='people')args=[{page:Number(url.searchParams.get('page')||0),query:url.searchParams.get('q')||''}];
+  else if(method==='detail')args=[{kind:url.searchParams.get('kind'),id:Number(url.searchParams.get('id'))}];
+  else if(method==='catalog')args=url.searchParams.has('target')?[Number(url.searchParams.get('target'))]:[];
+  else if(method==='map'){
+    const bounds=url.searchParams.has('x')?Object.fromEntries(['x','y','w','h'].map(k=>[k,Number(url.searchParams.get(k))])):null;
+    args=[bounds?{bounds}:{}];
+  }else args=[input];
+  const value=await request(w,'canonical',{method,args});
+  if(value===null)return sendJson(res,404,{error:'대상을 찾을 수 없습니다. 현재 지도를 다시 확인해 주세요.'});
+  return get?sendGzip(res,value):sendJson(res,200,value);
+}
 function sendPage(req,res,p){
   if(req.headers['if-none-match']===p.tag){res.writeHead(304,{'etag':p.tag,'cache-control':'private, no-cache'});return res.end()}
   const gzip=/\bgzip\b/.test(req.headers['accept-encoding']||'');const body=gzip?p.gzip:Buffer.from(p.html);
@@ -174,6 +200,8 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==='GET'&&p==='/health'){const ok=booted&&!lifecycle.stopping;
       return sendJson(res,ok?200:503,{ok,ready:ok,stopReady:lifecycle.stopReady,world:active?.name??null,worldReady:!!active?.ready&&!switching,switching,workers:liveWorkers,day:active?.latestView?.day??null,rssBytes:process.memoryUsage().rss});}
+    if(req.method==='GET'&&(p==='/rebuild'||p==='/rebuild/'))return sendPage(req,res,pages.canonical);
+    if(p.startsWith('/rebuild/api/'))return await handleWorld('canonical',p.slice(8),req,res,url);
     if(req.method==='GET'&&(p==='/editor'||p==='/editor/'))return sendPage(req,res,pages.rebuild);
     if(p.startsWith('/editor/api/'))return await handleWorld('editor',p.slice(7),req,res,url);
     if(req.method==='GET'&&(p==='/play'||p==='/play/'))return sendPage(req,res,pages.rebuild);
@@ -188,7 +216,7 @@ const server=http.createServer(async(req,res)=>{
 });
 
 server.listen(PORT,'0.0.0.0',()=>console.log(`free-village 서버가 ${PORT} 포트에서 실행 중`));
-use(process.env.INITIAL_WORLD==='village'?'village':'rebuild').catch(e=>console.error('마을 시작 실패',e));
+use(process.env.INITIAL_WORLD==='canonical'?'canonical':process.env.INITIAL_WORLD==='village'?'village':'rebuild').catch(e=>console.error('마을 시작 실패',e));
 const lifecycleTimer=setInterval(()=>lifecycle.tick(),5000);lifecycleTimer.unref();
 let closing=false;
 async function shutdown(){if(closing)return;closing=true;clearInterval(lifecycleTimer);server.close();

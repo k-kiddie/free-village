@@ -1,0 +1,25 @@
+'use strict';
+const assert = require('node:assert/strict');
+const { createSession } = require('../rebuild/core/session');
+const s=createSession({mode:'strategy',seed:42,population:5000});
+const before=s.checkpoint();const view=s.view(), map=s.map();
+assert.equal(view.population,5000);
+assert(!JSON.stringify(view).includes('"q":'));assert(!JSON.stringify(map).includes('"g":'));
+assert.equal(map.terrain.length,before.engine.S.geo.lots.length);
+assert(map.residents.length<=301);assert(map.residentsLimited);
+const sample=map.entities.find(e=>e.ref.kind==='house');const source=before.engine.S.houses.find(h=>h.id===sample.ref.id);const point=before.engine.S.geo.lots[source.lot];
+assert.equal(sample.x,point.x+5);assert.equal(sample.y,point.y+5);
+assert.equal(s.detail(sample.ref).owner.id,source.owner);
+const detail=s.detail(view.me.ref);assert.deepEqual(detail.resident.g,before.engine.S.agents.find(a=>a.id===view.me.ref.id).g);
+const people=s.people({page:124});assert.equal(people.people.length,40);
+assert.deepEqual(s.checkpoint(),before,'보기·지도·상세·목록이 세계·난수·계약을 바꾸지 않음');
+let seq=0;
+function command(action,args){const state=s.summary();const c={worldId:state.worldId,commandId:'view:'+ ++seq,expectedRevision:state.revision,actor:{kind:'person',id:state.playerId},action,args};const p=s.preview(c);assert(p.allowed,JSON.stringify(p));const out=s.execute({...c,previewToken:p.previewToken});assert(out.allowed,JSON.stringify(out));return out;}
+command('choose',{id:view.pending[0].id,key:'go'});
+const advanced=command('advance',{});
+assert.equal(advanced.duration.advancedDays,1);assert.equal(s.summary().day,1);
+assert(advanced.ledger.every(row=>row.id==='family:vault'||row.id.startsWith('person:'+s.summary().playerId+':')||row.id.startsWith('firm:')));
+assert(Buffer.byteLength(JSON.stringify(advanced))<50000,'하루 결과에 주민 전체 원장을 보내지 않음');
+const snapshot=JSON.parse(JSON.stringify(s.checkpoint()));s.close();
+const restored=createSession({checkpoint:snapshot});assert.equal(restored.view().day,1);assert.equal(restored.view().population,snapshot.engine.S.agents.length);restored.close();
+console.log(`5,000명: 실제 좌표·선택 상세 g/q·페이지 조회·조회 불변·하루 명령·복원 통과. view ${Buffer.byteLength(JSON.stringify(view))}B, 지도 ${Buffer.byteLength(JSON.stringify(map))}B, 하루 결과 ${Buffer.byteLength(JSON.stringify(advanced))}B`);

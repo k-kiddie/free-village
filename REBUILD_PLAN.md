@@ -204,7 +204,7 @@
 
 이전에 표시한 ‘8단계 전체 완료’는 설계 요구 충족을 충분히 확인하지 않은 판정이어서 철회한다. 기본 구현과 일부 검사 통과를 전체 완성과 구분한다.
 
-현재는 [14단계 실행 계획](REBUILD_EXECUTION_PLAN.md) 중 **1단계 조사, 2단계 구조·데이터 설계, 3단계 공통 실행기와 독립 Worker 검증을 완료**했다. [3단계 구현·검사 범위](rebuild/architecture/COMMANDS.md)에 미리보기·재검사·회계·계약·복구·중복 방지를 기록했다. [2단계 확정안과 검사 범위](rebuild/architecture/README.md)에 기준 상태·소유권·명령/저장 계약을 기록했다. 새 UI·실제 HTTP 서버 연결과 4단계 이후 기능 구현은 미완료다. [80개 요구 대조표](rebuild/audit/REQUIREMENTS.md), [조사 결론](rebuild/audit/README.md), [기존 검사의 범위](rebuild/audit/TEST_SCOPE.md)가 근거다.
+현재는 [14단계 실행 계획](REBUILD_EXECUTION_PLAN.md) 중 **1단계 조사, 2단계 구조·데이터 설계, 3단계 공통 실행기, 4단계 지도·모바일 기본 플레이와 HTTP/저장 연결 검증을 완료**했다. [3단계 구현·검사 범위](rebuild/architecture/COMMANDS.md)에 미리보기·재검사·회계·계약·복구·중복 방지를 기록했다. [2단계 확정안과 검사 범위](rebuild/architecture/README.md)에 기준 상태·소유권·명령/저장 계약을 기록했다. [4단계 구현·검사 범위](rebuild/architecture/UI.md)에 `/rebuild`의 실제 공간·대상·비교·생활/사업 시작·저장·모바일 크기 검사 결과를 기록했다. 5단계 이후 시스템과 전체 UI 확장은 미완료다. [80개 요구 대조표](rebuild/audit/REQUIREMENTS.md), [조사 결론](rebuild/audit/README.md), [기존 검사의 범위](rebuild/audit/TEST_SCOPE.md)가 근거다.
 
 - [x] 현재 구조·요구별 부족·재사용 후보·검사 경계 조사 — 이 문서의 1단계에 해당
 - [ ] 정합성 요구 전체 충족

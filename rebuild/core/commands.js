@@ -15,6 +15,7 @@ const messages = { UNKNOWN_ACTION: '알 수 없는 행동입니다.', INVALID_AR
   PREVIEW_REQUIRED: '실행 전에 현재 조건과 비용을 확인해 주세요.', REVISION_OVERFLOW: '상태 번호의 저장 범위를 초과했습니다.' };
 const fail = (code, message = messages[code] || code) => { const e = new Error(message); e.code = code; throw e; };
 const operations = Object.freeze({
+  advance: w => { w.step(); return { text: '하루가 지났습니다.' }; },
   act: (w, a) => w.dynAct(a.key),
   choose: (w, a) => w.dynChoose(a.id, a.key),
   budget: (w, a) => w.dynSetBudget(a.budget),
@@ -24,7 +25,7 @@ const operations = Object.freeze({
   story: (w, a) => w.dynSetStory(a.freq),
 });
 const fields = {
-  act: ['key'], choose: ['id', 'key'], budget: ['budget'], vault: ['dir', 'frac'],
+  advance: [], act: ['key'], choose: ['id', 'key'], budget: ['budget'], vault: ['dir', 'frac'],
   rename: ['sur', 'given'], configureStart: ['character'], story: ['freq'],
 };
 function validateArgs(action, args) {
@@ -60,7 +61,7 @@ function createCommands(world, strategy) {
     if (control && (!actor || (!actor.alive && !deathChoice))) fail('ACTOR_UNAVAILABLE');
     validateArgs(request.action, request.args);
     if (control && world.S.dyn?.over && !deathChoice) fail('GAME_OVER');
-    if (control && request.action === 'act' && world.S.dyn.pending.length) fail('DECISION_PENDING');
+    if (control && ['act', 'advance'].includes(request.action) && world.S.dyn.pending.length) fail('DECISION_PENDING');
     return { client: m[1], seq: Number(m[2]) };
   }
   const identity = r => ({ worldId: r.worldId, commandId: r.commandId, expectedRevision: r.expectedRevision,
@@ -70,6 +71,7 @@ function createCommands(world, strategy) {
     const saved = clone(strategy);
     try {
       return world.commandTransaction(() => {
+        const dayBefore = world.S.day;
         const before = accounts(world), stockBefore = resources(world), randomBefore = stable(world.commandRandomState());
         const cooldowns = clone(world.S.dyn.cool || {});
         const previousContracts = new Map((strategy.contracts?.entries || []).map(row => [row.id, stable(row)]));
@@ -77,7 +79,7 @@ function createCommands(world, strategy) {
           const account = world.commandPublicAccount(world.S.byId.get(strategy.playerId), cat);
           return account && { category: cat, label: account.label, available: account.available, scope: account.kind };
         }).filter(Boolean);
-        const quote = world.commandTransaction(() => {
+        const quote = ['act','choose'].includes(request.action) ? world.commandTransaction(() => {
         let quote = null;
         if (request.action === 'choose') {
           const decision = world.S.dyn.pending.find(p => p.id === request.args.id);
@@ -89,10 +91,16 @@ function createCommands(world, strategy) {
           if (action) quote = { label: action.label, hint: action.hint, preliminaryReason: action.why };
         }
         return quote;
-        }, true);
+        }, true) : null;
         const result = operations[request.action](world, request.args);
-        const ledger = changes(before, accounts(world));
-        const inventory = changes(stockBefore, resources(world));
+        let ledger = changes(before, accounts(world), request.action === 'advance');
+        let inventory = changes(stockBefore, resources(world), request.action === 'advance');
+        if (request.action === 'advance') {
+          const firms = new Set(world.S.firms.filter(f => f.ceo === strategy.playerId).map(f => f.id));
+          const visible = row => row.id.startsWith('person:'+strategy.playerId+':') || row.id === 'family:vault' ||
+            row.id.startsWith('firm:') && firms.has(Number(row.id.split(':')[1]));
+          ledger = ledger.filter(visible); inventory = inventory.filter(visible);
+        }
         strategy.playerId = world.S.dyn.pid;
         if (strategy.revision >= Number.MAX_SAFE_INTEGER) fail('REVISION_OVERFLOW');
         strategy.revision++;
@@ -100,8 +108,9 @@ function createCommands(world, strategy) {
         const uncertain = randomBefore !== stable(world.commandRandomState());
         return clone({ ...meta(), actor: request.actor, controlledPersonId: strategy.playerId,
           result, ledger, inventory, publicAccounts, quote,
-          contractChanges: strategy.contracts.entries.filter(row => previousContracts.get(row.id) !== stable(row)),
-          duration: { advancedDays: 0, cooldowns: Object.entries(world.S.dyn.cool || {}).filter(([key, until]) =>
+          contractChanges: strategy.contracts.entries.filter(row => previousContracts.get(row.id) !== stable(row) &&
+            (request.action !== 'advance' || Object.entries(row.parties).some(([role,id]) => !['firm','cooperative'].includes(role) && id === strategy.playerId))),
+          duration: { advancedDays: world.S.day - dayBefore, cooldowns: Object.entries(world.S.dyn.cool || {}).filter(([key, until]) =>
             until !== cooldowns[key]).map(([key, untilDay]) => ({ key, untilDay, remainingDays: Math.max(0, untilDay - world.S.day) })), basis: '명령은 즉시 처리; 계약 기한과 하루 지침은 별도' },
           uncertainty: uncertain ? 'random-outcome' : null });
       }, preview);
