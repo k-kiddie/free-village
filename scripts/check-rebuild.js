@@ -18,7 +18,7 @@ const open=(g,policy='volume')=>{g.command({action:'open',site:3,good:'food',pol
  const a=createGame(7),b=createGame(7);open(a,'volume');open(b,'quality');advance(a,12);advance(b,12);assert.notEqual(a.view().player.cash,b.view().player.cash,'운영 방침별 실제 성과 차이');
 }
 {
- const g=createGame();for(let i=0;i<25;i++){g.command({action:'visit',district:i%3});advance(g,1)}g.command({action:'campaign',value:'food'});advance(g,5);assert(g.view().history.length===1,'선거 판정과 이력');assert(!g.view().player.candidate);if(g.view().player.office){const personal=g.view().player.cash,tre=g.view().treasury;g.command({action:'road',district:0});assert.equal(g.view().player.cash,personal);assert.equal(g.view().treasury,tre-140,'공공사업은 국고에서만 집행');advance(g,8);assert.equal(g.view().districts[0].road,1)}
+ const g=createGame();for(let i=0;i<25;i++){g.command({action:'visit',district:i%3});advance(g,1)}g.command({action:'campaign',value:'food'});advance(g,5);assert(g.view().history.length===1,'선거 판정과 이력');assert(!g.view().player.candidate);if(g.view().player.office){const personal=g.view().player.cash,tre=g.view().treasury;g.command({action:'road',district:0});assert.equal(g.view().player.cash,personal);assert.equal(g.view().treasury,tre-140,'공공사업은 국고에서만 집행');advance(g,8);assert.equal(g.view().districts[0].road,1);g.command({action:'campaign',value:'jobs'});assert(g.view().player.office&&g.view().player.candidate,'현직도 재선 출마 가능')}
 }
 {
  const g=createGame();advance(g,120);g.command({action:'succession'});assert.equal(g.view().player.generation,2);assert.throws(()=>createGame(1,{version:999,state:{}}),/저장/);
