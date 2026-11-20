@@ -3,10 +3,12 @@
   const $ = selector => document.querySelector(selector), esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const readStore = (key, fallback) => { try { return JSON.parse(localStorage.getItem('fv4:' + key)) ?? fallback; } catch { return fallback; } };
   const store = (key, value) => { try { localStorage.setItem('fv4:' + key, JSON.stringify(value)); } catch {} };
+  const filters = readStore('filters', {business:''});
   const client = readStore('client', null) || 'phone-' + crypto.randomUUID(); store('client', client);
   const api = '/rebuild/api';
   let mapRequest=0;
   let V, M, selected = null, tab = 'map', camera = null, layer = 'all', refs = [], targetData = null, busy = false, loadId = 0, drawItems = [], catalog = null, prepared = null, actionChoices = [], clustered = [];
+  function setBusy(value){busy=value;document.body.setAttribute('aria-busy',String(value));document.body.classList.toggle('busy',value);document.querySelectorAll('button').forEach(b=>b.disabled=value);}
   const money = n => Number.isFinite(n) ? (n / (V?.currencyUnit || 1)).toLocaleString('ko-KR', {maximumFractionDigits:1}) + '냥' : '미확인';
   const note = text => { $('#status').textContent = text; $('#status').style.display = 'block'; clearTimeout(note.timer); note.timer = setTimeout(() => $('#status').style.display = 'none', 4000); };
   async function call(path, body) {
@@ -35,7 +37,7 @@
     if (V && V.worldId !== next.worldId) { selected = null; refs = []; camera = null; M = null; }
     if(!V) refs=readStore('compare:'+next.worldId,[]);
     V = next; renderBase();
-    if (full || changed) await render();
+    if (full || changed) { const scroll=window.scrollY; await render(); window.scrollTo(0,scroll); }
   }
   function heading(title, subtitle, buttons = '') { return `<div class="heading"><div><p class="eyebrow">YOUR VILLAGE, YOUR STORY</p><h2>${title}</h2><p class="muted">${subtitle}</p></div><div class="row">${buttons}</div></div>`; }
   async function render() {
@@ -51,19 +53,21 @@
       $('#main').innerHTML = heading('오늘의 생활과 일', '일 지침을 비교하고, 하루를 보낸 뒤 실제 수입과 상태를 확인하세요.', '<button data-do="advance">하루 진행 →</button>') + `<div class="grid"><div class="card"><p class="muted">식량 보유 · 곡물 환산</p><b class="stat">${food.toFixed(1)}</b><p class="muted">곡식 ${V.me.goods?.grain?.toFixed(1) || 0} · 식사 ${V.me.goods?.meal?.toFixed(1) || 0}</p></div><div class="card"><p class="muted">건강 / 배고픔</p><b class="stat">${Math.round(V.me.health)} / ${Math.round(V.me.hunger)}</b><p class="muted">배고픔은 낮을수록 좋습니다.</p></div></div><section class="card job" style="margin-top:14px"><h3>하루 일 지침</h3><p class="muted">현재 1순위: ${['농사','요리','벌목','건축','품팔이','도둑질','휴식','짝찾기','치안','제조','채석','가르치기','장사'][V.budget.job] || '자율 선택'}. 실제로 가능한 일인지 매일 다시 판단합니다.</p><div class="row toolbar"><button data-job="work">품팔이 중심</button><button data-job="trade">장사 중심</button><button data-job="auto">주민 판단에 맡기기</button></div>${V.today ? `<p>최근 하루: ${esc(V.today.kind==='duty'?'공무':jobName(V.today.did))} · ${esc(V.today.why || '실제 가능한 일을 수행했습니다.')}</p>` : ''}<p class="help">지침 변경만으로 임금이나 물건이 생기지 않습니다. 하루 진행 후 결과를 확인하세요.</p></section><section class="card"><h3>가문 금고</h3><p>보관 중 ${money(V.vault)} · 내 현금과 분리해서 보관합니다.</p><div class="row toolbar"><button data-do="vault-in">현금 절반 보관</button><button data-do="vault-out">금고 절반 꺼내기</button></div></section><h3>실제 일감과 생활 기회</h3><div id="opportunities" class="action-list"></div>`;
       await opportunities('life', generation);
     } else if (tab === 'business') {
-      $('#main').innerHTML = heading('작게 시작하는 사업', '내 공간과 자금을 확인하고 실제 비용을 비교하세요.') + `<div class="card"><div class="business-path"><span>생활·자금</span>→<span>건물 마련</span>→<span>회사 설립</span></div><p class="muted">회사는 내 건물이 있어야 세울 수 있습니다. 자금이 부족하면 생계를 유지하거나 차입 조건을 비교하세요.</p><div class="row toolbar"><button data-go="life">생활·일로 돌아가기</button><button data-do="me">내 자산 위치 보기</button><button data-do="compare">비교함 (${refs.length}/3)</button></div>${V.firms.map(f => `<button data-select="firm:${f.ref.id}">${esc(f.name)} · ${money(f.cash)}</button>`).join('')}${V.projects.length ? '<p>진행 중인 공사 ' + V.projects.length + '건 · ' + V.projects.map(p => Math.round(p.progress/p.need*100)+'%').join(' · ') + ' · 하루씩 진행하며 완공을 확인하세요.</p>' : ''}</div><label>기회 찾기 <input id="action-search" type="search" placeholder="공방, 가게, 회사, 대출…"></label><div id="opportunities" class="action-list"></div>`;
+      $('#main').innerHTML = heading('작게 시작하는 사업', '내 공간과 자금을 확인하고 실제 비용을 비교하세요.', '<button data-do="advance">하루 진행 →</button>') + `<div class="card"><div class="business-path"><span>생활·자금</span>→<span>건물 마련</span>→<span>회사 설립</span></div><p class="muted">회사는 내 건물이 있어야 세울 수 있습니다. 자금이 부족하면 생계를 유지하거나 차입 조건을 비교하세요.</p><div class="row toolbar"><button data-go="life">생활·일로 돌아가기</button><button data-do="me">내 자산 위치 보기</button><button data-do="compare">비교함 (${refs.length}/3)</button></div>${V.firms.map(f => `<button data-select="firm:${f.ref.id}">${esc(f.name)} · ${money(f.cash)}</button>`).join('')}${V.projects.length ? '<p>진행 중인 공사 ' + V.projects.length + '건 · ' + V.projects.map(p => Math.round(p.progress/p.need*100)+'%').join(' · ') + ' · 하루씩 진행하며 완공을 확인하세요.</p>' : ''}</div><p class="muted">내 현금 ${money(V.me.cash)} · 금고 ${money(V.vault)}</p><div class="row toolbar"><button data-do="vault-out">금고에서 절반 꺼내기</button></div><label>기회 찾기 <input id="action-search" type="search" value="${esc(filters.business || '')}" placeholder="공방, 가게, 회사, 대출…"></label><div id="opportunities" class="action-list"></div>`;
       await opportunities('business', generation);
     } else {
       $('#main').innerHTML = heading('결정이 남긴 변화', '처리 결과와 실제 계정 변화를 다시 확인하세요.', '<button data-do="save">지금 저장</button>') + (V.activity.length ? V.activity.map(r => `<article class="card activity"><small>${r.day}일 · ${esc(r.commandId?.split(':')[0] === client ? '내 결정' : '처리 기록')}</small>${resultHTML(r)}</article>`).join('') : '<div class="empty">아직 처리한 행동이 없습니다.</div>') + V.news.map(n => `<article class="card"><p>${esc(n.text)}</p></article>`).join('');
     }
   }
   async function opportunities(kind, generation) {
+    $('#opportunities').innerHTML='<div class="empty" role="status">현재 기회와 조건을 확인하고 있습니다.</div>';
     const data = await call('/catalog'); if (generation !== loadId || !same(data)) return;
     catalog = data;
     const rows = data.actions.filter(a => kind === 'life' ? a.group === '일자리' || /^gig:/.test(a.k) : /^(biz:build:|firm:new|loan:take:|dep:|stock:|house:|land:)/.test(a.k));
     actionChoices = rows;
     function fill(query = '') { $('#opportunities').innerHTML = rows.map((a,i) => ({a,i})).filter(({a}) => (a.label + a.hint).includes(query)).map(({a,i}) => `<button class="action" data-action-index="${i}"><strong>${esc(a.label)}</strong><span>${esc(a.hint)}</span>${a.preliminaryReason ? `<span class="warning">${esc(a.preliminaryReason)}</span>` : ''}<span>조건과 비용 확인</span></button>`).join('') || '<div class="empty">지금은 해당하는 모집·기회가 없습니다. 하루가 지나면 상황이 바뀔 수 있습니다.</div>'; }
-    fill(); if ($('#action-search')) $('#action-search').oninput = e => fill(e.target.value);
+    if ($('#action-search')) { filters.business=$('#action-search').value; store('filters',filters); }
+    fill(kind === 'business' ? filters.business || '' : ''); if ($('#action-search')) $('#action-search').oninput = e => { filters.business=e.target.value; store('filters',filters); fill(e.target.value); };
   }
   function show(html) { $('#dialog').innerHTML = `<button class="close" data-do="close" aria-label="닫기">×</button>${html}`; if (!$('#dialog').open) $('#dialog').showModal(); }
   async function select(ref, move = true, reveal = true) {
@@ -90,17 +94,17 @@
   function request(action, args) { const n = readStore('sequence:' + V.worldId, 0) + 1; return { worldId:V.worldId,commandId:client+':'+n,expectedRevision:V.revision,actor:V.me.ref,action,args }; }
   async function preview(action, args, title, immediate = false) {
     if (readStore('pending',null)) { note('이전 요청의 결과부터 확인해 주세요.'); return; }
-    busy = true;
+    setBusy(true);
     try {
       const command = request(action,args), p = await call('/preview',command);
       if (p.alreadyExecuted) { await refresh(); return; }
       prepared = p.allowed ? {...command,previewToken:p.previewToken} : null;
       if (immediate && prepared) return await execute(prepared);
       show(`<h2 id="dialogTitle">${esc(title)}</h2>${p.allowed ? `<p>${action === 'budget' ? esc(jobPlan(args.budget)) + '</p><p class="muted">고용주·밑천·토지 조건이 맞아야 실행됩니다. 다음 순위도 못 하면 주민의 판단을 따릅니다.</p><p>' : ''}${esc(p.quote?.hint || p.quote?.label || (action === 'budget' ? '다음 하루부터 이 지침으로 생활합니다.' : '현재 조건에서 실행할 수 있습니다.'))}</p>${p.uncertainty ? '<div class="notice">결과가 달라질 수 있습니다. 아래 설명은 확정 수익이나 성공을 보장하지 않습니다.</div>' : (p.accounts || []).map(x=>`<div class="kv"><span>${esc(accountName(x.id))}</span><b>${money(x.before)} → ${money(x.after)}</b></div>`).join('')}${(p.inventory || []).map(x=>`<p class="muted">보유 물량 변화 · ${esc(goods[x.good] || x.good)} ${x.amount>0?'+':''}${x.amount.toFixed(1)}</p>`).join('')}<p class="muted">날짜 진행: ${p.duration.advancedDays}일${p.duration.cooldowns.length ? ' · 다시 실행까지 '+p.duration.cooldowns.map(x=>x.remainingDays+'일').join(', ') : ''}</p><div class="actions"><button data-do="close">돌아가기</button><button class="primary" data-do="execute">이 조건으로 실행</button></div>` : `<div class="error">${p.reasons.map(r=>esc(r.message)).join('<br>')}</div><p class="muted">이 요청으로 돈·물건·시간은 바뀌지 않았습니다. 조건을 마련하거나 다른 방법을 비교해 보세요.</p><div class="actions"><button data-do="close">돌아가기</button></div>`}`);
-    } finally { busy = false; }
+    } finally { setBusy(false); }
   }
   async function execute(command) {
-    store('pending',command); busy = true;
+    store('pending',command); setBusy(true);
     try {
       const r = await call('/execute',command);
       store('pending',null);
@@ -110,7 +114,7 @@
       if (command.action === 'advance') { $('#dialog').close(); note('하루를 마쳤습니다. 생활과 활동에서 변화를 확인하세요.'); }
       else show(`<h2 id="dialogTitle">결정이 반영되었습니다</h2>${resultHTML(r)}<div class="actions"><button data-do="close">이전 화면으로</button><button data-go="activity">활동에서 다시 보기</button></div>`);
     } catch (e) { renderBase(); show(`<h2 id="dialogTitle">처리 결과를 확인하지 못했습니다</h2><p>${esc(e.message)}</p><p class="muted">같은 요청 번호로 결과를 다시 확인합니다. 돈이나 행동이 두 번 집행되지 않습니다.</p><button data-do="retry">다시 확인</button>`); }
-    finally { busy = false; }
+    finally { setBusy(false); }
   }
   function chooseAction(a) {
     if (a.opts?.length) { show(`<h2 id="dialogTitle">${esc(a.label)}</h2><p>${esc(a.hint)}</p><div class="cluster">${a.opts.map((o,i)=>`<button data-option="${i}">${esc(o[1])}</button>`).join('')}</div>`); chooseAction.current=a; }
@@ -151,7 +155,7 @@
   async function loadViewport(){if(!camera)return;const request=++mapRequest;draw();const data=await call('/map?'+new URLSearchParams(camera));if(request===mapRequest&&same(data)){M=data;draw();}}
   function cluster(points, page=0){clustered=points;show(`<h2 id="dialogTitle">이곳의 사람과 장소</h2><p class="muted">${points.length}개 대상 · ${page+1}페이지. 같은 위치의 대상은 이름으로 선택하세요.</p><div class="cluster">${points.slice(page*40,page*40+40).map(e=>`<button data-select="${e.ref.kind}:${e.ref.id}">${esc(e.name)}</button>`).join('')}</div><div class="row toolbar">${page>0?`<button data-cluster-page="${page-1}">이전</button>`:''}${(page+1)*40<points.length?`<button data-cluster-page="${page+1}">다음</button>`:''}</div>`);}
   document.addEventListener('click',async e=>{
-    const b=e.target.closest('button');if(!b||busy)return;
+    const b=e.target.closest('button');if(!b||busy||!V)return;
     try{
       if(b.dataset.clusterPage){cluster(clustered,Number(b.dataset.clusterPage));return;}
       if(b.dataset.peoplePage){await people(Number(b.dataset.peoplePage),$('#people-query').value);return;}

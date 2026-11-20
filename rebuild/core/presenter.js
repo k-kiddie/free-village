@@ -44,7 +44,7 @@ function createPresenter(world, strategy) {
     const S = world.S, D = S.dyn;
     const receipts = Object.values(strategy.commands?.clients || {}).flatMap(c => c.receipts).map(r => r.response)
       .sort((a, b) => b.revision - a.revision).slice(0, 12);
-    return { ...meta(), population: S.agents.length, currencyUnit: world.currencyUnit(), yearDays: engine.YEAR,
+    return { ...meta(), population: S.agents.filter(a=>a.alive).length, currencyUnit: world.currencyUnit(), yearDays: engine.YEAR,
       season: ['봄', '여름', '가을', '겨울'][world.season()], me: person(S.byId.get(strategy.playerId)),
       vault: D.vault || 0, budget: copy(D.budget), today: copy(D.today || null),
       prices: copy(S.price), wage: S.wageAvg || null,
@@ -69,7 +69,7 @@ function createPresenter(world, strategy) {
     S.plots.forEach((row, id) => { const p = center(engine.PLOTS[id]); if (!row.gone && inside(p)) entities.push({ ref: { kind: 'plot', id }, ...p, owner: row.owner, mine: (row.dynOwner || row.owner) === strategy.playerId, name: '농지 ' + (id + 1) }); });
     let residentCount = 0; const residents = [];
     // 주민이 겹치는 장소도 가짜 위치로 흩뜨리지 않는다. 같은 좌표는 화면에서 군집으로 선택한다.
-    for (const a of S.agents) { const p = position(a); if (!inside(p)) continue; residentCount++; if (residents.length < 300 || a.id === strategy.playerId) residents.push({ ref: { kind: 'person', id: a.id }, ...p, name: world.nm(a), mine: a.id === strategy.playerId }); }
+    for (const a of S.agents) { if(!a.alive)continue; const p = position(a); if (!inside(p)) continue; residentCount++; if (residents.length < 300 || a.id === strategy.playerId) residents.push({ ref: { kind: 'person', id: a.id }, ...p, name: world.nm(a), mine: a.id === strategy.playerId }); }
     const m = center(S.geo.mkt), dest = [{x:4,y:m.y},{x:width-2,y:m.y},{x:m.x,y:2},{x:m.x,y:height-2},center(S.geo.quarry),center(S.geo.forest),center(S.geo.camp)];
     return { ...meta(), width, height, bounds: v, paved: S.paved || 0,
       terrain: S.geo.lots.flatMap((r, id) => inside(center(r)) ? [{ id, x:r.x, y:r.y, type:S.terr[id]?.t || 'g', owner:S.lotOwn[id] || null }] : []),
@@ -79,7 +79,7 @@ function createPresenter(world, strategy) {
   function people(options = {}) {
     const page = Number(options.page || 0), query = String(options.query || '').slice(0,40);
     if (!Number.isSafeInteger(page) || page < 0) throw Error('주민 목록 페이지를 확인해 주세요');
-    const list = world.S.agents.filter(a => world.nm(a).includes(query));
+    const list = world.S.agents.filter(a => a.alive && world.nm(a).includes(query));
     return { ...meta(), page, total: list.length, people: list.slice(page*40,page*40+40).map(a => ({ref:{kind:'person',id:a.id},name:world.nm(a),position:position(a)})) };
   }
   function detail(ref) {

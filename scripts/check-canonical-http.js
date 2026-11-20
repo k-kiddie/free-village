@@ -21,7 +21,7 @@ async function main(){
   const time=Date.now();const advancement=command('advance',{});await sleep(20);const health=await json('/health');assert.equal(health.workers,1);const healthMs=Date.now()-time;
   const result=await advancement;assert(Buffer.byteLength(JSON.stringify(result))<50000);
   const me=await json('/rebuild/api/detail?kind=person&id='+now.me.ref.id);assert(me.resident.g&&me.resident.q);
-  const active=await view();const saved=JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir,'canonical.json.gz'))));assert.equal(saved.engine.S.agents.length,active.population);assert(saved.engine.S.agents.every(a=>a.g&&a.q));
+  const active=await view();const saved=JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir,'canonical.json.gz'))));assert.equal(saved.engine.S.agents.filter(a=>a.alive).length,active.population);assert(saved.engine.S.agents.every(a=>a.g&&a.q));
   const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
   try{
     const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});const errors=[];page.on('pageerror',e=>errors.push(e.message));

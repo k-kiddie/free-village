@@ -23,12 +23,16 @@ function validateEngine(state) {
       !Array.isArray(state.S.agents) || !Array.isArray(state.dead)) {
     throw new Error('UNSUPPORTED_ENGINE_SNAPSHOT');
   }
-  const ids = new Set();
-  for (const person of [...state.S.agents, ...state.dead]) {
-    if (!Number.isSafeInteger(person.id) || person.id <= 0 || ids.has(person.id)) {
-      throw new Error('INVALID_PERSON_ID');
-    }
-    ids.add(person.id);
+  const agents = new Map(), deadIds = new Set();
+  for (const person of state.S.agents) {
+    if (!Number.isSafeInteger(person.id) || person.id <= 0 || agents.has(person.id)) throw new Error('INVALID_PERSON_ID');
+    agents.set(person.id,person);
+  }
+  for (const person of state.dead) {
+    // 엔진은 일별 정리 전의 사망자를 agents(전체 자료)와 dead(참조용 최소 자료)에 함께 내보낸다.
+    if (!Number.isSafeInteger(person.id) || person.id <= 0 || deadIds.has(person.id) ||
+        person.alive !== false || agents.has(person.id) && agents.get(person.id).alive !== false) throw new Error('INVALID_PERSON_ID');
+    deadIds.add(person.id);
   }
   for (const person of state.S.agents) {
     if (!person.g || !person.q) throw new Error('MISSING_LEARNING_STATE');
@@ -105,7 +109,7 @@ function createSession(options = {}) {
   function summary() {
     active();
     return { worldId: strategy.worldId, revision: strategy.revision, day: world.S.day, yearDays: YEAR,
-      population: world.S.agents.length, playerId: strategy.playerId,
+      population: world.S.agents.filter(a=>a.alive).length, playerId: strategy.playerId,
       pendingDecision: (world.S.dyn?.pending?.length ?? 0) > 0 };
   }
   return Object.freeze({
