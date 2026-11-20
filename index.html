@@ -293,7 +293,7 @@ function josa(w,a,b){w=String(w);const c=w.charCodeAt(w.length-1);if(c<0xAC00||c
 function createWorld(seed,N){setMap(N>=4000);
   const won=n=>formatMoney(n,currencyUnit());
   PLOTS.length=0;const bigLand=N>=1500;EXPL.length=0;
-  const st={a:seed>>>0};let livingHooks=null;
+  const st={a:seed>>>0};let livingHooks=null,businessHooks=null;
   const rnd=()=>{st.a|=0;st.a=st.a+0x6D2B79F5|0;let t=Math.imul(st.a^st.a>>>15,1|st.a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
   const R=()=>rnd(),rr=(a,b)=>a+R()*(b-a),pick=a=>a[(R()*a.length)|0];
   const gauss=()=>{let u=0;while(!u)u=R();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*R())};
@@ -2731,7 +2731,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     // 휴업·폐업: 직원 없이 돈도 없는 회사는 '휴업'으로 표시하고, 한 해 넘게 그러면 문을 닫는다(건물은 사장 개인 것으로)
     if(S.day%10===0)for(const f of S.firms.slice()){const c=S.byId.get(f.ceo);if(!c||!c.alive||!(f.bld||[]).length)continue;const idle=!(c.workers>0);f.idleD=idle?(f.idleD||0)+10:0;f.dormant=f.idleD>=20;
       if(f.idleD>=YEAR&&(f.cash||0)<(S.wageAvg||1)*20&&!S.firms.some(x=>x.parent===f.id)){for(const id of f.bld){const b=S.bldgs.find(x=>x.id===id);if(b){b.firm=null;b.owner=c.id}}settleClosedFirm(f);S.firms=S.firms.filter(x=>x!==f);if(c.firm===f.id)c.firm=null;X('firmClose');mEv('firmClose',`폐업. 일할 사람도 돈도 없이 한 해를 버틴 ${josa(f.name,'이','가')} 문을 닫았다. 건물은 사장 ${nm(c)}의 것이 됐다`,[c.id])}}
-    if(S.day%10===0)for(const f of S.firms){if(S.dyn&&f.merc)continue;const c=S.byId.get(f.ceo);if(!c||!c.alive)continue;if(f.cash===undefined)f.cash=0;
+    if(S.day%10===0)for(const f of S.firms){if(S.dyn&&f.merc||businessHooks&&businessHooks.managed(f))continue;const c=S.byId.get(f.ceo);if(!c||!c.alive)continue;if(f.cash===undefined)f.cash=0;
       const LK={agri:['farm','wood','stone','iron'],food:['cook','farm'],mfg:['tool','iron','gold'],build:['house','rent','biz'],trade:['trade'],know:['biz'],edu:['biz'],leisure:['biz'],media:['biz'],med:['biz'],fin:['biz'],sec:['biz']};const okK=new Set(firmLines(f).flatMap(l=>LK[l]||[]));const inc=BIZK.filter(k=>okK.has(k)).reduce((t,k)=>t+(c.src[k]||0),0),wg=(c.spend&&c.spend.wages)||0;if(f.lastCeo!==c.id){f.lastCeo=c.id;f.lastInc=inc;f.lastW=wg}
       const net=(inc-f.lastInc)-(wg-f.lastW);f.revBy=f.revBy||{};for(const k of BIZK){if(!okK.has(k))continue;const cur=c.src[k]||0;f.srcLast=f.srcLast||{};if(f.srcLast[k]!==undefined&&cur>f.srcLast[k])f.revBy[k]=(f.revBy[k]||0)+cur-f.srcLast[k];f.srcLast[k]=cur}f.wagesPaid=(f.wagesPaid||0)+Math.max(0,wg-f.lastW);f.lastInc=inc;f.lastW=wg;
       f.revM=(f.revM||0)*.7+Math.max(0,inc-f.lastInc0||0)*.3;f.lastInc0=inc;if(net>0){const t=Math.min(net,Math.max(0,c.cash)*.9);c.cash-=t;f.cash+=t;f.rev=(f.rev||0)+t}else if(net<0){const t=Math.min(-net,f.cash);f.cash-=t;c.cash+=t}
@@ -2741,7 +2741,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(S.day%30===10)techCheck();if(S.day%30===12){cartelTick();unionTick()}
     // 배당·사장 월급 (한 달에 한 번): 회사 금고에서 지분만큼
     if(S.day%30===0)for(const f of S.firms){if(S.dyn&&f.merc)continue;const c=S.byId.get(f.ceo);if(!c)continue;f.cash=f.cash||0;
-      const sal=f.cash*.03;f.cash-=sal;c.cash+=sal;c.src.biz+=sal;
+      const sal=(businessHooks&&businessHooks.managed(f)?Math.max(0,f.cash):f.cash)*.03;if(businessHooks&&businessHooks.managed(f)){if(c.alive){businessPay(f,c,sal,'biz');businessHooks.charge(f,sal,'대표 보수')}}else{f.cash-=sal;c.cash+=sal;c.src.biz+=sal;}
       const reserve=S.houseRef*1.5;let pay=Math.max(0,f.cash-reserve)*(.2+.3*c.g.civic);
       if(R()<c.g.cheat*.35&&pay>1){const sk=pay*.8;pay*=.2;f.cash-=sk;c.cash+=sk;c.rep=Math.max(0,(c.rep??1)-.1);f.skim=(f.skim||0)+1;if(S.gov&&R()<.35)S.gov.cases.push({t:'divSkim',who:c.id,amt:sk,ev:.5,d:S.day,firm:f.id});mile('divSkim',`첫 배당 떼먹기. ${f.name} 사장 ${josa(nm(c),'이','가')} 회사 돈을 주주에게 나누지 않고 챙겼다`,[c.id])}
       const paid=payStockDividend(f,pay);
@@ -2839,7 +2839,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const sg=S.sig,d=S.sigD,ad=adultsC();
     sg.spoil=sg.spoil*.9+d.spoil*.1;sg.stolen=sg.stolen*.9+d.stolen*.1;sg.crimes=sg.crimes*.9+d.crimes*.1;d.spoil=0;d.stolen=0;d.crimes=0;
     sg.homeless=ad.filter(a=>!a.home).length;sg.sick=ad.filter(a=>a.health<60).length;
-    const pay=(a,b)=>{const o=b.owner&&S.byId.get(b.owner);if(b.pub||!o||!o.alive||o===a){b.users++;return true}if(a.cash<b.fee*2)return false;a.cash-=b.fee;SP(a,'rent',b.fee);o.cash+=b.fee;o.src.biz+=b.fee;govTax(o,b.fee);b.rev+=b.fee;b.users++;return true};
+    const pay=(a,b)=>{const o=b.owner&&S.byId.get(b.owner),f=businessHooks&&b.firm&&firmById(b.firm),corporate=businessHooks&&f&&businessHooks.managed(f);if(b.pub||!corporate&&(!o||!o.alive||o===a)){b.users++;return true}if(a.cash<b.fee*2)return false;a.cash-=b.fee;SP(a,'rent',b.fee);if(corporate){f.cash=(f.cash||0)+b.fee;f.rev=(f.rev||0)+b.fee;businessHooks.service(f,a,b.fee)}else{o.cash+=b.fee;o.src.biz+=b.fee;govTax(o,b.fee)}b.rev+=b.fee;b.users++;return true};
     const useCache=new Map(),ownerUses=new Map();for(const b of live){if(!ownerUses.has(b.owner))ownerUses.set(b.owner,new Set());for(const fx of b.fx)ownerUses.get(b.owner).add(fx)}
     const use=(f,cap)=>{if(!useCache.has(f))useCache.set(f,live.filter(b=>b.fx.includes(f)).sort((x,y)=>x.fee-y.fee));const b=useCache.get(f).find(b=>b.users<cap*(b.units||1));return b?[b]:[]};
     // 여관: 집 없는 사람이 하룻밤 값을 내고 잔다
@@ -3012,12 +3012,13 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(a.inv.grain>150)a.inv.grain-=(a.inv.grain-150)*(stored?.001:.003);
       if(stored){a.inv.meal*=.992;a.inv.grain*=.9995;if(a.inv.grain>0)a.gq=Math.max(.05,(a.gq??1)-.0005)}
       else{a.inv.meal*=.97;a.inv.grain*=.998;if(a.inv.grain>0)a.gq=Math.max(.05,(a.gq??1)-.002)}}
+    if(businessHooks)businessHooks.beginDay();
     // 2. 일자리 공고 (돈 많고 사람 부리기 좋아하는 주민)
     for(const pl of S.plots)pl.used=0;S._pc=pcap();S._glean=0;S._left=S._offerQ?new Set(S._offerQ.filter(o=>o.minEdu&&o.slots>0).map(o=>o.e.id)):null;
     S.offers=[];
     for(const a of L){a.workers=0}
     const bigSite=new Map(S.sites.filter(x=>x.big||x.kind==='apt'||x.kind==='dev'||x.kind==='clear'||x.pub||x.firm).map(x=>[x.owner,x]));
-    for(const a of L){if(!a.alive||!isAdult(a))continue;const idle=plotsOf(a)*S._pc-1;const cs=bigSite.get(a.id);const prof=(a.mp||0)>.15&&S.day-(a.mpD||0)<30;const fmR=a.firm&&firmById(a.firm);const rich=fmR&&fmR.ceo===a.id&&(fmR.cash||0)>(S.wageAvg||1)*150;/* 건물을 가진 회사의 사장은 늘 직원을 뽑는다: 회사가 혼자 굴러갈 수는 없다 */const ceoF=fmR&&fmR.ceo===a.id&&(fmR.bld||[]).length>0&&((fmR.cash||0)+a.cash)>(S.wageAvg||1)*10;if(!cs&&a.g.hire<.5&&!(idle>=2&&a.g.hire>.15)&&!(prof&&a.g.hire>.12)&&!rich&&!ceoF)continue;
+    for(const a of L){if(!a.alive||!isAdult(a))continue;if(businessHooks&&a.firm&&businessHooks.managed(firmById(a.firm)||{}))continue;const idle=plotsOf(a)*S._pc-1;const cs=bigSite.get(a.id);const prof=(a.mp||0)>.15&&S.day-(a.mpD||0)<30;const fmR=a.firm&&firmById(a.firm);const rich=fmR&&fmR.ceo===a.id&&(fmR.cash||0)>(S.wageAvg||1)*150;/* 건물을 가진 회사의 사장은 늘 직원을 뽑는다: 회사가 혼자 굴러갈 수는 없다 */const ceoF=fmR&&fmR.ceo===a.id&&(fmR.bld||[]).length>0&&((fmR.cash||0)+a.cash)>(S.wageAvg||1)*10;if(!cs&&a.g.hire<.5&&!(idle>=2&&a.g.hire>.15)&&!(prof&&a.g.hire>.12)&&!rich&&!ceoF)continue;
       const np=plotsOf(a);let spec=FARM,bq=-1;const LS={agri:[FARM,CHOP,MINE],food:[COOK],mfg:[CRAFT],build:[BUILD],trade:[TRADE],know:[CRAFT],edu:[TEACH],leisure:[TRADE,COOK],media:[TRADE],med:[TRADE],fin:[TRADE],sec:[GUARD]};let allow=fmR&&fmR.ceo===a.id?new Set(firmLines(fmR).flatMap(l=>LS[l]||[]).filter(k=>PROD.includes(k)&&(k!==FARM||np))):null;if(allow&&!allow.size)allow=null;for(const k of PROD){if(k===FARM&&!np)continue;if(allow&&allow.size&&!allow.has(k))continue;if(a.q[wint][k]>bq){bq=a.q[wint][k];spec=k}}if(allow&&!(bq>-1)){spec=[...allow][0]}if(ceoF&&!(bq>0))bq=(S.wageAvg||1);if(cs){spec=BUILD;bq=Math.max(bq,(S.wageAvg||1)*1.2);mile('crewHire',`첫 공사판 인부 모집. 큰 공사를 맡은 ${josa(nm(a),'이','가')} 일당을 주고 인부를 모았다`,[a.id])}
       if(!(bq>0))continue;
       const anchor=bq*a.g.wageMul*(a.wageBoost||1);if(!Number.isFinite(a.wageCur))a.wageCur=null;if(a.wageCur==null)a.wageCur=anchor;a.wageCur+=(anchor-a.wageCur)*.01;a.wageCur=cl(a.wageCur,.3,Math.max(.5,bq*1.15));const wage=Math.max(a.wageCur,(S.gov&&S.gov.policy.wageFloor)||0);
@@ -3028,7 +3029,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       const fmC=fm&&fm.ceo===a.id;const slots=Math.min(spec===FARM?np*S._pc-1:capW,Math.floor((a.cash+(fmC?(fm.cash||0)*.8:0))/(wage*(fmC?6:12))));
       const apprY=S._left&&S._left.has(a.id);const skl=fm&&fm.ceo===a.id&&(S.eduShare2||0)>=.15&&((fm.officeDay&&S.day-fm.officeDay<35)||fm.bld.some(id=>buildingById(id)?.fx.includes('bigfac')))&&spec!==FARM;
       const appr=skl&&apprY;a.lastSpec=spec;a.lastWage=wage;if(slots>0&&!banned(a,'hire'))S.offers.push({e:a,spec,wage:skl&&!appr?wage*1.25:appr?wage*.9:wage,slots,init:slots,minEdu:skl&&!appr?2:0,appr})}
-    for(const f of S.firms){const c=S.byId.get(f.ceo);if(!c||!c.alive||!isAdult(c))continue;const labs=S.bldgs.filter(b=>b.firm===f.id&&b.cond>.2&&b.fx.includes('lab'));if(!labs.length)continue;
+    for(const f of S.firms){if(businessHooks&&businessHooks.managed(f))continue;const c=S.byId.get(f.ceo);if(!c||!c.alive||!isAdult(c))continue;const labs=S.bldgs.filter(b=>b.firm===f.id&&b.cond>.2&&b.fx.includes('lab'));if(!labs.length)continue;
       const rw=Math.max(.5,(S.wageAvg||1)*1.5);const want=labs.length*(3+(S.power>=3?2:0));if(c.cash<rw*want*3&&(f.cash||0)>0){const t=Math.min(f.cash*.3,rw*want*3);f.cash-=t;c.cash+=t}
       const rs=Math.min(want,Math.floor(c.cash/(rw*3)));if(rs>0)S.offers.push({e:c,spec:RES,wage:rw,slots:rs,init:rs,research:true,lab:labs[0].lot})}
     S.offers.sort((x,y)=>y.wage-x.wage);
@@ -3045,6 +3046,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     const boostOf=new Map(),facOf=new Set(),bigOf=new Set();const itOf=new Set(S.firms.filter(f=>f.itDay&&S.day-f.itDay<35).map(f=>f.ceo));const offOf=new Set(S.firms.filter(f=>f.officeDay&&S.day-f.officeDay<35).map(f=>f.ceo));for(const b of S.bldgs)if(b.owner&&b.cond>.2)for(const f of b.fx){if(f==='bigfac')bigOf.add(b.owner);if(f[0]==='b'){const k=+f.slice(1);boostOf.set(b.owner+':'+k,1)}if(f==='fac')facOf.add(b.owner)}
     let nFarm=0;const sea4=season(),scG4=grainScar();
     for(const a of actors){
+      if(businessHooks&&businessHooks.assigned(a)){a.act=WORK;a.actT=null;continue;}
       const wkF=faithHas(a,'work');const g=a.g,hu=a.hunger/100,ti=a.fat/100,po=1/(1+Math.max(0,a.cash)/20);
       const desperate=a.hunger>45&&a.inv.meal<1&&a.inv.grain<2&&a.cash<S.price.grain*3;
       let best=REST,bv=-1e9;const dynWant=S.dyn&&a.id===S.dyn.pid?dynPickJob(a,{myPlots,anyPlotFree,banRules,siteK,freeLot,freeShop,kidsN,monarch}):null;
@@ -3165,6 +3167,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       return v};
     const offerQ=S.offers.map(o=>({...o}));S._offerQ=offerQ;
     for(const a of actors){
+      if(businessHooks&&businessHooks.work(a))continue;
       const k=a.act;a.actCount[k]++;S.yr.act[k]++;if(k!==WORK)occAdd(a,k);let v=0;{const sec=k===FARM||k===CHOP||k===MINE?0:k===COOK||k===CRAFT||k===BUILD?1:k===TEACH||k===TRADE||k===GUARD?2:-1;if(sec>=0){S.yr.sec=S.yr.sec||[0,0,0,0];S.yr.sec[sec]++}}
       if(k===FARM||k===COOK||k===CHOP||k===BUILD||k===CRAFT||k===MINE){v=doProd(a,a,k);S.yr.gdp=(S.yr.gdp||0)+(v||0);S.yr.gdpSelf=(S.yr.gdpSelf||0)+(v||0);a.fat+=(k===MINE?18:14)}
       else if(k===WORK){
@@ -5070,13 +5073,13 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function coPats(f){return (coOf(f).pat||[]).filter(p=>p.until>S.day)}
   function coMult(f){const o=coOf(f);return o.fac*.06+(o.adUntil>S.day?o.ad:0)+coPats(f).length*.08+(firmLines(f).length-1)*.04+o.br*.05+(o.cartel>S.day?.15:0)+o.exec.length*.02}
   // 손님을 빼앗아 오는 만큼만 번다: 같은 분야 경쟁사와 주민 지갑에서 옮겨 오므로 돈이 새로 생기지 않음
-  function coDrain(f,amt){if(!(amt>0))return 0;let got=0;
+  function coDrain(f,amt){if(!(amt>0))return 0;if(businessHooks&&businessHooks.managed(f))throw Error('이 회사는 실제 생산·고객 거래 없이 매출을 가산할 수 없습니다.');let got=0;
     for(const x of coRivals(f)){if(got>=amt*.5)break;if(!((x.cash||0)>0))continue;const t=Math.min(x.cash*.05,amt*.5-got);x.cash-=t;got+=t}
     const ad=adA().filter(a=>a.cash>dynWA()*5&&a.id!==f.ceo),pool=ad.reduce((t,a)=>t+a.cash,0);
     if(pool>0){const need=Math.min(amt-got,pool*.02);for(const a of ad){const t=need*a.cash/pool;a.cash-=t;SP(a,'goods',t)}got+=need}
     f.cash=(f.cash||0)+got;f.rev=(f.rev||0)+got;return got}
   // 회사가 쓰는 돈은 마을 사람에게 돌아감(임대료·상인·일꾼)
-  function coSpend(f,amt){amt=Math.min(Math.max(0,f.cash||0),amt);if(!(amt>0))return 0;f.cash-=amt;const ad=adA().filter(a=>a.id!==f.ceo);if(ad.length){const k=Math.min(8,ad.length);for(let i=0;i<k;i++)ad[Math.floor(wr()*ad.length)].cash+=amt/k}else if(S.gov)S.gov.tre+=amt;return amt}
+  function coSpend(f,amt,kind='operating'){amt=Math.min(Math.max(0,f.cash||0),amt);if(!(amt>0))return 0;f.cash-=amt;const ad=adA().filter(a=>a.id!==f.ceo);if(ad.length){const k=Math.min(8,ad.length);for(let i=0;i<k;i++)ad[Math.floor(wr()*ad.length)].cash+=amt/k}else if(S.gov)S.gov.tre+=amt;if(businessHooks&&businessHooks.managed(f)&&kind==='operating')businessHooks.charge(f,amt,'운영비');return amt}
   function coDebt(f){return (S.corpLoans||[]).filter(l=>l.firm===f.id&&l.status!=='paid'&&l.status!=='closed').reduce((t,l)=>t+(l.bal||0),0)}
   function coNote(f,text){const o=coOf(f);o.log=(o.log||[]).concat({d:S.day,text}).slice(-12)}
   function coTick(me){if(S.day%30!==7)return;const wA=dynWA(),G=S.gov;
@@ -5085,9 +5088,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       const mgr=me&&f.ceo===me.id?dynManageRatio(30):null,mgrM=mgr==null?0:mgr>0?mgr*.15:staff.length>=2?-.05:0;
       const target=cl(.5+(o.wage-1)*1.5+o.wel*.12+o.fund*.05-(o.dark.sub&&S.day-o.dark.sub<YEAR?.1:0)-(o.strike>S.day?.05:0)+mgrM,0,1);o.morale=cl(o.morale+(target-o.morale)*.3,0,1);
       const base=coBase(f),mult=coMult(f)*(.8+o.morale*.4)*(mgr?1+mgr*.3:1)-(o.strike>S.day?.5:0)-(o.morale<.3?.1:0);
-      if(mult>0)o.lastGain=coDrain(f,base*mult);else{o.lastGain=-coSpend(f,base*-mult)}
+      if(businessHooks&&businessHooks.managed(f)){o.lastGain=0}else if(mult>0)o.lastGain=coDrain(f,base*mult);else{o.lastGain=-coSpend(f,base*-mult)}
       // 복지·지점 운영비
-      if(o.wel&&staff.length){const per=Math.min(wA*2,(f.cash||0)*.2/staff.length);for(const x of staff){f.cash-=per;x.cash+=per}if((f.cash||0)<wA*5){o.wel=0;coNote(f,'회사 현금이 바닥나 복지를 멈췄다')}}
+      if(o.wel&&staff.length){const per=Math.min(wA*2,(businessHooks&&businessHooks.managed(f)?Math.max(0,f.cash||0):(f.cash||0))*.2/staff.length);for(const x of staff){f.cash-=per;x.cash+=per;if(businessHooks&&businessHooks.managed(f))businessHooks.charge(f,per,'직원 복지')}if((f.cash||0)<wA*5){o.wel=0;coNote(f,'회사 현금이 바닥나 복지를 멈췄다')}}
       if(o.br)coSpend(f,o.br*wA*4);
       // 특허 사용료: 같은 분야 회사가 1%씩
       for(const p of coPats(f))for(const x of coRivals(f)){const t=Math.max(0,(x.cash||0))*.01;x.cash-=t;f.cash+=t;o.royalty=(o.royalty||0)+t}
@@ -5138,11 +5141,11 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     for(const f of dynMajorFirms(me)){if(f.ceo===me.id)continue;const st=coStake(me,f);add('co:seize:'+f.id,'회사 확장',`${f.name} · 경영권 장악`,`내 지분 ${(st*100).toFixed(1)}% · 사장을 몰아내고 내가 사장이 됨 · 지분 50% 이상이면 확실, 30% 이상이면 주주 표 대결`,dynWait('coseize'+f.id))}
   }
   function coAct(me,k){const [,op,fid,arg0]=k.split(':'),f=firmById(Number(fid)),wA=dynWA(),hr=S.houseRef||100,G=S.gov,D=S.dyn;if(!f)throw Error('회사가 없습니다');const o=coOf(f),staff=coStaff(f),cool=(n,d)=>{D.cool['actco'+n+f.id]=S.day+d};const arg=arg0||'';let text='';
-    const pay=n=>{if((f.cash||0)<n)throw Error('회사 현금이 모자랍니다');return coSpend(f,n)};
+    const pay=n=>{if((f.cash||0)<n)throw Error('회사 현금이 모자랍니다');return coSpend(f,n,['fac','line'].includes(op)?'capital':'operating')};
     if(op==='seize'){const st=coStake(me,f);cool('seize',YEAR/2);if(st>=.5||wr()<(st-.25)*2){const old=S.byId.get(f.ceo);setCeo(f,me.id);coOf(f);if(old)dynFamTie(old,-.3,'경영권 다툼');text=`${f.name} 주주총회에서 이겨 내가 사장이 됐다`}else text=`주주 표 대결에서 졌다. ${f.name} 사장은 그대로다`;dynChron(text,[me.id]);return text}
     if(f.ceo!==me.id)throw Error('내 회사가 아닙니다');
     if(op==='rename'){const name=dynCompanyName(arg,f),old=f.name;f.name=name;f.dynName=true;for(const u of S.unions||[])if(u.firm===f.id)u.fname=name;text=`회사 이름을 ${old}에서 ${josa(name,'으로','로')} 바꿨다`;dynChron(text,[me.id])}
-    else if(op==='wage'){cool('wage',30);if(arg==='bonus'){const n=staff.length*wA*3;pay(0);if((f.cash||0)<n)throw Error('회사 현금이 모자랍니다');for(const x of staff){f.cash-=wA*3;x.cash+=wA*3}o.morale=cl(o.morale+.15,0,1);text=`직원 ${staff.length}명에게 성과급 ${won(n)}을 줬다. 사기가 올랐다`}
+    else if(op==='wage'){cool('wage',30);if(arg==='bonus'){const n=staff.length*wA*3;pay(0);if((f.cash||0)<n)throw Error('회사 현금이 모자랍니다');for(const x of staff){if(businessHooks&&businessHooks.managed(f))businessPay(f,x,wA*3,'wage');else{f.cash-=wA*3;x.cash+=wA*3}}if(businessHooks&&businessHooks.managed(f))businessHooks.charge(f,n,'성과급');o.morale=cl(o.morale+.15,0,1);text=`직원 ${staff.length}명에게 성과급 ${won(n)}을 줬다. 사기가 올랐다`}
       else{const m=arg==='up'?1.1:.9;for(const x of staff)if(x.ct)x.ct.w=Math.max(.3,(x.ct.w||wA)*m);o.wage=cl(o.wage*m,.5,2);o.morale=cl(o.morale+(arg==='up'?.08:-.12),0,1);text=arg==='up'?`${f.name} 직원 임금을 10% 올렸다`:`${f.name} 직원 임금을 10% 깎았다. 직원들이 수군거린다`}}
     else if(op==='line'){const [kind,l]=arg.split('_'),lines=firmLines(f);if(!LINE_L[l]||lines.includes(l))throw Error('고를 수 없는 분야입니다');cool('line',60);
       if(kind==='add'){if(lines.length>=lineCap(f))throw Error('일꾼이 더 있어야 분야를 늘릴 수 있습니다');pay(wA*20);f.lines=[...lines,l];text=`${josa(f.name,'이','가')} ${LINE_L[l]} 분야를 새로 열었다`}
@@ -7950,6 +7953,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if(e.realm&&!ctx.t){const t=sRealm(e.realmFilter);if(!t)return null;ctx.t=t.name}
     let c=sCtx(me,ctx);
     if((e.need&&!e.need(c))||(e.trig&&!e.trig(c)))return null;
+    if(businessHooks&&['coRival','coContract','coExport','coRecall'].includes(e.id)&&businessHooks.managed(firmById(ctx.fid)||{}))return null;
     if(e.who&&ctx.x==null&&!saved){const x=e.who(c);if(!x)return null;ctx.x=x.id;c=sCtx(me,ctx)}
     if(ctx.t!=null&&(!c.t||(e.realm&&(!c.R0||c.R0.prov||e.realmFilter&&!e.realmFilter(c.t,c.R0)))))return null;
     for(const key of ['x','y']){
@@ -9085,6 +9089,28 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     for(const row of data.shares){const f=firmById(row.id);if(!f||!Array.isArray(row.keys)||new Set(row.keys).size!==row.keys.length||row.keys.some(k=>!(f.sh[k]>0))||row.keys.length!==Object.keys(f.sh).filter(k=>f.sh[k]>0).length)throw Error('이어갈 주주 순서가 올바르지 않습니다');shareIndexes.set(f,{table:f.sh,keys:row.keys.slice(),positions:new Map(row.keys.map((id,i)=>[id,i]))});}
     familyCacheDay=-1;dynKinD=-1;
   }
+  // canonical 창고 공정도 기존 하루의 해당 직원 실행 슬롯을 한 번만 사용한다.
+  function businessLabor(f,a,pay,skill,lot,added,worked){
+    const before=f.cash||0;businessPay(f,a,pay,'wage');
+    if(S.gov&&S.gov.policy.pension){const worker=pay*.03,employer=Math.min(Math.max(0,f.cash||0),pay*.03);a.cash-=worker;f.cash-=employer;S.gov.pen=(S.gov.pen||0)+worker+employer}
+    a.act=WORK;a.actCount[WORK]++;S.yr.act[WORK]++;a.actT=lot!=null?{lot}:{market:1};a.workAct=skill;
+    const boss=S.byId.get(f.ceo);if(boss)boss.workers=(boss.workers||0)+1;
+    a.fat=cl(a.fat+(worked?14:-8),0,100);if(worked){a.skill[skill]=Math.min(1,a.skill[skill]+.01*(1+.3*(a.edu||0))*(1-a.skill[skill]));occAdd(a,skill)}
+    for(const k of PROD)a.skill[k]=Math.max(.02,a.skill[k]-.0004);
+    S.yr.wagePaid+=pay;S.yr.workDays++;S.wageDay=(S.wageDay||0)+pay;S.workDay=(S.workDay||0)+1;
+    S.yr.gdp=(S.yr.gdp||0)+added;S.yr.gdpEmp=(S.yr.gdpEmp||0)+added;S.yr.sec=S.yr.sec||[0,0,0,0];S.yr.sec[1]++;
+    f.wagesPaid=(f.wagesPaid||0)+before-f.cash;return before-f.cash;
+  }
+  function businessReceive(f,a,amount,good){if(!Number.isFinite(amount)||amount<0||a.cash+1e-9<amount)throw Error('고객의 실제 지불 잔액을 확인해 주세요');a.cash-=amount;SP(a,good==='meal'?'food':'goods',amount);f.cash=(f.cash||0)+amount;f.rev=(f.rev||0)+amount;f.revBy ||= {};f.revBy[good]=(f.revBy[good]||0)+amount;}
+  function businessTax(f,due){if(!Number.isFinite(due)||due<0)throw Error('회사 소득세 채무를 확인해 주세요');const G=S.gov;if(!G)return {paid:0,due};const paid=Math.min(Math.max(0,f.cash||0),due);f.cash-=paid;G.tre+=paid;G.st.collected=(G.st.collected||0)+paid;return {paid,due:due-paid};}
+  function businessHireable(a){return !!(a?.alive&&isAdult(a)&&a.health>=30&&!a.emp&&!a.ct&&!firmById(a.firm)&&!a.pubT&&!a.faithT&&!a.soldier&&!a.enslavedBy&&!dynScheduleBusy(a)&&!dynFullOffice(a));}
+  function businessHire(f,a,wage){if(!businessHireable(a))throw Error('현재 채용 가능한 주민이 아닙니다');if(wr()>dynHireP(a,wage))return {hired:false,text:nm(a)+'이 채용 제안을 거절했습니다.'};a.emp=f.ceo;a.ct={t:'reg',e:f.ceo,w:wage,d:S.day,company:f.id};S.tot.hires++;log('econ',f.name+'에서 '+nm(a)+'을 하루 '+won(wage)+'에 고용했다',[f.ceo,a.id]);return {hired:true,text:nm(a)+'과 회사 고용 계약을 맺었습니다.',personId:a.id,wage};}
+  function businessDismiss(a){endCt(a,'businessArrears');a.emp=null;}
+  // canonical 회사 발주도 실제 회사 지갑과 기존 소득·세금 계산을 사용한다.
+  function businessPay(f,to,amount,source='biz'){
+    if(!f||firmById(f.id)!==f||!to?.alive||!Number.isFinite(amount)||amount<0||amount>0&&(f.cash||0)+1e-9<amount)throw Error('회사 지불 계정과 잔액을 확인해 주세요');
+    f.cash=(f.cash||0)-amount;to.cash+=amount;to.src[source]=(to.src[source]||0)+amount;to.incToday=(to.incToday||0)+amount;govTax(to,amount);
+  }
   // canonical 생활 명령도 기존 지불·세금·주거 이전 규칙을 통한다. classic에는 연결하지 않는다.
   function livingPay(from,to,amount,source='biz',expense='living'){
     if(!from?.alive||!to?.alive||!Number.isFinite(amount)||amount<0||from.cash+1e-9<amount)throw Error('실제 지불 계정과 잔액을 확인해 주세요');
@@ -9102,9 +9128,9 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   for(const [scene,ids] of Object.entries(IMMERSIVE_SCENE_EXTRA))for(const id of ids)if(SE[id])SE[id].scene=scene;
   for(const [scene,ids] of Object.entries(IMMERSIVE_SCENE_OVERRIDES))for(const id of ids)if(SE[id])SE[id].scene=scene;
   if(SE.adultVenueAfter)SE.adultVenueAfter.scene='venueAftercare';
-  return{commandContinuation,restoreContinuation,setLivingHooks:hooks=>{livingHooks=hooks},livingPay,livingRent,commandRandomState:()=>({village:st.a,strategy:S.dyn?.wr}),commandTransaction:dynTransaction,commandPublicAccount:dynPublicAccount,commandRecheck:dynStoryRecheck,dynSetStory,_story:{SE,FOLLOW,sCtx,dynStoryPick,sRealm,SE_TRIG,dynStoryTrig,dynStoryEligible,dynStoryContext,dynStoryPush,dynStoryTick},dynTargetActions,dynStart,dynConfigureStart,dynRename,dynChoose,dynAct,dynActions,dynSetBudget,dynVault,dynView,dynRank,dynCanSee,dynCanTab,dynTabs,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
+  return{setBusinessHooks:hooks=>{businessHooks=hooks},businessLabor,businessReceive,businessTax,businessHireable,businessHire,businessHireWage:dynHireWage,businessDismiss,businessPay,companyLines:f=>[...new Set(f.lines||[SUF_LINE[f.suf]||'trade'])],commandContinuation,restoreContinuation,setLivingHooks:hooks=>{livingHooks=hooks},livingPay,livingRent,commandRandomState:()=>({village:st.a,strategy:S.dyn?.wr}),commandTransaction:dynTransaction,commandPublicAccount:dynPublicAccount,commandRecheck:dynStoryRecheck,dynSetStory,_story:{SE,FOLLOW,sCtx,dynStoryPick,sRealm,SE_TRIG,dynStoryTrig,dynStoryEligible,dynStoryContext,dynStoryPush,dynStoryTick},dynTargetActions,dynStart,dynConfigureStart,dynRename,dynChoose,dynAct,dynActions,dynSetBudget,dynVault,dynView,dynRank,dynCanSee,dynCanTab,dynTabs,DYN_LIFE,DYN_EDU,rulingN,isRuling,guName,LINE_L,firmLines,lineCap,buildingCap,moneySupply,currencyUnit,reformCurrency,rightsIssue,bonusIssue,buybackShares,cancelTreasury,tradeStock,stockOwnership,stockValue,familyOf,successionOrder,titled,chiefTitle,CHIEF_EL,distOf,distPop,lvOf,legacyGeo,invV,invAll,mTitle,minScore,regime,elective,polReady,libOf,seats,tariffOf,GOODN,S,step,ideoOf,DOCN,DOCD,bName,dById,firmById,ruleText,FXN,FXD,W,nm,season,isAdult,ownedHouses,houseById,plotsOf,exportState,importState,grpById,stageOf,gStrength,POL_LABEL,activeLoans,platform};
 }
-if(typeof module!=='undefined')module.exports={GAME_VERSION,SHARE_COUNT,shareCount,votingShares,marketCap,formatMoney,REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};
+if(typeof module!=='undefined')module.exports={MAKE,GAME_VERSION,SHARE_COUNT,shareCount,votingShares,marketCap,formatMoney,REG_L,LODGE,FDI_L,WEAP_L,MIL_L,BR,MILB_L,DIS,INFRA,RES_L,RES_ERA,PP,ELEC_L,LANDW,MED_L,DEPT,SUGA_L,COPAY_L,DFEE,MAJ,ESSENTIAL,CONSENT_L,GBD,GAMB_L,FZT,SURRO_L,ELECT_L,DRUG_L,CARTG,PROST_L,EDU_L,OCCK,OCC_L,POWER_L,TGC,TGN,WHAT_L,get BASELOTS(){return BASELOTS},EXPL,ruleText,WHO_L,FXN,FXD,createWorld,ACT,NA,YEAR,PROD,GNAME,LOTS,PLOTS,GUARD,CRAFT,SHOPLOTS,MINE,TEACH,TRADE,QUARRY};
 
 </script>
 <script>

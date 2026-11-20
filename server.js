@@ -162,7 +162,7 @@ async function handleWorld(name,sub,req,res,url){
 }
 async function handleCanonical(sub,req,res,url){
   const get=req.method==='GET', post=req.method==='POST';
-  const method=get?({'/api/living':'living','/api/map':'map','/api/people':'people','/api/detail':'detail','/api/catalog':'catalog'})[sub]:post?({'/api/preview':'preview','/api/execute':'execute','/api/cmd':'save'})[sub]:null;
+  const method=get?({'/api/business':'business','/api/living':'living','/api/map':'map','/api/people':'people','/api/detail':'detail','/api/catalog':'catalog'})[sub]:post?({'/api/preview':'preview','/api/execute':'execute','/api/cmd':'save'})[sub]:null;
   if(!method)return sendJson(res,404,{error:'요청 경로를 찾을 수 없습니다'});
   if(post&&req.headers.origin){let allowed=false;try{const origin=new URL(req.headers.origin);allowed=['http:','https:'].includes(origin.protocol)&&origin.host===req.headers.host}catch{}if(!allowed)return sendJson(res,403,{error:'다른 사이트에서 보낸 요청입니다'});}
   const input=post?await readBody(req,16384):null;
