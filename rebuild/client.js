@@ -1,6 +1,7 @@
 "use strict";
 (() => {
   const $ = (s) => document.querySelector(s);
+  const makeId = () => globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
   const esc = (s) =>
     String(s ?? "").replace(
       /[&<>"']/g,
@@ -889,7 +890,7 @@
   });
   $("#event").addEventListener("cancel", (e) => e.preventDefault());
   $("#sheet").addEventListener("close", () => (profile = null));
-  const session = crypto.randomUUID();
+  const session = makeId();
   async function heartbeat() {
     try {
       await fetch(API + "/api/session", {

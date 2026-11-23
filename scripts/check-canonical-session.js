@@ -148,12 +148,12 @@ assert.throws(() => session.read({ kind: 'bank', id: 1 }), /AMBIGUOUS_REFERENCE/
 session.close();
 console.log('JSON 저장 복원과 모호한 자산/조직 참조 거부 검사 통과');
 
-// 2단계 envelope v1도 현재 v7로 읽는다. 기존 관찰 세계를 임의로 가문 세계로 바꾸지 않는다.
+// 2단계 envelope v1도 현재 v8로 읽는다. 기존 관찰 세계를 임의로 가문 세계로 바꾸지 않는다.
 session = createSession({ checkpoint: { format: 'free-village.canonical', version: 1,
   engine: source, strategy: { revision: 0, playerId } } });
-assert.equal(session.checkpoint().version, 7);
+assert.equal(session.checkpoint().version, 8);
 assert.deepEqual(session.checkpoint().engine, normalized);
 assert.equal(session.summary().playerId, playerId);
 assert.throws(() => session.catalog(), /STRATEGY_DISABLED/);
 session.close();
-console.log('2단계 v1 저장의 v7 비파괴 복원 검사 통과');
+console.log('2단계 v1 저장의 v8 비파괴 복원 검사 통과');
