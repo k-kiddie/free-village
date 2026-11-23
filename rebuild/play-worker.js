@@ -27,10 +27,10 @@ parentPort.on('message', msg => {
       let value;
       if (msg.type === 'canonical') {
         const { method, args = [] } = msg;
-        if (!['map','detail','people','catalog','living','preview','execute'].includes(method)) throw Error('지원하지 않는 요청입니다');
+        if (!['map','detail','people','catalog','business','living','preview','execute'].includes(method)) throw Error('지원하지 않는 요청입니다');
         value = session[method](...args);
         if (method === 'execute' && value.allowed) { await save(); publish(); }
-        if (value !== null && ['map','detail','people','catalog','living'].includes(method)) value = gzip(value);
+        if (value !== null && ['map','detail','people','catalog','business','living'].includes(method)) value = gzip(value);
       } else if (msg.type === 'command' && ['suspend','save'].includes(msg.command?.action)) {
         await save(); publish(); value = { ok:true, ...session.summary() };
       } else throw Error('지원하지 않는 요청입니다');

@@ -2,8 +2,8 @@
 const {createWorld,YEAR}=require('../../engine');
 const clone=x=>structuredClone(x);
 // 생활 인과 검사용 조건: 실제 일반 플레이의 초기 자금·교사·공실과 구분한다.
-function fixture({hunger=20,far=false,foodPoor=false}={}){
- const w=createWorld(42,120);w.dynStart();w.dynChoose(w.S.dyn.pending[0].id,'go');w.dynSetStory(0);
+function fixture({hunger=20,far=false,foodPoor=false,population=120}={}){
+ const w=createWorld(42,population);w.dynStart();w.dynChoose(w.S.dyn.pending[0].id,'go');w.dynSetStory(0);
  const S=w.S,me=S.byId.get(S.dyn.pid),others=S.agents.filter(a=>a!==me),teacher=others[0],seller=others[1],child=others[2];
  const lots=S.geo.lots.map((p,id)=>({id,...p})).filter(p=>S.terr[p.id]?.t==='g');
  const left=lots.reduce((a,b)=>a.x+a.y<b.x+b.y?a:b),right=lots.reduce((a,b)=>a.x+a.y>b.x+b.y?a:b);

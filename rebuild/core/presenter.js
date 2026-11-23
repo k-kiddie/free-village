@@ -1,6 +1,7 @@
 'use strict';
 const engine = require('../../engine');
 const living = require('./living');
+const logistics = require('./logistics');
 const copy = x => structuredClone(x);
 function createPresenter(world, strategy) {
   const meta = () => ({ worldId: strategy.worldId, revision: strategy.revision, day: world.S.day });
@@ -10,6 +11,7 @@ function createPresenter(world, strategy) {
   function position(a, depth = 0) {
     const S = world.S, t = a.actT || {};
     if (t.jail) { const jail=S.bldgs.find(b=>b.fx.includes('jail')); return jail ? lot(jail.lot) : center(S.geo.camp); }
+    const shipment=(S.business?.orders||[]).find(o=>o.carrierId===a.id&&['transit','returning'].includes(o.status)&&o.roadTrip);if(shipment)return copy(shipment.roadTrip.position);
     if (t.slot != null) return center(S.geo.shop[t.slot]);
     if (t.lot != null) return lot(t.lot);
     if (t.plot != null) return center(engine.PLOTS[t.plot]);
@@ -71,10 +73,10 @@ function createPresenter(world, strategy) {
     let residentCount = 0; const residents = [];
     // 주민이 겹치는 장소도 가짜 위치로 흩뜨리지 않는다. 같은 좌표는 화면에서 군집으로 선택한다.
     for (const a of S.agents) { if(!a.alive)continue; const p = position(a); if (!inside(p)) continue; residentCount++; if (residents.length < 300 || a.id === strategy.playerId) residents.push({ ref: { kind: 'person', id: a.id }, ...p, name: world.nm(a), mine: a.id === strategy.playerId }); }
-    const m = center(S.geo.mkt), dest = [{x:4,y:m.y},{x:width-2,y:m.y},{x:m.x,y:2},{x:m.x,y:height-2},center(S.geo.quarry),center(S.geo.forest),center(S.geo.camp)];
+    const roadSegments=logistics.map(world,inside);
     return { ...meta(), width, height, bounds: v, paved: S.paved || 0,
       terrain: S.geo.lots.flatMap((r, id) => inside(center(r)) ? [{ id, x:r.x, y:r.y, type:S.terr[id]?.t || 'g', region:geography?.atLot(id)?.id || null, owner:S.lotOwn[id] || null }] : []),
-      roads: dest.map(p => [m, {x:p.x,y:m.y}, p]), market: S.geo.mkt, entities, residents, residentCount,
+      roads: roadSegments.map(e=>e.path), roadSegments, shipments:(S.business?.orders||[]).filter(o=>o.managerId===strategy.playerId&&['transit','blocked','returning'].includes(o.status)).slice(-40).map(o=>({id:o.id,position:logistics.current(world,o),route:o.roadTrip?.loaded.map(p=>p.point)||[],status:o.status})), market: S.geo.mkt, entities, residents, residentCount,
       residentsLimited: residentCount > residents.length };
   }
   function people(options = {}) {
