@@ -55,7 +55,16 @@ async function main(){
   const beforeDay=(await get('/view')).day;await page.getByRole('button',{name:'하루 진행 →',exact:true}).click();
   await page.waitForFunction(day=>document.querySelector('#hud').textContent.includes((day+2)+'일'),beforeDay);
   assert.equal((await get('/view')).day,beforeDay+1);
+  await page.getByRole('button',{name:'♜ 권력의 길',exact:true}).click();
+  await page.getByRole('heading',{name:'지금 열려 있는 길'}).waitFor();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'권력 화면 모바일 가로 넘침 없음');
+  assert((await page.locator('.career-lane').count())>0,'엔진의 정치 행동을 분야별로 표시');
+  await page.getByRole('button',{name:/마을 회의를 열자고 제안/}).click();
+  await page.getByRole('dialog').getByRole('button',{name:'이 조건으로 실행',exact:true}).waitFor();
+  await page.getByRole('button',{name:'돌아가기',exact:true}).click();
+  await page.getByRole('button',{name:'☀ 생활과 일',exact:true}).click();
   console.log('모바일 시작·지도/주민 선택·비교/복귀·일 지침·하루 진행 통과');
+  console.log('권력 경로 탭·정치 행동 분류·정부 수립 미리보기 통과');
   // 서버는 집행/저장을 마쳤지만 응답을 잃은 경우: 같은 요청을 재전송한다.
   const before=(await get('/view'));
   await page.route('**/rebuild/api/execute',async route=>{await route.fetch();await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'응답 유실 검사'})});await page.unroute('**/rebuild/api/execute');},{times:1});
