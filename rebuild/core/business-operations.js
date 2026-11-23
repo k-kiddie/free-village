@@ -19,7 +19,7 @@ function member(world,a){
  return f&&managed(world,f)?f:null;
 }
 function daily(world,cfg){
- if(cfg.daily?.day!==world.S.day){const charges=(cfg.pendingCosts||[]).filter(c=>c.day<world.S.day);cfg.pendingCosts=(cfg.pendingCosts||[]).filter(c=>c.day>=world.S.day);cfg.daily={otherExpenses:charges.reduce((n,c)=>n+c.amount,0),expenseDetails:clone(charges),day:world.S.day,produced:0,sold:0,revenue:0,serviceRevenue:0,serviceCustomers:[],taxAssessment:0,taxPaid:0,wages:0,inputCost:0,costOfSales:0,spoilageCost:0,unpaid:0,workers:0,idle:0,customers:[],reasons:[]};}
+ if(cfg.daily?.day!==world.S.day){const charges=(cfg.pendingCosts||[]).filter(c=>c.day<world.S.day);cfg.pendingCosts=(cfg.pendingCosts||[]).filter(c=>c.day>=world.S.day);const wholesale=(cfg.pendingWholesale||[]).filter(s=>s.day<world.S.day);cfg.pendingWholesale=(cfg.pendingWholesale||[]).filter(s=>s.day>=world.S.day);cfg.daily={otherExpenses:charges.reduce((n,c)=>n+c.amount,0),expenseDetails:clone(charges),day:world.S.day,produced:0,sold:0,revenue:wholesale.reduce((n,s)=>n+s.revenue,0),wholesaleRevenue:wholesale.reduce((n,s)=>n+s.revenue,0),wholesaleSold:wholesale.reduce((n,s)=>n+s.quantity,0),wholesaleCustomers:clone(wholesale.slice(-8)),serviceRevenue:0,serviceCustomers:[],taxAssessment:0,taxPaid:0,wages:0,inputCost:0,costOfSales:wholesale.reduce((n,s)=>n+s.costOfSales,0),spoilageCost:0,unpaid:0,workers:0,idle:0,customers:[],reasons:[]};}
  return cfg.daily;
 }
 function issue(d,reason){if(!d.reasons.includes(reason))d.reasons.push(reason);}

@@ -7,6 +7,7 @@ const operations=require('./business-operations');
 const logistics=require('./logistics');
 const stores=require('./warehousing');
 const rights=require('./business-rights');
+const trade=require('./business-trade');
 const copy=x=>structuredClone(x), fail=message=>{throw Error(message);};
 const GOODS=['grain','meal','wood','stone','tool','iron','fiber','plank','brick','cloth','furn','liquor'];
 function state(world){const b=world.S.business ||= {version:1,nextOrder:1,orders:[],warehouses:{},log:[]};if(b.version!==1)fail('지원하지 않는 사업 저장 형식입니다.');return b;}
@@ -24,6 +25,7 @@ function route(world,firm,supplier,carrier,quantity,geo=geography(world),buildin
 }
 function quote(world,strategy,action,args){
  const {me,firm}=owned(world,strategy,args.firmId),S=world.S;
+ if(trade.ACTIONS.includes(action))return trade.quote(world,firm,me,action,args,carrierReady);
  if(action==='business.transfer'){
   const from=stores.building(world,firm,args.fromBuildingId),to=stores.building(world,firm,args.toBuildingId),w=from&&stores.get(world,firm,from.id),carrier=S.byId.get(args.carrierId);
   if(!from||!to||from.id===to.id||!GOODS.includes(args.good)||!w||((w.inv[args.good]||0)+1e-8<args.quantity))fail('실제 출발/도착 회사 시설과 창고 재고를 확인해 주세요.');
@@ -62,6 +64,7 @@ function quote(world,strategy,action,args){
 function note(world,text,ids){const b=state(world);b.log.push({day:world.S.day,text,ids});b.log=b.log.slice(-40);}
 function perform(world,strategy,action,args){
  const q=quote(world,strategy,action,args),S=world.S,{me,firm}=owned(world,strategy,args.firmId);
+ if(trade.ACTIONS.includes(action)){state(world);return trade.perform(world,firm,me,action,args,q);}
  if(action==='business.transfer'){
   const d=q.details,b=state(world),w=stores.get(world,firm,d.fromBuildingId);world.businessPay(firm,S.byId.get(d.carrierId),d.freight,'biz');w.inv[d.good]-=d.quantity;
   if(!Number.isSafeInteger(b.nextOrder)||b.nextOrder>=Number.MAX_SAFE_INTEGER)fail('발주 번호의 저장 범위를 초과했습니다.');
@@ -136,10 +139,10 @@ function autoSupply(world){
    const incoming=b.orders.filter(o=>o.firmId===f.id&&o.good===plan.good&&o.destination.buildingId===planSite&&o.status==='transit').reduce((n,o)=>n+(o.inv[o.good]||0),0),stock=stores.get(world,f,planSite)?.inv[plan.good]||0;
    if(stock+incoming>=plan.minimum){plan.lastReason='입고·운송 중 재고 충분';continue;}
    if(plan.lastOrderDay===S.day)continue;
-   const args={firmId:f.id,supplierId:plan.supplierId,carrierId:plan.carrierId,good:plan.good,quantity:plan.quantity,buildingId:planSite},strategy={playerId:f.ceo};let q;
-   try{q=quote(world,strategy,'business.order',args);}catch(e){plan.lastReason=e.message;continue;}
+   const corporate=plan.kind==='company',action=corporate?'business.companyOrder':'business.order',args=corporate?{firmId:f.id,offerId:plan.offerId,carrierId:plan.carrierId,quantity:plan.quantity,buildingId:planSite}:{firmId:f.id,supplierId:plan.supplierId,carrierId:plan.carrierId,good:plan.good,quantity:plan.quantity,buildingId:planSite},strategy={playerId:f.ceo};let q;
+   try{q=quote(world,strategy,action,args);}catch(e){plan.lastReason=e.message;continue;}
    if(q.cost>plan.maxCost){plan.lastReason='승인한 주문 비용 상한 초과';continue;}
-   const r=perform(world,strategy,'business.order',args);plan.lastOrderDay=S.day;plan.lastOrderId=r.orderId;plan.lastReason='실제 자동 발주 완료';
+   const r=perform(world,strategy,action,args);plan.lastOrderDay=S.day;plan.lastOrderId=r.orderId;plan.lastReason='실제 자동 발주 완료';
   }
  }
 }
@@ -162,16 +165,16 @@ function view(world,strategy){
    stake:((f.sh?.[me.id]||0)+(f.sh?.['I'+me.id]||0))/(f.totalShares||10000),staff:staff.map(a=>({id:a.id,name:world.nm(a),wage:a.ct?.w??null})),
    debt:(S.corpLoans||[]).filter(l=>l.firm===f.id&&!['paid','closed','forgiven'].includes(l.status)).reduce((n,l)=>n+(l.bal||0),0),
    buildings:buildings.map(x=>({id:x.id,name:world.bName(x),condition:x.cond,functions:(x.fx||[]).slice(),lot:x.lot})),
-   warehouse:copy(stores.get(world,f)||{firmId:f.id,inv:{},quality:{}}),warehouses:copy(stores.all(world,f.id)),carriers:nearCarriers.map(a=>({id:a.id,name:world.nm(a)})),offers:supplierOffers,
+   wholesale:copy((b?.wholesale||[]).filter(o=>o.sellerFirmId===f.id)),companyOffers:trade.market(world,f,me,nearCarriers,carrierReady),warehouse:copy(stores.get(world,f)||{firmId:f.id,inv:{},quality:{}}),warehouses:copy(stores.all(world,f.id)),carriers:nearCarriers.map(a=>({id:a.id,name:world.nm(a)})),offers:supplierOffers,
    hireCandidates:S.agents.filter(a=>a!==me&&world.businessHireable(a)).sort((a,z)=>(z.skill?.[operations.RECIPES[b?.operations?.[f.id]?.recipe]?.skill??9]||0)-(a.skill?.[operations.RECIPES[b?.operations?.[f.id]?.recipe]?.skill??9]||0)).slice(0,8).map(a=>({id:a.id,name:world.nm(a),wage:world.businessHireWage(a),skill:a.skill?.[operations.RECIPES[b?.operations?.[f.id]?.recipe]?.skill??9]||0,waitDays:Math.max(0,(b?.hiring?.[f.id+':'+a.id]?.until||0)-S.day)})),
    production:copy(b?.operations?.[f.id]||null),recipes:Object.entries(operations.RECIPES).filter(([k,r])=>world.companyLines(f).some(l=>r.lines.includes(l))&&buildings.some(site=>operations.facility(world,f,k,site.id))).map(([id,r])=>({id,inputs:copy(r.in),output:r.out||1,rate:r.rate})),modes:copy(operations.MODES),
    arrears:copy((b?.arrears||[]).filter(c=>c.firmId===f.id&&c.amount>0)),plans:Object.fromEntries(Object.entries(b?.supplyPlans?.[f.id]||{}).map(([k,p])=>[k,{...copy(p),buildingId:p.buildingId??stores.location(world,b.warehouses[f.id],f)?.buildingId??stores.activeId(world,f)}])),
-   recoveryOptions:(b?.orders||[]).filter(o=>o.firmId===f.id&&o.status==='blocked').slice(-40).map(o=>({orderId:o.id,position:positionOf(world,o),carriers:nearCarriers.slice(0,3).map(a=>({id:a.id,name:world.nm(a),...recoveryRoute(world,f,o,a)}))})),
+   recoveryOptions:(b?.orders||[]).filter(o=>o.firmId===f.id&&o.status==='blocked').slice(-40).map(o=>({orderId:o.id,position:positionOf(world,o),carriers:nearCarriers.slice(0,3).flatMap(a=>{try{return [{id:a.id,name:world.nm(a),...recoveryRoute(world,f,o,a)}];}catch{return [];}})})),
    rivals:S.firms.filter(x=>x!==f&&world.companyLines(x).some(line=>lines.includes(line))).map(x=>({id:x.id,name:x.name,lines:world.companyLines(x).map(id=>world.LINE_L[id])})).slice(0,8)};
  });
  const ids=new Set(companies.map(f=>f.id));
  return {worldId:strategy.worldId,revision:strategy.revision,day:S.day,companies,
-  orders:copy((b?.orders||[]).filter(o=>ids.has(o.firmId)||o.managerId===me.id).slice(-40)),
+  orders:copy((b?.orders||[]).filter(o=>ids.has(o.firmId)||ids.has(o.sellerFirmId)||o.managerId===me.id).slice(-40)),
   heldWarehouses:copy(Object.values(b?.warehouses||{}).filter(w=>!S.firms.some(f=>f.id===w.firmId))),
   log:copy((b?.log||[]).filter(x=>x.ids.includes(me.id)).slice(-20))};
 }
@@ -188,4 +191,4 @@ function guardAction(world,key){
  const d=describeAction(world,{k:key});if(d.why)fail(d.why);const m=/^co:sell:(\d+):close$/.exec(key);
  if(m){const f=world.S.firms.find(f=>f.id===Number(m[1]));if(f&&rights.reasons(world,f).length)fail('회사 재고·운송 화물·미지급 임금·미납 세금·기업 대출의 권리를 먼저 정리해야 청산할 수 있습니다.');}
 }
-module.exports={quote,perform,tick,view,GOODS,connect:world=>{validateState(world);logistics.validate(world);rights.validate(world);operations.connect(world);},guardAction,describeAction};
+module.exports={quote,perform,tick,view,GOODS,connect:world=>{validateState(world);logistics.validate(world);rights.validate(world);trade.validate(world);operations.connect(world);},guardAction,describeAction};
