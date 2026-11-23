@@ -189,9 +189,21 @@ function sendPage(req,res,p){
   res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'private, no-cache','etag':p.tag,'vary':'Accept-Encoding','content-length':body.length,...(gzip?{'content-encoding':'gzip'}:{})});return res.end(body);
 }
 
+// CIVITAS(별도 게임, 기본 8090 포트)를 80번 포트의 /civitas/ 아래로 넘겨 준다. 보안 그룹에 8090을 열 필요가 없다.
+const CIVITAS_PORT=Math.max(1,Number(process.env.CIVITAS_PORT)||8090);
+function proxyCivitas(req,res){
+  // CIVITAS 저장은 폰 브라우저에 있다. 페이지 요청을 접속으로 세어 EC2 자동 중지가 바로 끼어들지 않게 한다.
+  try{lifecycle.sessions.update('civitas-'+crypto.createHash('sha1').update(String(req.socket.remoteAddress)).digest('hex').slice(0,16),true)}catch{}
+  const up=http.request({host:'127.0.0.1',port:CIVITAS_PORT,method:req.method,path:req.url,headers:{...req.headers,host:`127.0.0.1:${CIVITAS_PORT}`,'x-forwarded-for':req.socket.remoteAddress||''}},r=>{res.writeHead(r.statusCode,r.headers);r.pipe(res)});
+  up.setTimeout(15000,()=>up.destroy(Error('timeout')));
+  up.on('error',()=>{if(res.headersSent)return res.destroy();res.writeHead(502,{'content-type':'text/plain; charset=utf-8'});res.end('CIVITAS 서버가 꺼져 있습니다. 잠시 뒤 새로고침하거나 서버에서 sudo systemctl status civitas 를 확인하세요.')});
+  req.pipe(up);
+}
+
 const server=http.createServer(async(req,res)=>{
   try {
     const url=new URL(req.url,'http://localhost');const p=url.pathname;
+    if(p==='/civitas'||p.startsWith('/civitas/'))return proxyCivitas(req,res);
     if(req.method==='GET'&&p.startsWith('/scene-art/')){
       const name=p.slice('/scene-art/'.length);if(!SCENE_ART_FILES.has(name))return sendJson(res,404,{error:'장면 그림을 찾을 수 없습니다'});
       const file=path.join(__dirname,'scene-art',name),stat=fs.statSync(file);
