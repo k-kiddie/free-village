@@ -19,7 +19,7 @@ const fail = (code, message = messages[code] || code) => { const e = new Error(m
 const operations = Object.freeze({
   ...Object.fromEntries(['living.buyFood','living.rest','living.lesson','living.rent','living.support'].map(action=>[action,(w,a,s)=>living.perform(w,s,action,a)])),
   advance: w => { w.step(); return { text: '하루가 지났습니다.', deliveries: business.tick(w) }; },
-  ...Object.fromEntries(['business.fund','business.order','business.policy','business.recover','business.supply','business.payArrears','business.hire'].map(action=>[action,(w,a,s)=>business.perform(w,s,action,a)])),
+  ...Object.fromEntries(['business.fund','business.order','business.transfer','business.policy','business.recover','business.supply','business.payArrears','business.hire'].map(action=>[action,(w,a,s)=>business.perform(w,s,action,a)])),
   act: (w, a) => {business.guardAction(w,a.key);return w.dynAct(a.key);},
   choose: (w, a) => w.dynChoose(a.id, a.key),
   budget: (w, a) => w.dynSetBudget(a.budget),
@@ -30,8 +30,8 @@ const operations = Object.freeze({
 });
 const fields = {
   'living.buyFood':['supplierId','quantity'],'living.rest':['hours'],'living.lesson':['teacherId','skill','hours'],'living.rent':['houseId'],'living.support':['personId','quantity'],
-  'business.fund':['firmId','amount'],'business.order':['firmId','supplierId','carrierId','good','quantity'],
-  'business.policy':['firmId','recipe','mode','limit','markup','enabled'],'business.recover':['firmId','orderId','carrierId'],'business.supply':['firmId','supplierId','carrierId','good','quantity','minimum','maxCost','enabled'],'business.payArrears':['firmId'],'business.hire':['firmId','personId','wage'],
+  'business.transfer':['firmId','fromBuildingId','toBuildingId','carrierId','good','quantity'],'business.fund':['firmId','amount'],'business.order':['firmId','supplierId','carrierId','good','quantity','buildingId'],
+  'business.policy':['firmId','recipe','mode','limit','markup','enabled','buildingId'],'business.recover':['firmId','orderId','carrierId','buildingId'],'business.supply':['firmId','supplierId','carrierId','good','quantity','minimum','maxCost','enabled','buildingId'],'business.payArrears':['firmId'],'business.hire':['firmId','personId','wage'],
   advance: [], act: ['key'], choose: ['id', 'key'], budget: ['budget'], vault: ['dir', 'frac'],
   rename: ['sur', 'given'], configureStart: ['character'], story: ['freq'],
 };
@@ -42,9 +42,11 @@ function validateArgs(action, args) {
   const number = n => typeof n === 'number' && Number.isFinite(n);
   if(action.startsWith('business.')){
     if(!Number.isSafeInteger(args.firmId)||args.firmId<1)fail('INVALID_ARGUMENT');
+    if(args.buildingId!==undefined&&(!Number.isSafeInteger(args.buildingId)||args.buildingId<1))fail('INVALID_ARGUMENT');
     if(action==='business.fund'&&(!number(args.amount)||args.amount<=0||args.amount>1e9))fail('INVALID_ARGUMENT');
     if(action==='business.hire'&&(!Number.isSafeInteger(args.personId)||args.personId<1||!number(args.wage)||args.wage<=0||args.wage>1e9))fail('INVALID_ARGUMENT');
     if(action==='business.recover'&&(!Number.isSafeInteger(args.orderId)||args.orderId<1||!Number.isSafeInteger(args.carrierId)||args.carrierId<1))fail('INVALID_ARGUMENT');
+    if(action==='business.transfer'&&(!Number.isSafeInteger(args.fromBuildingId)||args.fromBuildingId<1||!Number.isSafeInteger(args.toBuildingId)||args.toBuildingId<1||!Number.isSafeInteger(args.carrierId)||args.carrierId<1||!business.GOODS.includes(args.good)||!number(args.quantity)||args.quantity<1||args.quantity>20))fail('INVALID_ARGUMENT');
     if(action==='business.order'&&(!Number.isSafeInteger(args.supplierId)||args.supplierId<1||!Number.isSafeInteger(args.carrierId)||args.carrierId<1||!business.GOODS.includes(args.good)||!number(args.quantity)||args.quantity<1||args.quantity>20))fail('INVALID_ARGUMENT');
   }
   if (action.startsWith('living.')) {

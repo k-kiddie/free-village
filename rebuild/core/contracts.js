@@ -50,7 +50,7 @@ function reconcile(world, strategy) {
   for (const row of S.dyn?.economy?.coopDebt || []) visit('cooperativeLoan', row,
     `coopDebt:${row.canonicalContractId ?? registry.nextId}`,
     { borrower: row.borrower, cooperative: row.coop ?? null }, row, row.balance > 0);
-  for(const o of S.business?.orders||[]){visit('supply',o,`business:order:${o.id}`,
+  for(const o of S.business?.orders||[]){visit(o.kind==='transfer'?'warehouseFreight':'supply',o,`business:order:${o.id}`,
     {firm:o.firmId,buyer:o.managerId,supplier:o.supplierId,carrier:o.originalCarrierId??o.carrierId},
     {good:o.good,quantity:o.quantity,goodsCost:o.goodsCost,freight:o.freight,arrivalDay:o.arrivalDay,status:o.status,reason:o.reason||null},['transit','blocked'].includes(o.status));
     for(const [i,r]of(o.recoveries||[]).entries())visit('freight',r,`business:order:${o.id}:recovery:${i}`,{firm:o.firmId,carrier:r.carrierId},{orderId:o.id,freight:r.freight,day:r.day,arrivalDay:o.arrivalDay},i===o.recoveries.length-1&&['transit','blocked'].includes(o.status));

@@ -10,7 +10,7 @@ const { createPresenter } = require('./presenter');
 const living = require('./living');
 const business = require('./business');
 const FORMAT = 'free-village.canonical';
-const VERSION = 4;
+const VERSION = 5;
 let occupied = false;
 const copy = value => structuredClone(value);
 const collections = Object.freeze({
@@ -49,7 +49,7 @@ function createSession(options = {}) {
   if (hasCheckpoint && hasLegacy) throw new Error('AMBIGUOUS_SNAPSHOT');
   let source, strategy;
   if (hasCheckpoint) {
-    if (!checkpoint || checkpoint.format !== FORMAT || ![1, 2, 3, VERSION].includes(checkpoint.version) ||
+    if (!checkpoint || checkpoint.format !== FORMAT || ![1, 2, 3, 4, VERSION].includes(checkpoint.version) ||
         !checkpoint.strategy || !Number.isSafeInteger(checkpoint.strategy.revision) ||
         checkpoint.strategy.revision < 0) throw new Error('UNSUPPORTED_CHECKPOINT');
     source = checkpoint.engine;

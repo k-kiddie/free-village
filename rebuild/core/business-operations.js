@@ -3,19 +3,15 @@
 // 재료는 창고에서, 임금은 회사에서, 매출은 실제 고객 지갑에서 이동한다.
 const {MAKE,YEAR}=require('../../engine');
 const {geography}=require('./living');
+const stores=require('./warehousing');
 const clone=x=>structuredClone(x),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const RECIPES={meal:{in:{grain:2},out:3,rate:1,skill:1,fx:['b1','pub'],lines:['food','leisure']},
  ...Object.fromEntries(Object.entries(MAKE).map(([k,v])=>[k,{...v,skill:9,fx:k==='plank'?['b2','fac','bigfac']:k==='brick'?['b10','fac','bigfac']:k==='liquor'?['pub','fac','bigfac']:['fac','bigfac'],lines:k==='liquor'?['food','leisure','mfg']:k==='plank'||k==='brick'?['mfg','build','agri']:['mfg']}]))};
 const MODES={bulk:{name:'저가 대량',speed:1.2,quality:.9,price:.85},quality:{name:'고품질 소량',speed:.65,quality:1.3,price:1.2},reserve:{name:'현금·재고 우선',speed:.8,quality:1,price:1}};
 function store(world){const b=world.S.business;b.operations ||= {};b.arrears ||= [];return b;}
 function managed(world,f){return !!world.S.business?.operations?.[f.id];}
-function warehouseLocation(world,w,f){
- if(w?.location)return w.location;
- const receipts=(world.S.business?.orders||[]).filter(o=>o.firmId===f.id&&o.receivedDay!==undefined),places=new Map(receipts.map(o=>[o.destination.lot,o.destination]));
- if(places.size===1)return [...places.values()][0];
- if(!places.size&&f.bld?.length===1){const b=world.S.bldgs.find(b=>b.id===f.bld[0]);return b?{buildingId:b.id,lot:b.lot}:null;}return null;
-}
-function facility(world,f,recipe){const r=RECIPES[recipe],w=world.S.business?.warehouses[f.id],hasStock=Object.values(w?.inv||{}).some(n=>n>1e-8),loc=hasStock?warehouseLocation(world,w,f):null;if(hasStock&&!loc)return null;return r&&world.S.bldgs.find(b=>f.bld?.includes(b.id)&&b.firm===f.id&&(b.cond??1)>.25&&(!loc||loc.lot===b.lot)&&b.fx?.some(k=>r.fx.includes(k)));}
+const warehouseLocation=stores.location;
+function facility(world,f,recipe,buildingId){const r=RECIPES[recipe],id=buildingId??stores.activeId(world,f);return r&&world.S.bldgs.find(b=>b.id===id&&f.bld?.includes(b.id)&&b.firm===f.id&&(b.cond??1)>.25&&b.fx?.some(k=>r.fx.includes(k)));}
 function member(world,a){
  if(!a.alive||a.pubT||a.faithT||a.foreignT||a.civ||a.soldier)return null;
  const f=a.ct?.company&&world.S.firms.find(f=>f.id===a.ct.company&&f.ceo===a.emp&&a.ct.e===f.ceo);
@@ -26,17 +22,18 @@ function daily(world,cfg){
  return cfg.daily;
 }
 function issue(d,reason){if(!d.reasons.includes(reason))d.reasons.push(reason);}
-function warehouse(world,f){const b=world.S.business;return b.warehouses[f.id] ||= {firmId:f.id,name:f.name,inv:{},quality:{},cost:{}};}
+function warehouse(world,f){return stores.get(world,f,undefined,true);}
 function configure(world,f,args){
  const b=store(world),old=b.operations[f.id]||{};
- b.operations[f.id]={...old,recipe:args.recipe,mode:args.mode,limit:args.limit,markup:args.markup,enabled:args.enabled,
+ const chosen=facility(world,f,args.recipe,args.buildingId);
+ b.operations[f.id]={...old,buildingId:chosen.id,recipe:args.recipe,mode:args.mode,limit:args.limit,markup:args.markup,enabled:args.enabled,
   startedDay:old.startedDay??world.S.day,history:old.history||[]};
  const w=warehouse(world,f);if(!w.location)w.locationSource=(world.S.business.orders||[]).some(o=>o.firmId===f.id&&o.receivedDay!==undefined)?'saved-delivery':'operator-declaration';const site=facility(world,f,args.recipe),p=world.S.geo.lots[site.lot];w.location={buildingId:site.id,lot:site.lot,x:p.x+5,y:p.y+5};return {text:'생산·판매 방침을 반영했습니다. 다음 하루부터 적용됩니다. 중지해도 고용 계약의 임금은 지급합니다.'};
 }
 function validatePolicy(world,f,args){
  const r=RECIPES[args.recipe];if(!Object.hasOwn(RECIPES,args.recipe)||!Object.hasOwn(MODES,args.mode)||!Number.isFinite(args.limit)||args.limit<.5||args.limit>40||!Number.isFinite(args.markup)||args.markup<.5||args.markup>2||typeof args.enabled!=='boolean')throw Error('공정·방침·생산 한도·판매 배율을 확인해 주세요.');
  if(!world.companyLines(f).some(l=>r.lines.includes(l)))throw Error('이 공정에 맞는 실제 사업 분야가 필요합니다.');
- if(!facility(world,f,args.recipe))throw Error('해당 공정을 수행할 회사 설비가 없습니다.');
+ if(!facility(world,f,args.recipe,args.buildingId))throw Error('해당 공정을 수행할 회사 설비가 없습니다.');
 }
 function addClaim(world,f,a,amount){
  if(amount<1e-8)return;const b=store(world);let c=b.arrears.find(c=>c.firmId===f.id&&c.workerId===a.id&&c.amount>1e-8);
@@ -82,7 +79,7 @@ function need(a,good,S){
 }
 function sell(world){
  const S=world.S,b=S.business;if(!b?.operations)return;const geo=geography(world);
- const sellers=S.firms.filter(f=>managed(world,f)&&b.operations[f.id].enabled).map(f=>({f,cfg:b.operations[f.id],w:b.warehouses[f.id],site:facility(world,f,b.operations[f.id].recipe)})).filter(x=>x.site&&x.w&&x.cfg.daily?.day===S.day&&x.cfg.daily.workers>0);
+ const sellers=S.firms.filter(f=>managed(world,f)&&b.operations[f.id].enabled).map(f=>({f,cfg:b.operations[f.id],w:stores.get(world,f),site:facility(world,f,b.operations[f.id].recipe)})).filter(x=>x.site&&x.w&&x.cfg.daily?.day===S.day&&x.cfg.daily.workers>0);
  const points=new Map(sellers.map(x=>[x.f.id,S.geo.lots[x.site.lot]]));
  for(const buyer of S.agents){if(!buyer.alive||buyer.age<14*YEAR||buyer.cash<=0||buyer.jailUntil>S.day||buyer.dynTravelUntil>S.day||buyer.abroadUntil>S.day)continue;
   const p=geo.location(buyer);
@@ -117,7 +114,7 @@ function connect(world){world.setBusinessHooks({managed:f=>managed(world,f),assi
  for(const a of S.agents)if(a.alive&&a.ct?.company&&b.operations?.[a.ct.company]&&a.ct.until!==undefined&&a.ct.until<=S.day)world.businessDismiss(a);
  for(const cfg of Object.values(b.operations||{}))daily(world,cfg);
  if(b.lastDecayDay===S.day)return;
- for(const w of Object.values(b.warehouses||{})){const protectedStore=S.bldgs.some(x=>x.firm===w.firmId&&(x.cond??1)>.25&&x.fx.includes('store')),cfg=b.operations?.[w.firmId];
+ for(const w of Object.values(b.warehouses||{})){const protectedStore=S.bldgs.some(x=>x.firm===w.firmId&&x.id===w.location?.buildingId&&(x.cond??1)>.25&&x.fx.includes('store')),cfg=b.operations?.[w.firmId];
   for(const good of ['grain','meal']){const old=w.inv[good]||0;if(!old)continue;w.inv[good]=old*(good==='grain'?(protectedStore?.9995:.998):(protectedStore?.992:.97));if(good==='grain')w.quality[good]=Math.max(.05,(w.quality[good]??1)-(protectedStore?.0005:.002));if(cfg)daily(world,cfg).spoilageCost+=(old-w.inv[good])*(w.cost?.[good]??S.price[good]??0);}
  }
  for(const o of b.orders||[])if(['transit','blocked'].includes(o.status)&&['grain','meal'].includes(o.good)){const old=o.inv[o.good]||0;o.inv[o.good]=old*(o.good==='grain'?.998:.97);o.spoiled=(o.spoiled||0)+old-o.inv[o.good];if(o.good==='grain'){o.originalQuality ??=o.quality;o.quality=Math.max(.05,o.quality-.002);}}

@@ -47,7 +47,7 @@ function resources(world) {
   }
   for(const [kind,list] of [['shipment',world.S.business?.orders||[]],['warehouse',Object.values(world.S.business?.warehouses||{})]])for(const entity of list)for(const [good,balance]of Object.entries(entity.inv||{})){
     if(!Number.isFinite(balance))throw Object.assign(Error('보유 물량을 확인할 수 없습니다.'),{code:'INVALID_RESOURCE'});
-    const id=`${kind}:${kind==='shipment'?entity.id:entity.firmId}:inventory:${good}`;
+    const id=`${kind}:${kind==='shipment'?entity.id:(entity.warehouseId??entity.firmId)}:inventory:${good}`;
     rows.set(id,{id,scope:'inventory',owner:entity.firmId,firmId:entity.firmId,good,balance});
   }
   return rows;
