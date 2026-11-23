@@ -1,10 +1,11 @@
 'use strict';
 (() => {
   const $ = selector => document.querySelector(selector), esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const makeId = () => globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
   const readStore = (key, fallback) => { try { return JSON.parse(localStorage.getItem('fv4:' + key)) ?? fallback; } catch { return fallback; } };
   const store = (key, value) => { try { localStorage.setItem('fv4:' + key, JSON.stringify(value)); } catch {} };
   const filters = readStore('filters', {business:''});
-  const client = readStore('client', null) || 'phone-' + crypto.randomUUID(); store('client', client);
+  const client = readStore('client', null) || 'phone-' + makeId(); store('client', client);
   const api = '/rebuild/api';
   let mapRequest=0, L=null, livingActions=[], B=null, businessOffers=[], corporateOffers=[], planOffer=null;
   let V, M, selected = null, tab = 'map', camera = null, layer = 'all', refs = [], targetData = null, busy = false, loadId = 0, drawItems = [], catalog = null, prepared = null, actionChoices = [], clustered = [];
@@ -276,7 +277,7 @@
     }catch(error){note(error.message);}
   });
   addEventListener('resize',draw);
-  const sessionId=crypto.randomUUID();
+  const sessionId=makeId();
   const heartbeat=active=>fetch(api+'/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:sessionId,active}),keepalive:true}).catch(()=>{});
   document.addEventListener('visibilitychange',()=>heartbeat(!document.hidden));addEventListener('pagehide',()=>heartbeat(false));
   async function boot(){try{await refresh();refs=readStore('compare:'+V.worldId,[]);heartbeat(true);}catch(e){$('#main').innerHTML=`<div class="card"><h2>마을을 준비하고 있습니다</h2><p class="muted">${esc(e.message)}</p></div>`;setTimeout(boot,2000);}}
