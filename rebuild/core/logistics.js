@@ -13,6 +13,8 @@ function network(world){
 function state(world){const b=world.S.business;return b.roads ||= {version:1,closures:{},capacities:{},traffic:{day:world.S.day,used:{}}};}
 function closed(world,e){return (world.S.business?.roads?.closures[e.id]?.until??-1)>world.S.day;}
 function capacity(world,e){return world.S.business?.roads?.capacities[e.id]??CAPACITY;}
+function paving(world,e){return world.S.business?.roads?.paving?.[e.id]??0;}
+function works(world,e){return world.S.business?.roads?.works?.[e.id]||null;}
 function nearest(values,n){let best=0;for(let i=1;i<values.length;i++)if(Math.abs(values[i]-n)<Math.abs(values[best]-n))best=i;return best;}
 function anchor(g,p){const i=nearest(g.xs,p.x),j=nearest(g.ys,p.y);return j*g.xs.length+i;}
 class Heap{constructor(){this.q=[];}push(n,d){const q=this.q;let i=q.length;q.push({n,d});while(i){const p=(i-1)>>1;if(q[p].d<=d)break;q[i]=q[p];i=p;}q[i]={n,d};}pop(){const q=this.q,out=q[0],last=q.pop();if(q.length){let i=0;while(i*2+1<q.length){let c=i*2+1;if(c+1<q.length&&q[c+1].d<q[c].d)c++;if(q[c].d>=last.d)break;q[i]=q[c];i=c;}q[i]=last;}return out;}get length(){return this.q.length;}}
@@ -36,8 +38,9 @@ function path(world,from,to,quantity=0,reverse=false){
 function length(p){let n=0;for(let i=1;i<p.length;i++)n+=Math.hypot(p[i].point.x-p[i-1].point.x,p[i].point.y-p[i-1].point.y);return n;}
 function travelDays(paths,speed){let day=1,budget=speed;for(const p of paths)for(let i=1;i<p.length;i++){let d=Math.hypot(p[i].point.x-p[i-1].point.x,p[i].point.y-p[i-1].point.y);if(p[i].edgeId&&d>budget+1e-8){day++;budget=speed;}while(d>budget+1e-8){d-=budget;day++;budget=speed;}budget-=d;}return day;}
 function speed(world){return SPEED*(1+Math.min(1,Math.max(0,(world.S.paved||0)/4000))*.4);}
+function surfaceSpeed(world,e){return speed(world)*(1+.35*Math.min(1,paving(world,e)/100));}
 function quote(world,courier,origin,destination,quantity){
- const pickup=path(world,courier,origin),loaded=path(world,origin,destination,quantity,true),back=path(world,destination,courier),s=speed(world),days=travelDays([pickup,loaded],s),backDays=travelDays([back],s);
+ const pickup=path(world,courier,origin),loaded=path(world,origin,destination,quantity,true),back=path(world,destination,courier),s=speed(world),days=travelDays([pickup,loaded],s),backDays=travelDays([back],s);if([...pickup,...loaded,...back].some(p=>p.edgeId&&works(world,{id:p.edgeId})?.status==='active'))throw Error('예정 경로에 도로 공사가 진행 중입니다.');
  return {origin:copy(origin),destination:copy(destination),courier:copy(courier),distance:length(pickup)+length(loaded),days,backDays,freight:Math.max(.5,world.S.wageAvg||1)*(days+backDays)*(1+quantity/20),roadTrip:{version:1,phase:'pickup',pickup,loaded,back,index:0,offset:0,position:copy(courier),cargoPosition:copy(origin)}};
 }
 function current(world,o){return copy(o.roadTrip?.cargoPosition||o.position||o.origin);}
@@ -54,16 +57,36 @@ function move(world,o){
    if(t.offset>0){t.reason='통행 중 구간 폐쇄';break;}
    try{p=path(world,t.position,p.at(-1).point,cargo);t[t.phase]=p;t.index=0;continue;}catch(err){t.reason=err.message;break;}
   }
-  if(e&&e.length>budget+1e-8)break;
+  const segmentSpeed=e?surfaceSpeed(world,e):speed(world),dayBudget=segmentSpeed;
+  if(e&&t.offset===0&&works(world,e)?.status==='active'){t.reason='도로 공사 구간 통행 대기';break;}
   if(e&&t.offset===0&&!reserve(world,e,cargo)){t.reason='도로 구간의 당일 화물 용량 대기';break;}
-  const a=p[t.index].point,b=next.point,d=Math.hypot(b.x-a.x,b.y-a.y),left=d-t.offset,step=Math.min(budget,left);t.offset+=step;budget-=step;const f=d?t.offset/d:1;t.position={x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f};if(t.phase==='loaded')t.cargoPosition=copy(t.position);
+  const a=p[t.index].point,b=next.point,d=Math.hypot(b.x-a.x,b.y-a.y),left=d-t.offset,step=Math.min(budget,left,dayBudget);t.offset+=step;budget-=step;const f=d?t.offset/d:1;t.position={x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f};if(t.phase==='loaded')t.cargoPosition=copy(t.position);
   if(t.offset>=d-1e-8){t.index++;t.offset=0;}
  }
  if(t.phase!=='done'&&t.index>=t[t.phase].length-1){if(t.phase==='loaded'||t.phase==='back')t.phase='done';}
  return {arrived:t.phase==='done',reason:t.reason};
 }
 function returning(o){const t=o.roadTrip;t.phase='back';t.index=0;t.offset=0;t.position=copy(o.destination);delete t.lastDay;}
-function map(world,inside){const g=network(world),r=world.S.business?.roads;return g.edges.filter(e=>inside(g.nodes[e.a])||inside(g.nodes[e.b])).map(e=>({id:e.id,path:[g.nodes[e.a],g.nodes[e.b]],closed:closed(world,e),capacity:capacity(world,e),used:r?.traffic.day===world.S.day?(r.traffic.used[e.id]||0):0}));}
+function quoteProject(world,actor,action,args){
+ const g=network(world),e=g.byId.get(args.edgeId);if(!actor?.alive||actor.id!==world.S.dyn?.pid||!e)throw Error('실제 도로 구간과 운영 권한을 확인해 주세요.');
+ const prior=works(world,e);if(prior?.status==='active')throw Error('해당 구간은 이미 공사 중입니다.');
+ const kind=action==='road.build'?'build':action==='road.repair'?'repair':null;if(!kind)throw Error('도로 명령을 확인해 주세요.');
+ if(kind==='build'&&rHas(world,e.id))throw Error('이미 도로가 설치된 구간입니다.');if(kind==='repair'&&!closed(world,e))throw Error('복구할 폐쇄 도로가 없습니다.');
+ const cost=kind==='build'?buildCost(world,e.id):{money:repairCost(world,e.id),stone:e.length/20,wood:0};
+ const items=kind==='build'?{stone:cost.stone,wood:cost.wood}:{stone:cost.stone};
+ if(actor.cash+1e-8<cost.money||Object.entries(items).some(([k,n])=>(actor.inv[k]||0)+1e-8<n))throw Error('개인 자금·건축 재료가 부족합니다.');
+ return {label:kind==='build'?'도로 구간 건설 발주':'폐쇄 도로 복구 발주',cost:cost.money,hint:'개인 자금과 실제 재료를 발주 즉시 지불합니다. 마을 통행로 한 구간에서 실제 공사를 진행하며 공사 중에는 화물이 기다립니다.',details:{edgeId:e.id,kind,money:cost.money,materials:items,days:Math.ceil(Math.max(1,e.length/35)/.25)}};
+}
+function rHas(world,id){return Number(world.S.business?.roads?.paving?.[id]||0)>0;}
+function performProject(world,actor,action,args){const q=quoteProject(world,actor,action,args),d=q.details;actor.cash-=d.money;for(const [k,n]of Object.entries(d.materials))actor.inv[k]=(actor.inv[k]||0)-n;startWork(world,d.edgeId,d.kind,actor.id,{money:d.money,materials:clone(d.materials)});return {text:d.kind==='build'?'실제 도로 공사를 시작했습니다.':'실제 도로 복구를 시작했습니다.',...d};}
+function map(world,inside){const g=network(world),r=world.S.business?.roads;return g.edges.filter(e=>inside(g.nodes[e.a])||inside(g.nodes[e.b])).map(e=>({id:e.id,path:[g.nodes[e.a],g.nodes[e.b]],closed:closed(world,e),capacity:capacity(world,e),used:r?.traffic.day===world.S.day?(r.traffic.used[e.id]||0):0,paving:paving(world,e),works:works(world,e)}));}
+function stress(world,eid,until,reason='기상/피해') {const g=network(world),e=g.byId.get(eid);if(!e)throw Error('실제 도로 구간을 확인해 주세요.');const r=state(world);if(!Number.isSafeInteger(until)||until<=world.S.day)throw Error('도로 폐쇄 종료일은 현재 날짜 이후여야 합니다.');r.closures[eid]={until,reason};return e;}
+function repairCost(world,eid){const e=network(world).byId.get(eid);if(!e)throw Error('실제 도로 구간을 확인해 주세요.');return Math.max(.1,(world.S.wageAvg||1)*.4+Math.max(.05,world.S.price.stone||1)*e.length/14);}
+function buildCost(world,eid){const e=network(world).byId.get(eid);if(!e)throw Error('실제 도로 구간을 확인해 주세요.');return {money:Math.max(.1,(world.S.wageAvg||1)*.3+(world.S.price.stone||1)*e.length/12,world.S.price.wood*.2),stone:e.length/14,wood:e.length/45};}
+function roadWork(world,eid){return works(world,{id:eid});}
+function startWork(world,eid,kind,ownerId,paid){const e=network(world).byId.get(eid);if(!e)throw Error('실제 도로 구간을 확인해 주세요.');const r=state(world);r.works||={};const old=r.works[eid];if(old?.status==='active')throw Error('이미 해당 도로 구간에서 공사 중입니다.');const target=kind==='build'?buildCost(world,eid):kind==='repair'?{money:repairCost(world,eid),stone:e.length/20,wood:0}:null;if(!target||!Number.isSafeInteger(ownerId)||ownerId<1)throw Error('도로 공사 종류와 발주자를 확인해 주세요.');r.works[eid]={edgeId:eid,kind,ownerId,startedDay:world.S.day,progress:0,need:Math.max(1,e.length/35),paid:clone(paid),target,status:'active'};return r.works[eid];}
+function tickWorks(world){const r=state(world),g=network(world);for(const w of Object.values(r.works||{})){if(w.status!=='active')continue;const edge=g.byId.get(w.edgeId);if(!edge){w.status='blocked';w.reason='지형/구간 없음';continue;}const crew=Math.max(1,Math.floor(edge.length/60)+1);w.progress=Math.min(w.need,w.progress+crew*.25);if(w.progress<w.need)continue;if(w.kind==='build'){r.capacities[w.edgeId]=Math.max(capacity(world,edge),CAPACITY);r.paving||={};r.paving[w.edgeId]=Math.min(300,(r.paving[w.edgeId]||0)+100);}else if(w.kind==='repair'){delete r.closures[w.edgeId];r.paving||={};r.paving[w.edgeId]=Math.max(0,(r.paving[w.edgeId]||0)-100);}w.status='complete';w.completedDay=world.S.day;}}
+function validateProjects(world){const r=world.S.business?.roads;if(!r)return;if(r.paving!==undefined&&(!r.paving||typeof r.paving!=='object')||r.works!==undefined&&(!r.works||typeof r.works!=='object'))throw Error('도로 공사 저장을 확인해 주세요.');for(const [id,n]of Object.entries(r.capacities||{}))if(!network(world).byId.has(id)||!Number.isFinite(n)||n<0)throw Error('도로 용량을 확인해 주세요.');for(const [id,n]of Object.entries(r.paving||{}))if(!network(world).byId.has(id)||!Number.isFinite(n)||n<0)throw Error('도로 포장 값을 확인해 주세요.');for(const [id,w]of Object.entries(r.works||{}))if(!network(world).byId.has(id)||w.edgeId!==id||!['build','repair'].includes(w.kind)||!Number.isSafeInteger(w.ownerId)||!Number.isFinite(w.progress)||!Number.isFinite(w.need)||w.progress<0||w.need<=0||!['active','complete','blocked'].includes(w.status))throw Error('도로 공사 진행 값을 확인해 주세요.');}
 function validate(world){
  const r=world.S.business?.roads,orders=world.S.business?.orders||[];if(!r){if(orders.some(o=>o.roadTrip))throw Error('화물의 도로 저장이 없습니다.');return;}
  if(r.version!==1||!r.closures||!r.capacities||!r.traffic||!Number.isSafeInteger(r.traffic.day)||!r.traffic.used)throw Error('손상된 도로 저장입니다.');const g=network(world);
@@ -76,4 +99,4 @@ function validate(world){
   if(t.phase!=='done'&&t.index>=t[t.phase].length)throw Error('화물 경로의 진행 범위를 초과했습니다.');
  }
 }
-module.exports={network,quote,move,current,returning,map,validate,state,path};
+module.exports={network,quote,move,current,returning,map,validate,state,path,paving,works,quoteProject,performProject,stress,repairCost,buildCost,roadWork,startWork,tickWorks,validateProjects};

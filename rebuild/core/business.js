@@ -2,6 +2,7 @@
 // 회사 지갑·공급·화물·창고·공정·고객을 같은 세계와 공통 명령에 연결한다.
 // 새 화물은 실제 통행로 그래프를 사용하고 이전 저장의 화물은 도착까지 기존 경로를 보존한다.
 const {YEAR}=require('../../engine');
+const roads=require('./logistics');
 const {geography}=require('./living');
 const operations=require('./business-operations');
 const logistics=require('./logistics');
@@ -24,6 +25,7 @@ function route(world,firm,supplier,carrier,quantity,geo=geography(world),buildin
  return logistics.quote(world,geo.location(carrier),geo.location(supplier),destination,quantity);
 }
 function quote(world,strategy,action,args){
+ if(action.startsWith('road.')){const actor=world.S.byId.get(strategy.playerId);return roads.quoteProject(world,actor,action,args);}
  const {me,firm}=owned(world,strategy,args.firmId),S=world.S;
  if(trade.ACTIONS.includes(action))return trade.quote(world,firm,me,action,args,carrierReady);
  if(action==='business.transfer'){
@@ -63,6 +65,7 @@ function quote(world,strategy,action,args){
 }
 function note(world,text,ids){const b=state(world);b.log.push({day:world.S.day,text,ids});b.log=b.log.slice(-40);}
 function perform(world,strategy,action,args){
+ if(action.startsWith('road.'))return roads.performProject(world,world.S.byId.get(strategy.playerId),action,args);
  const q=quote(world,strategy,action,args),S=world.S,{me,firm}=owned(world,strategy,args.firmId);
  if(trade.ACTIONS.includes(action)){state(world);return trade.perform(world,firm,me,action,args,q);}
  if(action==='business.transfer'){
@@ -94,6 +97,7 @@ function perform(world,strategy,action,args){
 function tick(world){
  const S=world.S,b=S.business,delivered=[];if(!b||b.lastTickDay===S.day)return delivered;
  if(b.version!==1)fail('지원하지 않는 사업 저장 형식입니다.');
+ logistics.tickWorks(world);
  for(const o of b.orders){
   if(['transit','blocked'].includes(o.status)&&(o.inv[o.good]||0)<=1e-10){o.status='spoiled';o.reason='운송·대기 중 물품 소진';continue;}
   if(o.status==='returning'){
@@ -191,4 +195,4 @@ function guardAction(world,key){
  const d=describeAction(world,{k:key});if(d.why)fail(d.why);const m=/^co:sell:(\d+):close$/.exec(key);
  if(m){const f=world.S.firms.find(f=>f.id===Number(m[1]));if(f&&rights.reasons(world,f).length)fail('회사 재고·운송 화물·미지급 임금·미납 세금·기업 대출의 권리를 먼저 정리해야 청산할 수 있습니다.');}
 }
-module.exports={quote,perform,tick,view,GOODS,connect:world=>{validateState(world);logistics.validate(world);rights.validate(world);trade.validate(world);operations.connect(world);},guardAction,describeAction};
+module.exports={quote,perform,tick,view,GOODS,connect:world=>{validateState(world);logistics.validate(world);logistics.validateProjects(world);rights.validate(world);trade.validate(world);operations.connect(world);},guardAction,describeAction};

@@ -19,6 +19,7 @@ const fail = (code, message = messages[code] || code) => { const e = new Error(m
 const operations = Object.freeze({
   ...Object.fromEntries(['living.buyFood','living.rest','living.lesson','living.rent','living.support'].map(action=>[action,(w,a,s)=>living.perform(w,s,action,a)])),
   advance: w => { w.step(); return { text: '하루가 지났습니다.', deliveries: business.tick(w) }; },
+  ...Object.fromEntries(['road.build','road.repair'].map(action=>[action,(w,a,s)=>business.perform(w,s,action,a)])),
   ...Object.fromEntries(['business.wholesale','business.companyOrder','business.companySupply','business.fund','business.order','business.transfer','business.policy','business.recover','business.supply','business.payArrears','business.hire'].map(action=>[action,(w,a,s)=>business.perform(w,s,action,a)])),
   act: (w, a) => {business.guardAction(w,a.key);return w.dynAct(a.key);},
   choose: (w, a) => w.dynChoose(a.id, a.key),
@@ -29,6 +30,7 @@ const operations = Object.freeze({
   story: (w, a) => w.dynSetStory(a.freq),
 });
 const fields = {
+  'road.build':['edgeId'],'road.repair':['edgeId'],
   'business.wholesale':['firmId','buildingId','good','reserve','batch','markup','discountAt','discountMarkup','enabled'],
   'business.companyOrder':['firmId','offerId','carrierId','quantity','buildingId'],
   'business.companySupply':['firmId','offerId','carrierId','quantity','minimum','maxCost','enabled','buildingId'],
@@ -43,6 +45,7 @@ function validateArgs(action, args) {
   if (!args || typeof args !== 'object' || Array.isArray(args) ||
       Object.keys(args).some(k => !fields[action].includes(k))) fail('INVALID_ARGUMENT');
   const number = n => typeof n === 'number' && Number.isFinite(n);
+  if(action.startsWith('road.')&&typeof args.edgeId!=='string')fail('INVALID_ARGUMENT');
   if(action.startsWith('business.')){
     if(!Number.isSafeInteger(args.firmId)||args.firmId<1)fail('INVALID_ARGUMENT');
     if(args.buildingId!==undefined&&(!Number.isSafeInteger(args.buildingId)||args.buildingId<1))fail('INVALID_ARGUMENT');

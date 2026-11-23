@@ -71,6 +71,6 @@ assert.deepEqual(resumed,end);s.close();
 
 // 4단계 v2 저장에는 없던 관측은 현재부터 시작하며 기존 재산·학습·권리는 유지한다.
 const legacy=JSON.parse(JSON.stringify(resume));legacy.version=2;delete legacy.continuation;delete legacy.strategy.living;
-s=createSession({checkpoint:legacy});const migrated=s.checkpoint();assert.equal(migrated.version,7);assert.equal(migrated.strategy.revision,legacy.strategy.revision);
+s=createSession({checkpoint:legacy});const migrated=s.checkpoint();assert.equal(migrated.version,8);assert.equal(migrated.strategy.revision,legacy.strategy.revision);
 assert.deepEqual(migrated.engine.S.agents,legacy.engine.S.agents);assert.deepEqual(migrated.strategy.contracts,legacy.strategy.contracts);assert.equal(s.living().history.length,0);assert.equal(s.living().me.freeHours,4);s.close();
 console.log(JSON.stringify({passed:'생활 실제 회계·재고·시간·영양/기술·지역 가격·교육 접근·가족 이동·관측/저장 복원',healthyGain:gain,hungryGain:p.out.result.gain,richPrice,poorPrice,closeProgress,farProgress}));
