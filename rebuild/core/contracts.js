@@ -55,7 +55,7 @@ function reconcile(world, strategy) {
     {good:o.good,quantity:o.quantity,goodsCost:o.goodsCost,freight:o.freight,arrivalDay:o.arrivalDay,status:o.status,reason:o.reason||null},['transit','blocked'].includes(o.status));
     for(const [i,r]of(o.recoveries||[]).entries())visit('freight',r,`business:order:${o.id}:recovery:${i}`,{firm:o.firmId,carrier:r.carrierId},{orderId:o.id,freight:r.freight,day:r.day,arrivalDay:o.arrivalDay},i===o.recoveries.length-1&&['transit','blocked'].includes(o.status));
   }
-  for(const c of S.business?.arrears||[])visit('businessWage',c,`business:wage:${c.id}`,{firm:c.firmId,employee:c.workerId},{amount:c.amount,createdDay:c.createdDay},c.amount>1e-8);
+  for(const c of S.business?.arrears||[])visit('businessWage',c,`business:wage:${c.id}`,{firm:c.firmId,employee:c.workerId},{amount:c.amount,createdDay:c.createdDay,holders:c.holders||null,successions:c.successions||[]},c.amount>1e-8);
   for (const a of S.agents) if (a.alive && a.emp) {
     if (a.ct && a.ct.e === a.emp) {
       const { canonicalContractId, ...terms } = a.ct;

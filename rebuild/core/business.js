@@ -6,6 +6,7 @@ const {geography}=require('./living');
 const operations=require('./business-operations');
 const logistics=require('./logistics');
 const stores=require('./warehousing');
+const rights=require('./business-rights');
 const copy=x=>structuredClone(x), fail=message=>{throw Error(message);};
 const GOODS=['grain','meal','wood','stone','tool','iron','fiber','plank','brick','cloth','furn','liquor'];
 function state(world){const b=world.S.business ||= {version:1,nextOrder:1,orders:[],warehouses:{},log:[]};if(b.version!==1)fail('지원하지 않는 사업 저장 형식입니다.');return b;}
@@ -41,7 +42,7 @@ function quote(world,strategy,action,args){
  if(action==='business.policy'){operations.validatePolicy(world,firm,args);const w=stores.get(world,firm,args.buildingId),declared=w&&!w.location&&Object.values(w.inv).some(n=>n>1e-8)&&!(S.business?.orders||[]).some(o=>o.firmId===firm.id&&o.receivedDay!==undefined);return {label:'생산·판매 방침',hint:'같은 입고 시설의 회사 창고 재료와 계약 직원으로 생산·직접 소매를 운영합니다. 중지해도 계약 임금은 지급합니다.'+(declared?' 위치 기록이 없는 기존 단일 설비 재고를 이 설비에 배정합니다.':''),details:{firmId:firm.id,...args}};}
  if(action==='business.recover'){const o=S.business?.orders.find(o=>o.id===args.orderId&&o.firmId===firm.id);if(!o||o.status!=='blocked'||!(o.inv[o.good]>0))fail('회수할 중단 화물이 없습니다.');const carrier=S.byId.get(args.carrierId);if(!carrierReady(carrier,S.day)||carrier===me)fail('현재 운송 가능한 실제 운송인을 선택해 주세요.');const r=recoveryRoute(world,firm,o,carrier,args.buildingId);if((firm.cash||0)<r.freight)fail('회수 운임을 지불할 회사 현금이 모자랍니다.');return {label:'중단 화물 대체 운송',cost:r.freight,hint:'기존 화물만 다시 운송합니다. 공급자 상품 대금은 중복 지급하지 않습니다.',details:{orderId:o.id,carrierId:carrier.id,...r,arrivalDay:S.day+r.days,returnDay:S.day+r.days+r.backDays}};}
  if(action==='business.supply'){validatePlan(world,firm,args);return {label:'반복 발주 조건',hint:'재고·입고 예정량이 기준보다 적으면 지정 공급자에게 발주합니다. 매번 재고·운송인·가격·회사 잔액을 다시 확인하며 주문 상한을 넘기지 않습니다.',details:{...args}};}
- if(action==='business.payArrears'){const amount=(S.business?.arrears||[]).filter(c=>c.firmId===firm.id).reduce((n,c)=>n+c.amount,0);if(!amount)fail('미지급 임금이 없습니다.');if((firm.cash||0)<amount)fail('밀린 임금을 모두 정산할 회사 현금이 모자랍니다.');if((S.business?.arrears||[]).some(c=>c.firmId===firm.id&&c.amount>0&&!S.byId.get(c.workerId)?.alive))fail('사망 직원의 임금채권은 상속 정산이 필요합니다.');return {label:'미지급 임금 정산',cost:amount,hint:'현재 남아 있는 임금채권을 실제 직원에게 회사 자금으로 지급합니다.',details:{amount}};}
+ if(action==='business.payArrears'){const amount=(S.business?.arrears||[]).filter(c=>c.firmId===firm.id).reduce((n,c)=>n+c.amount,0);if(!amount)fail('미지급 임금이 없습니다.');if((firm.cash||0)<amount)fail('밀린 임금을 모두 정산할 회사 현금이 모자랍니다.');for(const c of S.business.arrears.filter(c=>c.firmId===firm.id&&c.amount>0))rights.holders(world,c);return {label:'미지급 임금 정산',cost:amount,hint:'회사 자금으로 직원 또는 사망 당시 확정된 채권 상속인에게 지급합니다. 상속인이 없는 몫은 미귀속 유산 계정에 보관하고 상속세는 사망 당시 기록한 세율로 함께 정산합니다.',details:{amount}};}
  if(action==='business.fund'){
   if(me.cash+1e-9<args.amount)fail('운영자금을 지원할 개인 현금이 모자랍니다.');
   return {label:'회사 운영자금 지원',cost:args.amount,hint:'개인→회사 지원금입니다. 지분·상환 청구권은 새로 생기지 않습니다.',details:{firmId:firm.id,amount:args.amount}};
@@ -69,7 +70,7 @@ function perform(world,strategy,action,args){
  if(action==='business.hire'){const a=S.byId.get(args.personId),r=world.businessHire(firm,a,args.wage),b=state(world);b.hiring ||= {};b.hiring[firm.id+':'+a.id]={day:S.day,hired:r.hired,until:r.hired?S.day:S.day+3};return r;}
  if(action==='business.policy'){state(world);return operations.configure(world,firm,args);}
  if(action==='business.supply'){const b=state(world);b.supplyPlans ||= {};b.supplyPlans[firm.id] ||= {};b.supplyPlans[firm.id][args.good]={...copy(args),buildingId:args.buildingId??stores.activeId(world,firm),managerId:me.id};return {text:'재고 기준·주문 상한을 반영했습니다. 다음 하루부터 자동 발주 조건을 확인합니다.'};}
- if(action==='business.payArrears'){for(const c of S.business.arrears.filter(c=>c.firmId===firm.id&&c.amount>0)){world.businessPay(firm,S.byId.get(c.workerId),c.amount,'wage');c.amount=0;c.paidDay=S.day;}return {text:'미지급 임금을 회사 자금으로 정산했습니다.',cost:q.cost};}
+ if(action==='business.payArrears'){for(const c of S.business.arrears.filter(c=>c.firmId===firm.id&&c.amount>0)){rights.pay(world,firm,c);}return {text:'미지급 임금을 회사 자금으로 정산했습니다.',cost:q.cost};}
  if(action==='business.recover'){const o=S.business.orders.find(o=>o.id===args.orderId),d=q.details,carrier=S.byId.get(d.carrierId);world.businessPay(firm,carrier,d.freight,'biz');o.originalCarrierId ??=o.carrierId;o.recoveries ||= [];o.recoveries.push({day:S.day,previousCarrier:o.carrierId,carrierId:carrier.id,freight:d.freight,reason:o.reason,origin:copy(d.origin)});Object.assign(o,{carrierId:carrier.id,status:'transit',segmentOrigin:copy(d.origin),progressDays:0,lastTravelDay:S.day,segmentDay:S.day,days:d.days,arrivalDay:d.arrivalDay,returnDay:d.returnDay,destination:copy(d.destination),totalFreight:(o.totalFreight??o.freight)+d.freight,roadTrip:copy(d.roadTrip)});logistics.state(world);delete o.reason;carrier.dynTravelUntil=d.returnDay+1;return {text:'대체 운송인이 기존 화물을 회수하러 출발했습니다.',orderId:o.id,...d};}
  if(action==='business.fund'){
   me.cash-=args.amount;firm.cash=(firm.cash||0)+args.amount;
@@ -157,7 +158,7 @@ function view(world,strategy){
   // 품목별 도착 비용 비교를 제공하며 전체 주민 상세·g/q는 보내지 않는다.
   const counts=new Map(),supplierOffers=offers.sort((a,b)=>a.good.localeCompare(b.good)||a.cost-b.cost).filter(o=>{const n=counts.get(o.good)||0;counts.set(o.good,n+1);return n<3;});
   const lines=world.companyLines(f),buildings=S.bldgs.filter(x=>f.bld?.includes(x.id));
-  return {id:f.id,name:f.name,cash:f.cash||0,lines:lines.map(id=>({id,name:world.LINE_L[id]})),location,
+  return {id:f.id,name:f.name,cash:f.cash||0,settlementReasons:rights.reasons(world,f),lines:lines.map(id=>({id,name:world.LINE_L[id]})),location,
    stake:((f.sh?.[me.id]||0)+(f.sh?.['I'+me.id]||0))/(f.totalShares||10000),staff:staff.map(a=>({id:a.id,name:world.nm(a),wage:a.ct?.w??null})),
    debt:(S.corpLoans||[]).filter(l=>l.firm===f.id&&!['paid','closed','forgiven'].includes(l.status)).reduce((n,l)=>n+(l.bal||0),0),
    buildings:buildings.map(x=>({id:x.id,name:world.bName(x),condition:x.cond,functions:(x.fx||[]).slice(),lot:x.lot})),
@@ -183,5 +184,8 @@ function validateState(world){
  for(const c of b.arrears||[])if(!Number.isFinite(c.amount)||c.amount<0)fail('저장된 미지급 임금을 확인해 주세요.');
 }
 function describeAction(world,row){const [prefix,op,id]=row.k.split(':');const f=world.S.firms.find(f=>f.id===Number(id));if(prefix!=='co'||!f||!operations.managed(world,f))return row;const out={...row};if(['branch','rd','fund','dark'].includes(op)){out.ok=false;out.why='이 회사의 생산·실거래 방침에서는 해당 경영 행동을 사용할 수 없습니다.';}if(op==='fac')out.hint=(row.hint||'회사 자금 사용').split(' · ')[0]+' · 공정 효율을 단계별 6% 개선합니다. 판매나 이익을 보장하지 않습니다.';if(op==='ad'){out.hint='실제 소매의 고객 도달 범위와 상품 발견 가능성을 개선합니다. 재고·수요·가격 조건이 맞아야 판매됩니다.';if(out.opts)out.opts=out.opts.map(([key,label])=>[key,label.replace(/ · 매출 \+\d+%/,' · 고객 도달 개선')]);}return out;}
-function guardAction(world,key){const d=describeAction(world,{k:key});if(d.why)fail(d.why);const m=/^co:sell:(\d+):close$/.exec(key);if(m){const id=Number(m[1]),b=world.S.business;if(Object.values(b?.warehouses||{}).some(w=>w.firmId===id&&Object.values(w.inv).some(n=>n>1e-8))||(b?.orders||[]).some(o=>o.firmId===id&&Object.values(o.inv).some(n=>n>1e-8))||(b?.arrears||[]).some(c=>c.firmId===id&&c.amount>1e-8)||(b?.operations?.[id]?.taxDebt||0)>1e-8)fail('회사 재고·운송 중 화물·미지급 임금·미납 세금의 권리를 먼저 정리해야 청산할 수 있습니다.');}}
-module.exports={quote,perform,tick,view,GOODS,connect:world=>{validateState(world);logistics.validate(world);operations.connect(world);},guardAction,describeAction};
+function guardAction(world,key){
+ const d=describeAction(world,{k:key});if(d.why)fail(d.why);const m=/^co:sell:(\d+):close$/.exec(key);
+ if(m){const f=world.S.firms.find(f=>f.id===Number(m[1]));if(f&&rights.reasons(world,f).length)fail('회사 재고·운송 화물·미지급 임금·미납 세금·기업 대출의 권리를 먼저 정리해야 청산할 수 있습니다.');}
+}
+module.exports={quote,perform,tick,view,GOODS,connect:world=>{validateState(world);logistics.validate(world);rights.validate(world);operations.connect(world);},guardAction,describeAction};

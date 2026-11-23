@@ -443,7 +443,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
   function stockValue(a){const ids=[String(a.id),'I'+a.id,...(S.banks||[]).filter(b=>b.own===a.id).map(b=>'B'+b.id)];let value=0;for(const f of S.firms)for(const id of ids)value+=(f.sh[id]||0)*f.price;return value}
   function institutions(){const ids=[];if(S.gov?.policy?.pension&&(S.gov.pen||0)>0)ids.push('P');for(const b of S.banks||[])if(b.alive!==false&&S.byId.get(b.own)?.alive)ids.push('B'+b.id);for(const a of S.agents)if(a.alive&&a.insurer)ids.push('I'+a.id);return ids}
   function cleanupShares(f){for(const id of shareKeys(f).keys.slice()){if(id==='T'||holderAccount(id,f))continue;const n=f.sh[id]||0,person=holderPersonId(id),target=person&&S.byId.get(person)?.alive?String(person):'T';setShares(f,id,0);setShares(f,target,(f.sh[target]||0)+n)}}
-  function payStockDividend(f,budget){if(!Number.isFinite(budget)||budget<=0)return 0;budget=Math.min(budget,Math.max(0,f.cash||0));let paid=0,foreign=0;
+  function payStockDividend(f,budget){if(businessHooks&&businessHooks.debtBlocked(f))throw Error('미지급 임금과 미납 세금을 정산하기 전에는 배당할 수 없습니다.');if(!Number.isFinite(budget)||budget<=0)return 0;budget=Math.min(budget,Math.max(0,f.cash||0));let paid=0,foreign=0;
     for(const id of shareKeys(f).keys){if(id==='T')continue;const account=holderAccount(id,f);if(!account)continue;const d=budget*f.sh[id]/votingShares(f);account.cash+=d;paid+=d;if(account.agent)account.agent.src.div=(account.agent.src.div||0)+d;if(id==='X')foreign+=d}
     f.cash-=paid;if(foreign)recordForeignCapital(-foreign);return paid;
   }
@@ -2532,13 +2532,14 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       if(S.day%30===0)cleanupShares(f);
       if(f.parent&&!firmById(f.parent))f.parent=null;
       if(!f.bld.length&&(S.sites.some(x=>x.firm===f.id)||S.day-f.born<YEAR*.5||(f.cash||0)>S.houseRef||S.firms.some(x=>x.parent===f.id)))continue;
-      if(!f.bld.length){settleClosedFirm(f);S.firms=S.firms.filter(x=>x!==f);log('econ',`${josa(f.name,'이','가')} 파산했다. 주식이 휴지 조각이 됐다${f.raised&&!f.everBuilt?' (모은 돈으로 건물을 끝내 못 지었다)':''}`,[f.ceo]);mile('bankrupt',`첫 회사 파산. ${josa(f.name,'이','가')} 망해서 주주들의 돈이 사라졌다`,[f.ceo]);continue}
+      if(!f.bld.length&&businessHooks&&!businessHooks.canClose(f))f.dormant=true;
+      else if(!f.bld.length){settleClosedFirm(f);S.firms=S.firms.filter(x=>x!==f);log('econ',`${josa(f.name,'이','가')} 파산했다. 주식이 휴지 조각이 됐다${f.raised&&!f.everBuilt?' (모은 돈으로 건물을 끝내 못 지었다)':''}`,[f.ceo]);mile('bankrupt',`첫 회사 파산. ${josa(f.name,'이','가')} 망해서 주주들의 돈이 사라졌다`,[f.ceo]);continue}
       const c=S.byId.get(f.ceo);if(!c||!c.alive){const top=persons(f).sort((x,y)=>y[1]-x[1])[0];if(top){setCeo(f,+top[0]);log('econ',`${josa(nm(S.byId.get(+top[0])),'이','가')} 최대 주주로 ${f.name}의 새 사장이 됐다`,[+top[0]]);mile('firmSurvive',`회사는 사람보다 오래 산다. 창업자가 죽은 뒤에도 ${josa(f.name,'이','가')} 새 사장 아래 계속 돌아간다`,[+top[0]])}}}
     // 회사 금고: 사장이 회사 일로 번 돈은 회사로, 일꾼 일당은 회사가 낸다 (열흘마다)
     const BIZK=['farm','cook','wood','stone','tool','iron','gold','biz','trade','house','rent'];
     // 휴업·폐업: 직원 없이 돈도 없는 회사는 '휴업'으로 표시하고, 한 해 넘게 그러면 문을 닫는다(건물은 사장 개인 것으로)
     if(S.day%10===0)for(const f of S.firms.slice()){const c=S.byId.get(f.ceo);if(!c||!c.alive||!(f.bld||[]).length)continue;const idle=!(c.workers>0);f.idleD=idle?(f.idleD||0)+10:0;f.dormant=f.idleD>=20;
-      if(f.idleD>=YEAR&&(f.cash||0)<(S.wageAvg||1)*20&&!S.firms.some(x=>x.parent===f.id)){for(const id of f.bld){const b=S.bldgs.find(x=>x.id===id);if(b){b.firm=null;b.owner=c.id}}settleClosedFirm(f);S.firms=S.firms.filter(x=>x!==f);if(c.firm===f.id)c.firm=null;X('firmClose');mEv('firmClose',`폐업. 일할 사람도 돈도 없이 한 해를 버틴 ${josa(f.name,'이','가')} 문을 닫았다. 건물은 사장 ${nm(c)}의 것이 됐다`,[c.id])}}
+      if((!businessHooks||businessHooks.canClose(f))&&f.idleD>=YEAR&&(f.cash||0)<(S.wageAvg||1)*20&&!S.firms.some(x=>x.parent===f.id)){for(const id of f.bld){const b=S.bldgs.find(x=>x.id===id);if(b){b.firm=null;b.owner=c.id}}settleClosedFirm(f);S.firms=S.firms.filter(x=>x!==f);if(c.firm===f.id)c.firm=null;X('firmClose');mEv('firmClose',`폐업. 일할 사람도 돈도 없이 한 해를 버틴 ${josa(f.name,'이','가')} 문을 닫았다. 건물은 사장 ${nm(c)}의 것이 됐다`,[c.id])}}
     if(S.day%10===0)for(const f of S.firms){if(S.dyn&&f.merc||businessHooks&&businessHooks.managed(f))continue;const c=S.byId.get(f.ceo);if(!c||!c.alive)continue;if(f.cash===undefined)f.cash=0;
       const LK={agri:['farm','wood','stone','iron'],food:['cook','farm'],mfg:['tool','iron','gold'],build:['house','rent','biz'],trade:['trade'],know:['biz'],edu:['biz'],leisure:['biz'],media:['biz'],med:['biz'],fin:['biz'],sec:['biz']};const okK=new Set(firmLines(f).flatMap(l=>LK[l]||[]));const inc=BIZK.filter(k=>okK.has(k)).reduce((t,k)=>t+(c.src[k]||0),0),wg=(c.spend&&c.spend.wages)||0;if(f.lastCeo!==c.id){f.lastCeo=c.id;f.lastInc=inc;f.lastW=wg}
       const net=(inc-f.lastInc)-(wg-f.lastW);f.revBy=f.revBy||{};for(const k of BIZK){if(!okK.has(k))continue;const cur=c.src[k]||0;f.srcLast=f.srcLast||{};if(f.srcLast[k]!==undefined&&cur>f.srcLast[k])f.revBy[k]=(f.revBy[k]||0)+cur-f.srcLast[k];f.srcLast[k]=cur}f.wagesPaid=(f.wagesPaid||0)+Math.max(0,wg-f.lastW);f.lastInc=inc;f.lastW=wg;
@@ -2548,7 +2549,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
       mile('itService',`정보 산업의 탄생. ${josa(f.name,'이','가')} ${L2.name}에 돈을 내고 전산 서비스를 쓰기 시작했다`,[f.ceo,L2.ceo])}}}
     if(S.day%30===10)techCheck();if(S.day%30===12){cartelTick();unionTick()}
     // 배당·사장 월급 (한 달에 한 번): 회사 금고에서 지분만큼
-    if(S.day%30===0)for(const f of S.firms){if(S.dyn&&f.merc)continue;const c=S.byId.get(f.ceo);if(!c)continue;f.cash=f.cash||0;
+    if(S.day%30===0)for(const f of S.firms){if(S.dyn&&f.merc||businessHooks&&businessHooks.debtBlocked(f))continue;const c=S.byId.get(f.ceo);if(!c)continue;f.cash=f.cash||0;
       const sal=(businessHooks&&businessHooks.managed(f)?Math.max(0,f.cash):f.cash)*.03;if(businessHooks&&businessHooks.managed(f)){if(c.alive){businessPay(f,c,sal,'biz');businessHooks.charge(f,sal,'대표 보수')}}else{f.cash-=sal;c.cash+=sal;c.src.biz+=sal;}
       const reserve=S.houseRef*1.5;let pay=Math.max(0,f.cash-reserve)*(.2+.3*c.g.civic);
       if(R()<c.g.cheat*.35&&pay>1){const sk=pay*.8;pay*=.2;f.cash-=sk;c.cash+=sk;c.rep=Math.max(0,(c.rep??1)-.1);f.skim=(f.skim||0)+1;if(S.gov&&R()<.35)S.gov.cases.push({t:'divSkim',who:c.id,amt:sk,ev:.5,d:S.day,firm:f.id});mile('divSkim',`첫 배당 떼먹기. ${f.name} 사장 ${josa(nm(c),'이','가')} 회사 돈을 주주에게 나누지 않고 챙겼다`,[c.id])}
@@ -3938,6 +3939,7 @@ const SP=(a,k,v)=>{if(!(v>0))return;const o=a.spend||(a.spend={});o[k]=(o[k]||0)
     if((S.patri??.7)>.6&&!(S.gov&&S.gov.policy.womenProp)){const sons=heirs.filter(k=>k.sex==='M');if(sons.length&&sons.length<heirs.length){heirs=sons;mile('sonInherit',`아들만 상속. ${josa(nm(a),'의','의')} 재산이 딸들은 빼고 아들에게만 갔다`,sons.map(k=>k.id))}}
     for(const id of a.secretKids||[]){const k=S.byId.get(id);if(k&&k.alive&&isAdult(k)&&!heirs.includes(k)&&R()<.5){heirs.push(k);log('love',`${josa(nm(k),'이','가')} ${nm(a)}의 숨겨진 자식이라며 상속을 요구해 몫을 받아냈다`,[k.id,a.id]);mile('secretHeir',`숨겨진 자식. ${josa(nm(a),'이','가')} 죽자 혼외자 ${josa(nm(k),'이','가')} 나타나 상속을 받아냈다`,[k.id,a.id])}}
     const to=heirs.length?heirs:(p&&p.alive?[p]:[]);
+    if(businessHooks)businessHooks.inherit(a,to);
     finDeath(a,to);
     if(S.wclaims&&S.wclaims.length&&a.cash>0)for(const c of S.wclaims){if(c.e!==a.id||c.amt<=0)continue;const w=S.byId.get(c.w);if(!w||!w.alive)continue;const pay=Math.min(c.amt,a.cash);a.cash-=pay;w.cash+=pay;c.amt-=pay;if(a.cash<=0)break}
     if(S.gov&&S.gov.policy.inhTax>0&&a.cash>0){const t=a.cash*S.gov.policy.inhTax;a.cash-=t;S.gov.tre+=t;S.gov.st.collected+=t}

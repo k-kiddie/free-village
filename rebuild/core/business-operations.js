@@ -4,6 +4,7 @@
 const {MAKE,YEAR}=require('../../engine');
 const {geography}=require('./living');
 const stores=require('./warehousing');
+const rights=require('./business-rights');
 const clone=x=>structuredClone(x),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const RECIPES={meal:{in:{grain:2},out:3,rate:1,skill:1,fx:['b1','pub'],lines:['food','leisure']},
  ...Object.fromEntries(Object.entries(MAKE).map(([k,v])=>[k,{...v,skill:9,fx:k==='plank'?['b2','fac','bigfac']:k==='brick'?['b10','fac','bigfac']:k==='liquor'?['pub','fac','bigfac']:['fac','bigfac'],lines:k==='liquor'?['food','leisure','mfg']:k==='plank'||k==='brick'?['mfg','build','agri']:['mfg']}]))};
@@ -37,7 +38,7 @@ function validatePolicy(world,f,args){
 }
 function addClaim(world,f,a,amount){
  if(amount<1e-8)return;const b=store(world);let c=b.arrears.find(c=>c.firmId===f.id&&c.workerId===a.id&&c.amount>1e-8);
- if(!c){c={id:b.arrears.length+1,firmId:f.id,firmName:f.name,workerId:a.id,amount:0,createdDay:world.S.day};b.arrears.push(c);}c.amount+=amount;
+ if(!c){c={id:b.arrears.length+1,firmId:f.id,firmName:f.name,workerId:a.id,amount:0,holders:[{kind:'person',id:a.id,share:1,taxRate:0}],createdDay:world.S.day};b.arrears.push(c);}c.amount+=amount;
 }
 function work(world,a){
  const f=member(world,a);if(!f)return false;
@@ -109,7 +110,7 @@ function sell(world){
   if(cfg.history.at(-1)?.day===S.day)cfg.history.pop();cfg.history.push(clone(d));cfg.history=cfg.history.slice(-30);f.revM=cfg.history.reduce((n,row)=>n+row.revenue,0);
  }
 }
-function connect(world){world.setBusinessHooks({managed:f=>managed(world,f),assigned:a=>!!member(world,a),work:a=>work(world,a),charge(f,amount,kind){if(!(amount>0))return;const b=world.S.business,cfg=b.operations[f.id],charge={day:world.S.day,amount,kind};if(cfg.daily?.day===world.S.day&&b.lastTickDay!==world.S.day){cfg.daily.otherExpenses=(cfg.daily.otherExpenses||0)+amount;cfg.daily.expenseDetails ||= [];cfg.daily.expenseDetails.push(charge);}else{cfg.pendingCosts ||= [];cfg.pendingCosts.push(charge);}},service(f,a,amount){const d=daily(world,world.S.business.operations[f.id]);d.revenue+=amount;d.serviceRevenue=(d.serviceRevenue||0)+amount;d.serviceCustomers ||= [];if(d.serviceCustomers.length<8)d.serviceCustomers.push({id:a.id,name:world.nm(a),value:amount});},beginDay(){
+function connect(world){world.setBusinessHooks({canClose:f=>!rights.reasons(world,f).length,debtBlocked:f=>rights.reasons(world,f).some(r=>['미지급 임금','미납 세금'].includes(r)),inherit:(a,to)=>rights.inherit(world,a,to),managed:f=>managed(world,f),assigned:a=>!!member(world,a),work:a=>work(world,a),charge(f,amount,kind){if(!(amount>0))return;const b=world.S.business,cfg=b.operations[f.id],charge={day:world.S.day,amount,kind};if(cfg.daily?.day===world.S.day&&b.lastTickDay!==world.S.day){cfg.daily.otherExpenses=(cfg.daily.otherExpenses||0)+amount;cfg.daily.expenseDetails ||= [];cfg.daily.expenseDetails.push(charge);}else{cfg.pendingCosts ||= [];cfg.pendingCosts.push(charge);}},service(f,a,amount){const d=daily(world,world.S.business.operations[f.id]);d.revenue+=amount;d.serviceRevenue=(d.serviceRevenue||0)+amount;d.serviceCustomers ||= [];if(d.serviceCustomers.length<8)d.serviceCustomers.push({id:a.id,name:world.nm(a),value:amount});},beginDay(){
  const S=world.S,b=S.business;if(!b)return;
  for(const a of S.agents)if(a.alive&&a.ct?.company&&b.operations?.[a.ct.company]&&a.ct.until!==undefined&&a.ct.until<=S.day)world.businessDismiss(a);
  for(const cfg of Object.values(b.operations||{}))daily(world,cfg);
